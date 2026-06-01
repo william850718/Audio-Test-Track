@@ -1,0 +1,1667 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <title>聲學測試實驗室追蹤系統</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        :root {
+            --bg-app: #0b0f19;
+            --bg-panel: #111827;
+            --bg-input: #1f2937;
+            --border-color: #374151;
+            --text-primary: #f3f4f6;
+            --text-secondary: #9ca3af;
+            
+            /* 平台與類型專用色 */
+            --color-teams: #6366f1;
+            --color-cortana: #8b5cf6;
+            --color-zoom: #f59e0b;
+            --color-intel: #0ea5e9;
+            --color-google: #10b981;
+            
+            --color-issue: #ef4444;
+            --color-update: #3b82f6;
+            --color-status: #6b7280;
+        }
+
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; 
+            font-size: 14px; 
+            color: var(--text-primary); 
+            background-color: var(--bg-app);
+            line-height: 1.5;
+        }
+
+        .app { max-width: 1200px; margin: 0 auto; padding: 1.5rem 1rem 2.5rem; }
+        
+        /* Topbar */
+        .topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem; }
+        .logo-wrap { display: flex; align-items: center; gap: 12px; }
+        .logo-icon { 
+            width: 42px; height: 42px; border-radius: 8px; 
+            background: var(--bg-panel); border: 1px solid var(--border-color); 
+            display: flex; align-items: center; justify-content: center;
+        }
+        .logo-title { font-size: 18px; font-weight: 600; color: var(--text-primary); letter-spacing: 0.5px; }
+        .logo-sub { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
+
+        /* Stats Row */
+        .stat-row { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 1.5rem; }
+        .stat { background: var(--bg-panel); border: 1px solid var(--border-color); border-radius: 8px; padding: 14px; text-align: center; }
+        .stat-n { font-size: 24px; font-weight: 600; font-family: monospace; }
+        .stat-l { font-size: 11px; color: var(--text-secondary); margin-top: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+
+        /* Platform Tabs */
+        .ptabs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 1.25rem; }
+        .ptab { 
+            padding: 6px 16px; border-radius: 20px; border: 1px solid var(--border-color); 
+            background: var(--bg-panel); color: var(--text-secondary); font-size: 12px; 
+            cursor: pointer; transition: all 0.2s ease; font-weight: 500;
+        }
+        .ptab:hover { border-color: var(--text-secondary); color: var(--text-primary); }
+        .ptab.p-all { background: #374151; color: var(--text-primary); border-color: #4b5563; }
+        .ptab.p-teams { background: rgba(99, 102, 241, 0.15); color: #a5b4fc; border-color: var(--color-teams); }
+        .ptab.p-cortana { background: rgba(139, 92, 246, 0.15); color: #c4b5fd; border-color: var(--color-cortana); }
+        .ptab.p-zoom { background: rgba(245, 158, 11, 0.15); color: #fde68a; border-color: var(--color-zoom); }
+        .ptab.p-intel { background: rgba(14, 165, 233, 0.15); color: #7dd3fc; border-color: var(--color-intel); }
+        .ptab.p-google { background: rgba(16, 185, 129, 0.15); color: #a7f3d0; border-color: var(--color-google); }
+
+        /* Toolbar */
+        .toolbar { 
+            display: flex; gap: 8px; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; 
+            background: var(--bg-panel); padding: 10px; border-radius: 8px; border: 1px solid var(--border-color);
+        }
+        .toolbar input, .toolbar select { font-size: 12px; height: 32px; background: var(--bg-input); border: 1px solid var(--border-color); color: var(--text-primary); padding: 0 8px; border-radius: 6px; }
+        .toolbar input { min-width: 180px; }
+        .toolbar select { min-width: 130px; cursor: pointer; }
+        .tb-spacer { flex: 1; }
+
+        /* Buttons */
+        .btn { 
+            padding: 6px 14px; border-radius: 6px; font-size: 12px; cursor: pointer; 
+            border: 1px solid var(--border-color); background: var(--bg-input); color: var(--text-primary); 
+            display: inline-flex; align-items: center; gap: 6px; font-weight: 500; transition: all 0.15s ease;
+        }
+        .btn:hover { background: #374151; border-color: #4b5563; }
+        .btn.primary { background: #2563eb; color: #ffffff; border-color: #3b82f6; }
+        .btn.primary:hover { background: #1d4ed8; }
+
+        /* Form Panel */
+        .form-panel { background: var(--bg-panel); border: 1px solid var(--border-color); border-radius: 12px; padding: 1.25rem; margin-bottom: 1.25rem; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3); }
+        .fp-title { font-size: 12px; font-weight: 600; color: #3b82f6; letter-spacing: .05em; text-transform: uppercase; margin-bottom: 14px; border-bottom: 1px solid var(--border-color); padding-bottom: 6px; }
+        .fg2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+        .fg3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+        .ff { grid-column: 1/-1; }
+        label { display: block; font-size: 11px; color: var(--text-secondary); margin-bottom: 4px; font-weight: 500; }
+        input, select, textarea { width: 100%; background: var(--bg-input); border: 1px solid var(--border-color); color: var(--text-primary); padding: 8px 10px; border-radius: 6px; font-size: 13px; }
+        input:focus, select:focus, textarea:focus { outline: none; border-color: #3b82f6; }
+        textarea { resize: vertical; min-height: 70px; }
+        
+        .check-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+        .chk-lbl { 
+            display: inline-flex; align-items: center; gap: 6px; font-size: 12px; cursor: pointer; 
+            color: var(--text-primary); background: var(--bg-input); padding: 4px 10px; border-radius: 14px; 
+            border: 1px solid var(--border-color); transition: all 0.15s; margin: 0;
+        }
+        .chk-lbl:has(input:checked) { background: rgba(59, 130, 246, 0.15); border-color: #3b82f6; color: #60a5fa; }
+        .chk-lbl input[type=checkbox] { width: auto; margin: 0; cursor: pointer; }
+        .form-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; }
+
+        /* Records / Cards */
+        .record { 
+            border: 1px solid var(--border-color); border-radius: 10px; padding: 14px 16px; margin-bottom: 10px; 
+            background: var(--bg-panel); transition: transform 0.15s ease, box-shadow 0.15s ease;
+            position: relative; overflow: hidden;
+        }
+        .record:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.4); }
+        
+        /* 左側狀態邊條 */
+        .record::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: var(--color-other); }
+        .record:has(.b-issue)::before { background: var(--color-issue); }
+        .record:has(.b-acqua-fw)::before { background: var(--color-update); }
+        .record:has(.b-test-seq)::before { background: #8b5cf6; }
+        .record:has(.b-spec)::before { background: #0ea5e9; }
+        .record:has(.b-hw-cal)::before { background: var(--color-status); }
+        .archive-section { margin-top: 1.5rem; }
+        .archive-hint { font-size: 11px; color: var(--text-secondary); margin-bottom: 8px; }
+
+        .rec-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+        .rec-title { font-size: 14px; font-weight: 600; flex: 1; min-width: 150px; line-height: 1.4; color: var(--text-primary); }
+        
+        /* Badges */
+        .badge { font-size: 10px; padding: 2px 8px; border-radius: 4px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.3px; }
+        .b-teams { background: rgba(99, 102, 241, 0.2); color: #818cf8; }
+        .b-cortana { background: rgba(139, 92, 246, 0.2); color: #a78bfa; }
+        .b-zoom { background: rgba(245, 158, 11, 0.2); color: #fbbf24; }
+        .b-intel { background: rgba(14, 165, 233, 0.2); color: #38bdf8; }
+        .b-google { background: rgba(16, 185, 129, 0.2); color: #34d399; }
+        .b-cat { background: #1f2937; color: #d1d5db; border: 0.5px solid #4b5563; }
+        
+        .b-issue { background: #451a1a; color: #f87171; border: 0.5px solid #7f1d1d; }
+        .b-acqua-fw { background: #1e3a8a; color: #60a5fa; border: 0.5px solid #1e40af; }
+        .b-test-seq { background: #2e1065; color: #c4b5fd; border: 0.5px solid #5b21b6; }
+        .b-spec { background: #0c4a6e; color: #7dd3fc; border: 0.5px solid #0369a1; }
+        .b-hw-cal { background: #374151; color: #d1d5db; border: 0.5px solid #4b5563; }
+        
+        .b-inprog { background: rgba(245, 158, 11, 0.15); color: #f59e0b; }
+        .b-pending { background: rgba(239, 68, 68, 0.15); color: #ef4444; }
+        .b-closed { background: rgba(16, 185, 129, 0.15); color: #10b981; }
+        
+        .b-teams-cert { background: #1e1b4b; color: #c7d2fe; }
+        .b-uc-cert { background: #2e1065; color: #e9d5ff; }
+        .b-internal { background: #111827; color: #9ca3af; border: 0.5px solid #374151; }
+
+        .meta-row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; border-top: 1px solid rgba(255,255,255,0.03); padding-top: 6px; }
+        .meta { font-size: 11px; color: var(--text-secondary); display: inline-flex; align-items: center; gap: 4px; font-family: monospace; }
+        .meta i { font-size: 12px; color: #6b7280; }
+        
+        .ti-chips { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 8px; }
+        .ti-chip { font-size: 10px; padding: 1px 6px; border-radius: 4px; background: #1f2937; color: #9ca3af; border: 1px solid var(--border-color); }
+        
+        .desc { font-size: 12.5px; color: #d1d5db; line-height: 1.5; margin-bottom: 8px; background: #151f32; padding: 6px 10px; border-radius: 6px; border-left: 2px solid #4b5563; }
+        .solution { font-size: 12.5px; color: #a7f3d0; line-height: 1.5; background: rgba(16, 185, 129, 0.1); padding: 6px 10px; border-radius: 6px; border-left: 2px solid #10b981; margin-bottom: 4px; }
+        
+        .rec-actions { display: flex; gap: 6px; margin-top: 10px; justify-content: flex-end; border-top: 1px solid rgba(255,255,255,0.03); padding-top: 8px; }
+        .ra { 
+            font-size: 11px; padding: 4px 10px; border-radius: 4px; border: 1px solid var(--border-color); 
+            background: var(--bg-input); color: var(--text-secondary); cursor: pointer; display: inline-flex; align-items: center; gap: 4px; transition: all 0.1s;
+        }
+        .ra:hover { background: #374151; color: var(--text-primary); border-color: #4b5563; }
+        .ra.danger { color: #f87171; }
+        .ra.danger:hover { background: #451a1a; border-color: #7f1d1d; }
+        
+        .empty { text-align: center; padding: 3rem; color: var(--text-secondary); font-size: 13px; background: var(--bg-panel); border-radius: 10px; border: 1px solid var(--border-color); }
+        .prio-high { color: #f87171; font-weight: bold; }
+        .prio-medium { color: #fbbf24; }
+        .prio-low { color: #34d399; }
+        
+        .sec-div { display: flex; align-items: center; gap: 8px; margin: 12px 0 10px; }
+        .sec-div span { font-size: 11px; color: #6b7280; white-space: nowrap; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+        .sec-div hr { flex: 1; height: 1px; background: var(--border-color); border: none; }
+
+        .cat-group { display: flex; flex-direction: column; gap: 8px; }
+        .subcat-nested {
+            padding: 10px 12px 10px 14px; margin-top: 2px;
+            border-left: 2px solid var(--color-teams);
+            background: rgba(99, 102, 241, 0.06); border-radius: 0 6px 6px 0;
+        }
+        .subcat-nested label { color: #a5b4fc; }
+        .subcat-nested label::before { content: '↳ '; color: var(--text-secondary); }
+        .type-extra {
+            margin-top: 8px; padding: 12px 14px;
+            border-left: 2px solid #3b82f6; background: rgba(59,130,246,0.06);
+            border-radius: 0 8px 8px 0;
+        }
+        #q-subcat-wrap { display: none; }
+        #q-subcat-wrap.visible { display: contents; }
+
+        .mode-nav { display: flex; gap: 6px; margin-bottom: 1.25rem; padding: 4px; background: var(--bg-panel); border: 1px solid var(--border-color); border-radius: 10px; width: fit-content; }
+        .mode-tab { padding: 8px 18px; border-radius: 8px; border: none; background: transparent; color: var(--text-secondary); font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.15s; }
+        .mode-tab:hover { color: var(--text-primary); }
+        .mode-tab.active { background: #2563eb; color: #fff; }
+
+        .proj-card { cursor: pointer; }
+        .proj-card .rec-title { font-size: 16px; }
+        .proj-hint { font-size: 11px; color: var(--text-secondary); margin-top: 4px; }
+
+        .timeline { position: relative; padding-left: 20px; }
+        .timeline::before { content: ''; position: absolute; left: 6px; top: 8px; bottom: 8px; width: 2px; background: var(--border-color); }
+        .log-entry { position: relative; margin-bottom: 14px; padding: 12px 14px; background: var(--bg-panel); border: 1px solid var(--border-color); border-radius: 10px; }
+        .log-entry::before { content: ''; position: absolute; left: -17px; top: 18px; width: 10px; height: 10px; border-radius: 50%; background: #3b82f6; border: 2px solid var(--bg-app); }
+        .log-entry:has(.b-debug)::before { background: #f59e0b; }
+        .log-entry:has(.b-pretest)::before { background: #60a5fa; }
+        .log-entry:has(.b-qual)::before { background: #34d399; }
+        .log-entry:has(.b-requal)::before { background: #a78bfa; }
+        .log-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 6px; }
+        .log-date { font-size: 15px; font-weight: 700; font-family: monospace; color: var(--text-primary); }
+        .log-summary { font-size: 13px; color: #d1d5db; line-height: 1.55; margin-top: 6px; }
+        .b-debug { background: rgba(245,158,11,0.2); color: #fbbf24; }
+        .b-pretest { background: rgba(59,130,246,0.2); color: #60a5fa; }
+        .b-qual { background: rgba(16,185,129,0.2); color: #34d399; }
+        .b-requal { background: rgba(167,139,250,0.2); color: #c4b5fd; }
+        .detail-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 1rem; flex-wrap: wrap; }
+        .detail-title { font-size: 20px; font-weight: 700; }
+        .fw-timeline { font-size: 11px; color: #60a5fa; margin-top: 6px; font-family: monospace; }
+        .proj-tb-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; width: 100%; }
+        #proj-toolbar { flex-direction: column; align-items: stretch; }
+        #proj-toolbar > .proj-tb-row { margin: 0; }
+
+        #login-screen {
+            min-height: 100vh; display: flex; align-items: center; justify-content: center;
+            padding: 1.5rem; background: var(--bg-app);
+        }
+        #login-screen[hidden] { display: none !important; }
+        .login-card {
+            width: 100%; max-width: 400px; background: var(--bg-panel);
+            border: 1px solid var(--border-color); border-radius: 12px; padding: 1.5rem;
+        }
+        .login-title { font-size: 18px; font-weight: 600; margin-bottom: 6px; }
+        .login-sub { font-size: 12px; color: var(--text-secondary); margin-bottom: 1.25rem; line-height: 1.5; }
+        .login-err {
+            font-size: 13px; color: #fecaca; margin-top: 10px; line-height: 1.5;
+            padding: 10px 12px; border-radius: 8px;
+            background: rgba(127, 29, 29, 0.35); border: 1px solid #7f1d1d;
+            display: none;
+        }
+        .login-err.ok {
+            display: block;
+            color: #a7f3d0; background: rgba(6, 78, 59, 0.35); border-color: #065f46;
+        }
+        .login-err.busy {
+            display: block;
+            color: #fde68a; background: rgba(120, 53, 15, 0.35); border-color: #92400e;
+        }
+        .login-err.err {
+            display: block;
+        }
+        .topbar-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+        #sync-lbl { font-size: 11px; color: var(--text-secondary); }
+        #sync-lbl.ok { color: #34d399; }
+        #sync-lbl.err { color: #f87171; }
+        #app-main[hidden] { display: none !important; }
+    </style>
+</head>
+<body>
+
+<div id="login-screen">
+  <div class="login-card">
+    <div class="login-title">聲學測試追蹤系統</div>
+    <div class="login-sub">請使用團隊共用帳號登入。帳號需由管理員在 Supabase 後台建立一次，再將 Email / 密碼提供給同事。</div>
+    <div id="login-file-warn" class="login-sub" style="display:none;color:#fbbf24;margin-top:-8px;margin-bottom:10px"></div>
+    <label for="login-email">Email</label>
+    <input type="email" id="login-email" placeholder="team@company.com" autocomplete="username" style="margin-bottom:10px">
+    <label for="login-pass">密碼</label>
+    <input type="password" id="login-pass" placeholder="團隊共用密碼" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
+    <div style="margin-top:10px;margin-bottom:10px;display:flex;align-items:center;gap:8px;white-space:nowrap">
+      <input type="checkbox" id="remember-creds" onchange="onRememberToggle(this.checked)" style="width:auto;flex-shrink:0">
+      <label for="remember-creds" style="font-size:11px;color:var(--text-secondary);font-weight:600;cursor:pointer;white-space:nowrap">記住帳號/密碼</label>
+    </div>
+    <button type="button" class="btn primary" id="login-btn" style="width:100%;margin-top:14px;justify-content:center" onclick="doLogin()">登入</button>
+    <div class="login-err" id="login-err" role="alert" aria-live="polite"></div>
+    <button type="button" class="btn" style="width:100%;margin-top:8px;justify-content:center;font-size:11px" onclick="testSupabaseConnection()">測試雲端連線</button>
+  </div>
+</div>
+
+<div class="app" id="app-main" hidden>
+    <h2 style="position:absolute;width:1px;height:1px;overflow:hidden">聲學測試實驗室追蹤系統主要面板</h2>
+
+    <div class="topbar">
+      <div class="logo-wrap">
+        <div class="logo-icon"><i class="ti ti-wave-saw-tool" style="font-size:22px;color:#3b82f6" aria-hidden="true"></i></div>
+        <div>
+          <div class="logo-title">聲學測試追蹤系統</div>
+          <div class="logo-sub">平台追蹤 · 專案日誌（認證 / 客戶測試紀錄）</div>
+        </div>
+      </div>
+      <div class="topbar-actions">
+        <span id="sync-lbl">—</span>
+        <span style="font-size:12px;color:var(--text-secondary);font-family:monospace;" id="date-lbl"></span>
+        <button type="button" class="btn" onclick="exportBackup()" title="下載 JSON 備份"><i class="ti ti-download" aria-hidden="true"></i> 匯出</button>
+        <button type="button" class="btn" onclick="document.getElementById('import-file').click()" title="從 JSON 還原或合併"><i class="ti ti-upload" aria-hidden="true"></i> 匯入</button>
+        <input type="file" id="import-file" accept=".json,application/json" hidden onchange="importBackup(this)">
+        <button type="button" class="btn" onclick="doLogout()"><i class="ti ti-logout" aria-hidden="true"></i> 登出</button>
+      </div>
+    </div>
+
+    <div class="mode-nav" id="mode-nav">
+      <button type="button" class="mode-tab active" data-mode="platform" onclick="switchMode('platform')"><i class="ti ti-layout-grid" aria-hidden="true"></i> 平台追蹤</button>
+      <button type="button" class="mode-tab" data-mode="project" onclick="switchMode('project')"><i class="ti ti-briefcase" aria-hidden="true"></i> 專案日誌</button>
+    </div>
+
+    <div id="view-platform">
+    <div class="stat-row" id="stats-row"></div>
+
+    <div class="ptabs" id="ptabs">
+      <button class="ptab p-all" data-p="all" onclick="switchP(this)"><i class="ti ti-layout-grid" style="font-size:12px" aria-hidden="true"></i> 全部平台</button>
+      <button class="ptab" data-p="Teams" onclick="switchP(this)">Teams</button>
+      <button class="ptab" data-p="Cortana" onclick="switchP(this)">Cortana</button>
+      <button class="ptab" data-p="Zoom" onclick="switchP(this)">Zoom</button>
+      <button class="ptab" data-p="Intel" onclick="switchP(this)">Intel</button>
+      <button class="ptab" data-p="Google" onclick="switchP(this)">Google</button>
+    </div>
+
+    <div class="toolbar">
+      <input type="text" id="q-s" placeholder="搜尋關鍵字 / ID..." oninput="renderList()">
+      <select id="q-cat" onchange="onCatFilterChange()">
+        <option value="">所有分類</option>
+      </select>
+      <select id="q-type" onchange="renderList()">
+        <option value="">所有類型</option>
+      </select>
+      <select id="q-stat" onchange="renderList()">
+        <option value="">所有狀態</option>
+        <option value="in-progress">In progress</option>
+        <option value="closed">Closed</option>
+      </select>
+      <span id="q-subcat-wrap">
+        <select id="q-subcat" onchange="renderList()" title="Function 子分類">
+          <option value="">Function 全部</option>
+        </select>
+      </span>
+      <div class="tb-spacer"></div>
+      <button class="btn primary" onclick="showForm()"><i class="ti ti-plus" style="font-size:13px" aria-hidden="true"></i> 新增記錄</button>
+    </div>
+
+    <div id="form-area"></div>
+    <div id="list-area"></div>
+    <div id="closed-archive" class="archive-section" hidden>
+      <div class="sec-div"><hr><span>已結案（Closed）</span><hr></div>
+      <div class="archive-hint">結案超過 30 天將自動清除。仍可在此區查閱近期已結案記錄。</div>
+      <div id="closed-list-area"></div>
+    </div>
+    </div>
+
+    <div id="view-project" hidden>
+      <div class="toolbar" id="proj-toolbar">
+        <div id="proj-tb-list" class="proj-tb-row">
+          <input type="text" id="pq-s" placeholder="搜尋案子名稱 / 產品 / 客戶..." oninput="onProjSearch()">
+          <div class="tb-spacer"></div>
+          <button type="button" class="btn primary" onclick="showProjectForm()"><i class="ti ti-folder-plus" aria-hidden="true"></i> 新增案子</button>
+        </div>
+        <div id="proj-tb-detail" class="proj-tb-row" hidden>
+          <button type="button" class="btn" onclick="backToProjectList()"><i class="ti ti-arrow-left" aria-hidden="true"></i> 返回列表</button>
+          <div class="tb-spacer"></div>
+          <button type="button" class="btn" onclick="showProjectForm(curProjectId)"><i class="ti ti-edit" aria-hidden="true"></i> 編輯案子</button>
+          <button type="button" class="btn primary" onclick="showLogForm()"><i class="ti ti-calendar-plus" aria-hidden="true"></i> 新增今日日誌</button>
+          <button type="button" class="btn" style="color:#f87171" onclick="delProject()"><i class="ti ti-trash" aria-hidden="true"></i> 刪除案子</button>
+        </div>
+      </div>
+      <div id="proj-form-area"></div>
+      <div id="proj-content"></div>
+    </div>
+</div>
+
+<script>
+const PLATFORMS={
+  Teams:{
+    color:'teams',pfx:'TM',label:'Teams',
+    categories:[
+      {v:'Audio',l:'Audio'},
+      {v:'Function',l:'Function',children:[
+        {v:'ASP HID',l:'ASP HID'},
+        {v:'Telemetry',l:'Telemetry'},
+        {v:'UCQ',l:'UCQ'},
+        {v:'NBT Function',l:'NBT Function'}
+      ]},
+      {v:'RTC',l:'RTC (Real-time Communication)'}
+    ]
+  },
+  Cortana:{
+    color:'cortana',pfx:'CO',label:'Cortana',
+    categories:[
+      {v:'HWKWS',l:'HWKWS'},
+      {v:'SWKWS',l:'SWKWS'}
+    ]
+  },
+  Zoom:{
+    color:'zoom',pfx:'ZM',label:'Zoom',
+    categories:[
+      {v:'Zoom meeting',l:'Zoom meeting'},
+      {v:'Zoom Room',l:'Zoom Room'},
+      {v:'Zoom FW Test',l:'Zoom FW Test'}
+    ]
+  },
+  Intel:{
+    color:'intel',pfx:'IN',label:'Intel',
+    categories:[
+      {v:'SPET',l:'SPET'},
+      {v:'BT Audio',l:'BT Audio'}
+    ]
+  },
+  Google:{
+    color:'google',pfx:'GG',label:'Google',
+    categories:[
+      {v:'Fastpair',l:'Fastpair'},
+      {v:'ART',l:'ART (GRT)'},
+      {v:'BART',l:'BART (BGRT)'},
+      {v:'SASS',l:'SASS'},
+      {v:'FindMyDevices',l:'FindMyDevices'},
+      {v:'Chrome Audio',l:'Chrome Audio'}
+    ]
+  }
+};
+const PLAT_NAMES=Object.keys(PLATFORMS);
+const PLAT_COLOR=Object.fromEntries(PLAT_NAMES.map(p=>[p,PLATFORMS[p].color]));
+const PLAT_PFX=Object.fromEntries(PLAT_NAMES.map(p=>[p,PLATFORMS[p].pfx]));
+const STORAGE_KEY='aclab_v5';
+const LEGACY_KEYS=['aclab_v4','aclab_v3'];
+
+function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function todayISO(){return new Date().toISOString().slice(0,10);}
+function fmtDateShort(iso){
+  if(!iso) return '';
+  const p=iso.split('-');
+  return p.length>=3?`${+p[1]}/${+p[2]}`:iso;
+}
+
+function catDef(plat){return PLATFORMS[plat]?.categories?.[0]?.v||'';}
+function catLbl(plat,v){
+  const c=PLATFORMS[plat]?.categories?.find(x=>x.v===v);
+  return c?c.l:v;
+}
+function catDisplay(r){
+  if(!r.category) return '';
+  let s=catLbl(r.platform,r.category);
+  if(r.subCategory) s+=' · '+r.subCategory;
+  return s;
+}
+function migrateRecords(list){
+  const typeMap={update:'acqua-fw',teststatus:'test-seq'};
+  return list.map(r=>{
+    let x={...r};
+    if(x.platform==='Chrome') x={...x,platform:'Google',category:x.category||'Chrome Audio'};
+    if(x.platform==='Other') x={...x,platform:'Google',category:x.category||''};
+    if(x.status==='pending') x={...x,status:'in-progress'};
+    if(typeMap[x.type]) x={...x,type:typeMap[x.type]};
+    if(recordStatus(x)==='closed'&&!x.closedAt) x.closedAt=x.updated||x.created||todayISO();
+    return x;
+  });
+}
+function recordStatus(r){return r?.status==='pending'?'in-progress':(r?.status||'in-progress');}
+function fillTypeFilter(){
+  const sel=document.getElementById('q-type');
+  if(!sel) return;
+  const prev=sel.value;
+  let opts='<option value="">所有類型</option>';
+  TYPES.forEach(t=>{opts+=`<option value="${t.v}">${t.lbl}</option>`;});
+  sel.innerHTML=opts;
+  if([...sel.options].some(o=>o.value===prev)) sel.value=prev; else sel.value='';
+}
+function catHasChildren(plat,cat){
+  return !!PLATFORMS[plat]?.categories?.find(x=>x.v===cat)?.children?.length;
+}
+function fillCatFilter(){
+  const sel=document.getElementById('q-cat');
+  if(!sel) return;
+  const prev=sel.value;
+  let opts='<option value="">所有分類</option>';
+  if(curP!=='all'&&PLATFORMS[curP]){
+    PLATFORMS[curP].categories.forEach(c=>{opts+=`<option value="${c.v}">${c.l}</option>`;});
+  }
+  sel.innerHTML=opts;
+  if([...sel.options].some(o=>o.value===prev)) sel.value=prev; else sel.value='';
+  fillSubcatFilter();
+}
+function fillSubcatFilter(){
+  const wrap=document.getElementById('q-subcat-wrap');
+  const sel=document.getElementById('q-subcat');
+  const qcat=(document.getElementById('q-cat')||{}).value||'';
+  const show=qcat==='Function'&&(curP==='all'||curP==='Teams');
+  if(wrap) wrap.classList.toggle('visible',show);
+  if(!sel) return;
+  if(!show){sel.value='';return;}
+  const prev=sel.value;
+  const fn=PLATFORMS.Teams.categories.find(x=>x.v==='Function');
+  let opts='<option value="">Function 全部</option>';
+  (fn?.children||[]).forEach(ch=>{opts+=`<option value="${ch.v}">${ch.l}</option>`;});
+  sel.innerHTML=opts;
+  if([...sel.options].some(o=>o.value===prev)) sel.value=prev; else sel.value='';
+}
+function onCatFilterChange(){
+  fillSubcatFilter();
+  renderList();
+}
+
+const STATUSES=[
+  {v:'in-progress',lbl:'In progress',cls:'b-inprog'},
+  {v:'closed',lbl:'Closed',cls:'b-closed'}
+];
+const STATUS_MAP=Object.fromEntries(STATUSES.map(s=>[s.v,s]));
+const STATUS_NEXT={
+  'in-progress':'closed',
+  'closed':'in-progress'
+};
+const STATUS_NEXT_LBL={
+  'in-progress':'→ Closed',
+  'closed':'↺ In progress'
+};
+
+const TYPES=[
+  {v:'issue',lbl:'ISSUE',cls:'b-issue'},
+  {v:'acqua-fw',lbl:'ACQUA FW Update',cls:'b-acqua-fw'},
+  {v:'test-seq',lbl:'Test SEQ Update',cls:'b-test-seq'},
+  {v:'spec',lbl:'Spec Update',cls:'b-spec'},
+  {v:'hw-cal',lbl:'Hardware Calibration/Maint.',cls:'b-hw-cal'}
+];
+const TYPE_MAP=Object.fromEntries(TYPES.map(t=>[t.v,t]));
+const CLOSED_RETENTION_DAYS=30;
+
+const CERT_LBL={'teams-cert':'Teams 認證','uc-cert':'UC 認證','internal':'內部突發'};
+const CERT_CLS={'teams-cert':'b-teams-cert','uc-cert':'b-uc-cert','internal':'b-internal'};
+
+const TEST_ITEMS=[
+  {v:'MIC',l:'MIC 收音'},{v:'Speaker',l:'Speaker 輸出'},
+  {v:'AEC',l:'AEC 迴音消除'},{v:'NS',l:'降噪 NS'},
+  {v:'AGC',l:'AGC 增益'},{v:'Latency',l:'Latency 延遲'},
+  {v:'Sidetone',l:'Sidetone'},{v:'Other',l:'其他'}
+];
+const TEST_MAP=Object.fromEntries(TEST_ITEMS.map(t=>[t.v,t.l]));
+
+const PRIO=[{v:'high',lbl:'高',cls:'prio-high'},{v:'medium',lbl:'中',cls:'prio-medium'},{v:'low',lbl:'低',cls:'prio-low'}];
+const PRIO_MAP=Object.fromEntries(PRIO.map(p=>[p.v,p]));
+
+const PRODUCT_TYPES=[
+  {v:'shared-sp',l:'Shared Space - Speakerphone',group:'shared'},
+  {v:'shared-sb',l:'Shared Space - SoundBar',group:'shared'},
+  {v:'personal-sp',l:'Personal - Speakerphone',group:'personal'},
+  {v:'personal-hs',l:'Personal - Headset',group:'personal'},
+  {v:'other',l:'Other',group:'other'}
+];
+const PRODUCT_TYPE_MAP=Object.fromEntries(PRODUCT_TYPES.map(t=>[t.v,t]));
+const TEST_DISTANCES=['1.5','2.3','3.5','4.5','7.5'];
+const PERSONAL_FEATURES=[
+  {k:'boomMic',l:'Boom Mic'},{k:'ancButton',l:'ANC Button'},
+  {k:'superWideband',l:'Super Wideband'},{k:'openOfficeHeadset',l:'Open Office Headset'}
+];
+const HEADSET_CONN=[
+  {v:'usb-wired',l:'USB Wired'},
+  {v:'usb-dongle',l:'USB Dongle'},
+  {v:'bt-classic',l:'Native Bluetooth(Classic)'},
+  {v:'bt-lea',l:'Native Bluetooth(LEA)'}
+];
+const HEADSET_CONN_MAP=Object.fromEntries(HEADSET_CONN.map(c=>[c.v,c]));
+function connectionOpts(sel){
+  return '<option value="">— 請選擇連線方式 —</option>'+HEADSET_CONN.map(c=>
+    `<option value="${c.v}" ${sel===c.v?'selected':''}>${c.l}</option>`
+  ).join('');
+}
+function distanceOpts(sel){
+  return '<option value="">— 請選擇 —</option>'+TEST_DISTANCES.map(d=>
+    `<option value="${d}" ${sel===d?'selected':''}>${d}m</option>`
+  ).join('');
+}
+function fmtDist(d){return d?(String(d).endsWith('m')?d:d+'m'):'';}
+
+function productTypeSummary(p){
+  if(!p) return '';
+  const t=PRODUCT_TYPE_MAP[p.productType];
+  if(!t) return p.dut||'';
+  if(t.group==='shared'){
+    let s=t.l;
+    const mic=p.micDistanceM,spk=p.spkDistanceM;
+    if(mic||spk) s+=` (Mic ${fmtDist(mic)||'—'} / SPK ${fmtDist(spk)||'—'})`;
+    return s;
+  }
+  if(p.productType==='personal-hs'){
+    const parts=[t.l];
+    if(p.connectionType) parts.push(HEADSET_CONN_MAP[p.connectionType]?.l||p.connectionType);
+    const feats=PERSONAL_FEATURES.filter(f=>p.personalFeatures?.[f.k]).map(f=>f.l);
+    if(feats.length) parts.push(feats.join(', '));
+    return parts.join(' · ');
+  }
+  if(t.group==='personal') return t.l;
+  if(t.group==='other') return p.productTypeOther||p.dut||'Other';
+  return t.l;
+}
+function productTypeOpts(sel){
+  return '<option value="">— 請選擇產品類型 —</option>'+PRODUCT_TYPES.map(t=>
+    `<option value="${t.v}" ${sel===t.v?'selected':''}>${t.l}</option>`
+  ).join('');
+}
+function readPersonalFeaturesFromForm(){
+  const o={};
+  PERSONAL_FEATURES.forEach(f=>{o[f.k]=!!document.getElementById('pf-f-'+f.k)?.checked;});
+  return o;
+}
+function readProductTypeDraft(){
+  const v=(document.getElementById('pf-type')||{}).value||'';
+  const t=PRODUCT_TYPE_MAP[v];
+  const d={productType:v};
+  if(t?.group==='shared'){
+    d.micDistanceM=(document.getElementById('pf-mic-m')||{}).value||'';
+    d.spkDistanceM=(document.getElementById('pf-spk-m')||{}).value||'';
+  }else if(v==='personal-hs'){
+    d.connectionType=(document.getElementById('pf-conn')||{}).value||'';
+    d.personalFeatures=readPersonalFeaturesFromForm();
+  }else if(t?.group==='other'){
+    d.productTypeOther=(document.getElementById('pf-type-other')||{}).value||'';
+  }
+  return d;
+}
+function buildProductTypeExtra(p){
+  const v=p.productType||'';
+  const t=PRODUCT_TYPE_MAP[v];
+  if(!t) return '';
+  if(t.group==='shared') return `
+    <div class="fg2" style="margin-bottom:0">
+      <div><label for="pf-mic-m">Mic 測試距離</label>
+        <select id="pf-mic-m">${distanceOpts(p.micDistanceM||'')}</select></div>
+      <div><label for="pf-spk-m">SPK 測試距離</label>
+        <select id="pf-spk-m">${distanceOpts(p.spkDistanceM||'')}</select></div>
+    </div>`;
+  if(v==='personal-hs'){
+    const feats=p.personalFeatures||{};
+    return `
+      <div style="margin-bottom:12px">
+        <label for="pf-conn">連線方式 *</label>
+        <select id="pf-conn">${connectionOpts(p.connectionType||'')}</select>
+      </div>
+      <label style="margin-bottom:6px">產品功能（勾選具備項目）</label>
+      <div class="check-row">${PERSONAL_FEATURES.map(f=>`
+        <label class="chk-lbl"><input type="checkbox" id="pf-f-${f.k}" ${feats[f.k]?'checked':''}> ${f.l}</label>
+      `).join('')}</div>`;
+  }
+  if(v==='personal-sp') return '';
+  if(t.group==='other') return `
+    <label for="pf-type-other">產品類型描述 *</label>
+    <input type="text" id="pf-type-other" placeholder="請描述產品類型" value="${esc(p.productTypeOther||p.dut||'')}">`;
+  return '';
+}
+function onProductTypeChange(){
+  const wrap=document.getElementById('pf-type-extra');
+  if(!wrap) return;
+  const draft=readProductTypeDraft();
+  wrap.innerHTML=buildProductTypeExtra(draft);
+  wrap.style.display=wrap.innerHTML?'block':'none';
+}
+function collectProductTypeFields(){
+  const v=(document.getElementById('pf-type')||{}).value||'';
+  const t=PRODUCT_TYPE_MAP[v];
+  if(!v){alert('請選擇產品類型');return null;}
+  const base={productType:v,micDistanceM:'',spkDistanceM:'',connectionType:'',personalFeatures:{},productTypeOther:''};
+  if(t.group==='shared'){
+    base.micDistanceM=(document.getElementById('pf-mic-m')||{}).value||'';
+    base.spkDistanceM=(document.getElementById('pf-spk-m')||{}).value||'';
+    return base;
+  }
+  if(v==='personal-hs'){
+    base.connectionType=(document.getElementById('pf-conn')||{}).value||'';
+    if(!base.connectionType){alert('請選擇連線方式');return null;}
+    base.personalFeatures=readPersonalFeaturesFromForm();
+    return base;
+  }
+  if(v==='personal-sp') return base;
+  if(t.group==='other'){
+    const o=(document.getElementById('pf-type-other')||{}).value||'';
+    if(!o.trim()){alert('請填寫產品類型描述');return null;}
+    base.productTypeOther=o.trim();
+    return base;
+  }
+  return base;
+}
+
+const PHASES=[
+  {v:'debug',lbl:'Debug',cls:'b-debug'},
+  {v:'pretest',lbl:'Pre-test',cls:'b-pretest'},
+  {v:'qualification',lbl:'Qualification',cls:'b-qual'},
+  {v:'requal',lbl:'Re-Qualification',cls:'b-requal'}
+];
+const PHASE_MAP=Object.fromEntries(PHASES.map(p=>[p.v,p]));
+
+function getCurrentUser(){
+  const em=currentLoginEmail||localStorage.getItem(LOGIN_EMAIL_KEY)||'';
+  return em.includes('@')?em.split('@')[0]:em;
+}
+function setCurrentLoginEmail(email){
+  currentLoginEmail=(email||'').trim();
+}
+function daysSince(iso){
+  if(!iso) return 0;
+  return Math.floor((Date.now()-new Date(iso+'T00:00:00').getTime())/86400000);
+}
+function applyStatusOnRecord(r,status){
+  r.status=status;
+  r.updated=todayISO();
+  if(status==='closed'){
+    if(!r.closedAt) r.closedAt=todayISO();
+  }else{
+    delete r.closedAt;
+  }
+}
+function purgeExpiredClosedRecords(){
+  const before=records.length;
+  records=records.filter(r=>{
+    if(recordStatus(r)!=='closed') return true;
+    const closedAt=r.closedAt||r.updated||r.created;
+    return daysSince(closedAt)<CLOSED_RETENTION_DAYS;
+  });
+  return before!==records.length;
+}
+function applyRecordFilters(list){
+  let d=[...list];
+  const qs=(document.getElementById('q-s')||{}).value||'';
+  const qt=(document.getElementById('q-type')||{}).value||'';
+  const qcat=(document.getElementById('q-cat')||{}).value||'';
+  const qsub=(document.getElementById('q-subcat')||{}).value||'';
+  if(qs) d=d.filter(r=>(r.title||'').toLowerCase().includes(qs.toLowerCase())||(r.id||'').includes(qs)||catDisplay(r).toLowerCase().includes(qs.toLowerCase()));
+  if(qt) d=d.filter(r=>r.type===qt);
+  if(qcat){
+    d=d.filter(r=>r.category===qcat);
+    if(qcat==='Function'&&qsub) d=d.filter(r=>r.subCategory===qsub);
+  }
+  return d.sort((a,b)=>new Date(b.created)-new Date(a.created));
+}
+function legacyTypeLabel(type){
+  const map={update:'ACQUA FW Update',teststatus:'Test SEQ Update'};
+  return map[type]||type;
+}
+function recordCardHtml(r,opts={}){
+  const pc=PLAT_COLOR[r.platform]||'other';
+  const st=recordStatus(r);
+  const so=STATUS_MAP[st]||STATUSES[0];
+  const to=TYPE_MAP[r.type]||{lbl:legacyTypeLabel(r.type),cls:'b-cat'};
+  const pr=PRIO_MAP[r.priority]||PRIO_MAP.medium;
+  const chips=(r.testItems||[]).map(i=>`<span class="ti-chip">${TEST_MAP[i]||i}</span>`).join('');
+  const certBadge=r.certType?`<span class="badge ${CERT_CLS[r.certType]||''}">${CERT_LBL[r.certType]||r.certType}</span>`:'';
+  const catBadge=catDisplay(r)?`<span class="badge b-cat">${esc(catDisplay(r))}</span>`:'';
+  const closedAt=r.closedAt||r.updated||r.created;
+  const daysLeft=st==='closed'?Math.max(0,CLOSED_RETENTION_DAYS-daysSince(closedAt)):null;
+  const archiveMeta=(opts.archive&&st==='closed')
+    ?`<span class="meta"><i class="ti ti-archive" aria-hidden="true"></i>結案 ${esc(closedAt)} · ${daysLeft} 天後清除</span>`:'';
+  return`<div class="record">
+    <div class="rec-top">
+      <div class="rec-title">${esc(r.title||'(無標題)')}</div>
+      <span class="badge b-${pc}">${esc(PLATFORMS[r.platform]?.label||r.platform)}</span>
+      ${catBadge}
+      <span class="badge ${to.cls}">${esc(to.lbl)}</span>
+      <span class="badge ${so.cls}">${so.lbl}</span>
+      ${certBadge}
+    </div>
+    ${chips?`<div class="ti-chips">${chips}</div>`:''}
+    <div class="meta-row">
+      <span class="meta"><i class="ti ti-hash" aria-hidden="true"></i>${esc(r.id)}</span>
+      ${r.assignee?`<span class="meta"><i class="ti ti-user" aria-hidden="true"></i>${esc(r.assignee)}</span>`:''}
+      ${r.fwVersion?`<span class="meta"><i class="ti ti-cpu" aria-hidden="true"></i>FW ${esc(r.fwVersion)}</span>`:''}
+      ${r.dut?`<span class="meta"><i class="ti ti-device-audio" aria-hidden="true"></i>${esc(r.dut)}</span>`:''}
+      ${r.deadline?`<span class="meta"><i class="ti ti-calendar" aria-hidden="true"></i>${esc(r.deadline)}</span>`:''}
+      <span class="meta ${pr.cls}"><i class="ti ti-flag" aria-hidden="true"></i>${pr.lbl}優先</span>
+      <span class="meta"><i class="ti ti-clock" aria-hidden="true"></i>${esc(r.created)}</span>
+      ${archiveMeta}
+    </div>
+    ${r.desc?`<div class="desc">${esc(r.desc)}</div>`:''}
+    ${r.solution?`<div class="solution"><i class="ti ti-circle-check" style="font-size:12px;color:#34d399" aria-hidden="true"></i> ${esc(r.solution)}</div>`:''}
+    <div class="rec-actions">
+      <button class="ra" onclick="editRecord('${r.id}')"><i class="ti ti-edit" aria-hidden="true"></i> 編輯</button>
+      <button class="ra" onclick="cycleStatus('${r.id}')" title="切換狀態"><i class="ti ti-refresh" aria-hidden="true"></i> ${STATUS_NEXT_LBL[st]||''}</button>
+      <button class="ra danger" onclick="delRecord('${r.id}')"><i class="ti ti-trash" aria-hidden="true"></i> 刪除</button>
+    </div>
+  </div>`;
+}
+
+let records=[], projects=[], curP='all', editId=null;
+let viewMode='platform', curProjectId=null, editProjId=null, editLogId=null;
+let sb=null, currentLoginEmail='';
+
+const SUPABASE_URL='https://ygoywjqgatkwboepxaaz.supabase.co';
+const SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inlnb3l3anFnYXRrd2JvZXB4YWF6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk3NzQ0MTAsImV4cCI6MjA5NTM1MDQxMH0.cpnejjVh8s9mHQl1MwUAPQXl8tipUGJSWSuPO5cFmiw';
+const LOGIN_EMAIL_KEY='aclab_login_email';
+const LOGIN_PASS_KEY='aclab_login_pass';
+const REMEMBER_CREDS_KEY='aclab_remember_creds';
+let loginBusy=false;
+
+const authStorage={
+  getItem(key){
+    try{return localStorage.getItem(key);}catch(e){}
+    try{return sessionStorage.getItem(key);}catch(e){}
+    return null;
+  },
+  setItem(key,val){
+    try{localStorage.setItem(key,val);return;}catch(e){}
+    try{sessionStorage.setItem(key,val);}catch(e){}
+    throw new Error('瀏覽器無法儲存登入狀態。請關閉私密/InPrivate 模式，或允許此網站使用本機儲存。');
+  },
+  removeItem(key){
+    try{localStorage.removeItem(key);}catch(e){}
+    try{sessionStorage.removeItem(key);}catch(e){}
+  }
+};
+
+function setLoginMsg(text,kind){
+  const el=document.getElementById('login-err');
+  if(!el) return;
+  el.textContent=text||'';
+  if(!text){
+    el.className='login-err'; // display:none via CSS when no extra class
+  } else {
+    el.className='login-err'+(kind==='ok'?' ok':kind==='busy'?' busy':' err');
+  }
+}
+function loginErrorMessage(e){
+  const msg=String(e?.message||e||'').toLowerCase();
+  if(msg.includes('invalid login credentials')||msg.includes('invalid_credentials'))
+    return '帳號或密碼錯誤。請確認：(1) 在 Supabase → Authentication → Users 已建立使用者；(2) 輸入的是 Email（不是姓名）；(3) 密碼與後台一致。';
+  if(msg.includes('email not confirmed'))
+    return 'Email 尚未確認。請在 Supabase 建立使用者時勾選「Auto Confirm User」，或到 Authentication → Users 手動確認。';
+  if(msg.includes('failed to fetch')||msg.includes('network'))
+    return '無法連線 Supabase。請確認已連上網路；若用雙擊開啟 HTML，請改用以 http://localhost 開啟（見說明檔）。';
+  if(msg.includes('user banned'))
+    return '此帳號已被停用，請聯絡管理員。';
+  return e?.message||String(e)||'登入失敗';
+}
+function updateLoginFileWarn(){
+  const el=document.getElementById('login-file-warn');
+  if(!el) return;
+  if(location.protocol==='file:'){
+    el.style.display='block';
+    el.innerHTML='目前以本機檔案 (file://) 開啟，登入可能失敗。請雙擊 <b>aclab-start.bat</b>（或 <b>aclab-start.vbs</b>），再用 <b>http://127.0.0.1:8765/</b> 開啟。';
+  }else el.style.display='none';
+}
+async function testSupabaseConnection(){
+  if(!sb){setLoginMsg('Supabase 尚未初始化','');return;}
+  setLoginMsg('測試連線中…','busy');
+  try{
+    const hr=await fetch(SUPABASE_URL+'/auth/v1/health',{headers:{apikey:SUPABASE_ANON_KEY}});
+    if(!hr.ok) throw new Error('Supabase 服務回應異常 (HTTP '+hr.status+')');
+    const {error}=await sb.from('app_snapshot').select('id').eq('id','main').maybeSingle();
+    if(error){
+      const m=String(error.message||'');
+      if(error.code==='42P01'||/does not exist/i.test(m))
+        throw new Error('資料表 app_snapshot 不存在。請在 Supabase SQL Editor 執行 aclab-supabase-setup.sql。');
+      if(error.code==='42501'||/permission|policy|jwt/i.test(m)){
+        setLoginMsg('雲端連線正常。若登入失敗，請到 Supabase → Authentication → Users 確認 Email 完全一致，並重設密碼。','ok');
+        return;
+      }
+      throw error;
+    }
+    setLoginMsg('雲端與資料表正常。若仍無法登入：到 Supabase → Users 確認已有 william_lee@pal-labs.com（或你輸入的 Email），並用「Send password recovery」或重設密碼後再試。','ok');
+  }catch(e){
+    setLoginMsg(loginErrorMessage(e),'');
+  }
+}
+
+function parseStore(raw){
+  const data=JSON.parse(raw);
+  if(Array.isArray(data)) return {records:migrateRecords(data),projects:[]};
+  return {records:migrateRecords(data.records||[]),projects:data.projects||[]};
+}
+function localBackup(){
+  try{localStorage.setItem(STORAGE_KEY,JSON.stringify({records,projects}));}catch(e){}
+}
+function setSyncStatus(state,msg){
+  const el=document.getElementById('sync-lbl');
+  if(!el) return;
+  el.className=state==='ok'?'ok':state==='err'?'err':'';
+  const map={loading:'同步中…',saving:'儲存中…',ok:'已同步雲端',err:'同步失敗',offline:'僅本機備份'};
+  el.textContent=msg||(map[state]||'—');
+}
+async function cloudLoad(){
+  const {data,error}=await sb.from('app_snapshot').select('records,projects').eq('id','main').maybeSingle();
+  if(error) throw error;
+  if(data){
+    records=migrateRecords(data.records||[]);
+    projects=data.projects||[];
+  }else{
+    records=[]; projects=[];
+    const {error:e2}=await sb.from('app_snapshot').upsert({id:'main',records:[],projects:[]});
+    if(e2) throw e2;
+  }
+  localBackup();
+}
+async function cloudSave(){
+  const {error}=await sb.from('app_snapshot').upsert({
+    id:'main',
+    records,
+    projects,
+    updated_at:new Date().toISOString()
+  });
+  if(error) throw error;
+  localBackup();
+}
+async function load(){
+  try{
+    setSyncStatus('loading');
+    await cloudLoad();
+    if(purgeExpiredClosedRecords()) await cloudSave();
+    setSyncStatus('ok');
+  }catch(e){
+    console.error(e);
+    const local=localStorage.getItem(STORAGE_KEY);
+    if(local){
+      const s=parseStore(local);
+      records=s.records; projects=s.projects;
+      if(purgeExpiredClosedRecords()) localBackup();
+      setSyncStatus('offline','離線：已讀本機備份');
+    }else{
+      records=[]; projects=[];
+      setSyncStatus('err',e.message||'無法載入');
+    }
+  }
+  fillCatFilter();
+  fillTypeFilter();
+  render();
+}
+async function save(){
+  localBackup();
+  try{
+    setSyncStatus('saving');
+    if(sb&&(await sb.auth.getSession()).data.session) await cloudSave();
+    setSyncStatus('ok');
+  }catch(e){
+    console.error(e);
+    setSyncStatus('err','已存本機，雲端失敗');
+  }
+}
+function exportBackup(){
+  const name='aclab-backup-'+todayISO()+'.json';
+  const blob=new Blob([JSON.stringify({records,projects,exportedAt:new Date().toISOString()},null,2)],{type:'application/json'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=name;
+  a.click();
+  URL.revokeObjectURL(a.href);
+}
+async function importBackup(input){
+  const file=input.files&&input.files[0];
+  input.value='';
+  if(!file) return;
+  if(!confirm('匯入將覆蓋目前畫面上的所有資料並上傳至雲端，確定？')) return;
+  try{
+    const s=parseStore(await file.text());
+    records=s.records; projects=s.projects;
+    await save();
+    fillCatFilter();
+    render();
+    alert('匯入完成');
+  }catch(e){
+    alert('匯入失敗：'+(e.message||e));
+  }
+}
+function showLogin(){
+  document.getElementById('login-screen').hidden=false;
+  document.getElementById('app-main').hidden=true;
+  const remember=(localStorage.getItem(REMEMBER_CREDS_KEY)==='1');
+  const cb=document.getElementById('remember-creds');
+  if(cb) cb.checked=remember;
+
+  const em=document.getElementById('login-email');
+  const pw=document.getElementById('login-pass');
+  if(em) em.value=remember?(localStorage.getItem(LOGIN_EMAIL_KEY)||''):'';
+  if(pw) pw.value=remember?(localStorage.getItem(LOGIN_PASS_KEY)||''):'';
+  setLoginMsg('','');
+  updateLoginFileWarn();
+}
+function showApp(){
+  document.getElementById('login-screen').hidden=true;
+  document.getElementById('app-main').hidden=false;
+}
+async function doLogin(){
+  if(loginBusy) return;
+  if(!sb){setLoginMsg('系統尚未就緒，請重新整理頁面','');return;}
+  const email=(document.getElementById('login-email')||{}).value||'';
+  const pass=(document.getElementById('login-pass')||{}).value||'';
+  if(!email.trim()||!pass){setLoginMsg('請輸入 Email 與密碼','');return;}
+  const remember=(document.getElementById('remember-creds')||{}).checked===true;
+  const btn=document.getElementById('login-btn');
+  loginBusy=true;
+  if(btn){btn.disabled=true;btn.textContent='登入中…';}
+  setLoginMsg('正在驗證帳號…','busy');
+  try{
+    const {data,error}=await sb.auth.signInWithPassword({email:email.trim(),password:pass});
+    if(error) throw error;
+    const {data:{session}}=await sb.auth.getSession();
+    if(!session) throw new Error('登入成功但無法保存工作階段。請關閉瀏覽器私密模式，並允許本機儲存。');
+    try{
+      if(remember){
+        localStorage.setItem(LOGIN_EMAIL_KEY,email.trim());
+        localStorage.setItem(LOGIN_PASS_KEY,pass);
+      }else{
+        localStorage.removeItem(LOGIN_EMAIL_KEY);
+        localStorage.removeItem(LOGIN_PASS_KEY);
+      }
+      localStorage.setItem(REMEMBER_CREDS_KEY,remember?'1':'0');
+    }catch(e){}
+    setCurrentLoginEmail(email.trim());
+    setLoginMsg('登入成功，載入資料…','ok');
+    showApp();
+    await load();
+  }catch(e){
+    setLoginMsg(loginErrorMessage(e),'');
+    console.error('login failed',e);
+  }finally{
+    loginBusy=false;
+    if(btn){btn.disabled=false;btn.textContent='登入';}
+  }
+}
+async function doLogout(){
+  await sb.auth.signOut();
+  setCurrentLoginEmail('');
+  showLogin();
+}
+async function initApp(){
+  if(!window.supabase){alert('無法載入 Supabase JS，請確認網路可連 cdn.jsdelivr.net');return;}
+  sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY,{
+    // 不持久化登入狀態，確保「重新開啟網頁都要再按一次登入」
+    auth:{persistSession:false,autoRefreshToken:false,detectSessionInUrl:false,storage:authStorage}
+  });
+  updateLoginFileWarn();
+  document.getElementById('date-lbl').textContent=new Date().toLocaleDateString('zh-TW',{year:'numeric',month:'long',day:'numeric',weekday:'short'});
+  showLogin();
+  sb.auth.onAuthStateChange((event)=>{
+    if(event==='SIGNED_OUT'&&!loginBusy) showLogin();
+  });
+}
+
+function onRememberToggle(checked){
+  try{
+    localStorage.setItem(REMEMBER_CREDS_KEY,checked?'1':'0');
+    if(!checked){
+      localStorage.removeItem(LOGIN_EMAIL_KEY);
+      localStorage.removeItem(LOGIN_PASS_KEY);
+    }
+  }catch(e){}
+}
+
+function switchMode(m){
+  viewMode=m;
+  document.querySelectorAll('.mode-tab').forEach(t=>{
+    t.classList.toggle('active',t.dataset.mode===m);
+  });
+  document.getElementById('view-platform').hidden=(m!=='platform');
+  document.getElementById('view-project').hidden=(m!=='project');
+  if(m==='platform') render();
+  else renderProjectView();
+}
+
+function switchP(el){
+  document.querySelectorAll('.ptab').forEach(t=>{t.className='ptab';});
+  const p=el.dataset.p;
+  el.classList.add(p=='all'?'p-all':'p-'+PLAT_COLOR[p]);
+  curP=p;
+  fillCatFilter();
+  render();
+}
+
+function genId(plat){
+  const pfx=PLAT_PFX[plat]||'XX';
+  const n=records.filter(r=>r.platform===plat).length+1;
+  return pfx+'-'+String(n).padStart(3,'0');
+}
+
+function filtered(){
+  const base=curP==='all'?records:records.filter(r=>r.platform===curP);
+  const qst=(document.getElementById('q-stat')||{}).value||'';
+  let d=applyRecordFilters(base.filter(r=>{
+    const st=recordStatus(r);
+    if(qst) return st===qst;
+    return st!=='closed';
+  }));
+  return d;
+}
+function filteredClosed(){
+  const base=curP==='all'?records:records.filter(r=>r.platform===curP);
+  return applyRecordFilters(base.filter(r=>recordStatus(r)==='closed'));
+}
+
+function renderStats(){
+  const base=curP==='all'?records:records.filter(r=>r.platform===curP);
+  const active=base.filter(r=>recordStatus(r)!=='closed');
+  const closed=base.filter(r=>recordStatus(r)==='closed');
+  const soonExpiring=closed.filter(r=>{const closedAt=r.closedAt||r.updated||r.created;return Math.max(0,CLOSED_RETENTION_DAYS-daysSince(closedAt))<=7;}).length;
+  document.getElementById('stats-row').innerHTML=`
+    <div class="stat"><div class="stat-n" style="color:var(--text-primary)">${active.length}</div><div class="stat-l">進行中</div></div>
+    <div class="stat"><div class="stat-n" style="color:#34d399">${closed.length}</div><div class="stat-l">已結案${soonExpiring>0?` <span style="font-size:11px;color:#f87171;font-family:sans-serif;font-weight:500">（${soonExpiring} 筆 7 天內清除）</span>`:''}</div></div>`;
+}
+
+function renderList(){
+  const d=filtered();
+  const el=document.getElementById('list-area');
+  if(!d.length){
+    el.innerHTML='<div class="empty"><i class="ti ti-clipboard-off" style="font-size:26px;display:block;margin:0 auto 8px;color:#6b7280" aria-hidden="true"></i>尚無進行中的記錄</div>';
+  }else{
+    el.innerHTML=d.map(r=>recordCardHtml(r)).join('');
+  }
+  renderClosedArchive();
+}
+function renderClosedArchive(){
+  const wrap=document.getElementById('closed-archive');
+  const el=document.getElementById('closed-list-area');
+  if(!wrap||!el) return;
+  const d=filteredClosed();
+  if(!d.length){
+    wrap.hidden=true;
+    el.innerHTML='';
+    return;
+  }
+  wrap.hidden=false;
+  const expiringSoon=d.filter(r=>{const c=r.closedAt||r.updated||r.created;return Math.max(0,CLOSED_RETENTION_DAYS-daysSince(c))<=7;}).length;
+  const hintEl=wrap.querySelector('.archive-hint');
+  if(hintEl){
+    let hint=`共 ${d.length} 筆已結案，${CLOSED_RETENTION_DAYS} 天後自動清除`;
+    if(expiringSoon>0) hint+=` · <span style="color:#f87171;font-weight:600">${expiringSoon} 筆 7 天內到期</span>`;
+    hintEl.innerHTML=hint;
+  }
+  el.innerHTML=d.map(r=>recordCardHtml(r,{archive:true})).join('');
+}
+
+function render(){
+  if(viewMode==='platform'){renderStats();renderList();}
+  else renderProjectView();
+}
+
+function showForm(){editId=null;renderForm({});}
+function editRecord(id){
+  editId=id;
+  const r=records.find(x=>x.id===id);
+  renderForm(r||{});
+  document.getElementById('form-area').scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+
+function catOptsHtml(plat,selCat,selSub){
+  const cfg=PLATFORMS[plat];
+  if(!cfg||!cfg.categories.length) return '<option value="">— 此平台無子分類 —</option>';
+  return cfg.categories.map(c=>{
+    const sel=(selCat||catDef(plat))===c.v?'selected':'';
+    return `<option value="${c.v}" ${sel}>${c.l}</option>`;
+  }).join('');
+}
+function subcatOptsHtml(plat,cat,selSub){
+  const c=PLATFORMS[plat]?.categories?.find(x=>x.v===cat);
+  if(!c?.children) return '';
+  return c.children.map(ch=>`<option value="${ch.v}" ${(selSub||'')===ch.v?'selected':''}>${ch.l}</option>`).join('');
+}
+
+function onPlatChange(){
+  const plat=document.getElementById('f-plat')?.value||'Teams';
+  const catSel=document.getElementById('f-cat');
+  const catLblEl=document.getElementById('f-cat-lbl');
+  const noCat=!PLATFORMS[plat]?.categories?.length;
+  if(catLblEl) catLblEl.textContent=noCat?'平台分類':'平台分類 *';
+  if(catSel){
+    catSel.innerHTML=catOptsHtml(plat,'','');
+    catSel.disabled=noCat;
+  }
+  onCatChange();
+}
+function onCatChange(){
+  const plat=document.getElementById('f-plat')?.value||'Teams';
+  const cat=document.getElementById('f-cat')?.value||'';
+  const wrap=document.getElementById('f-subcat-wrap');
+  const sel=document.getElementById('f-subcat');
+  const c=PLATFORMS[plat]?.categories?.find(x=>x.v===cat);
+  const show=!!c?.children?.length;
+  if(wrap) wrap.style.display=show?'block':'none';
+  if(sel){
+    if(show) sel.innerHTML='<option value="">— 請選擇子分類 —</option>'+subcatOptsHtml(plat,cat,'');
+    else sel.value='';
+  }
+}
+
+function renderForm(r){
+  const plat=r.platform||'Teams';
+  const platOpts=PLAT_NAMES.map(p=>`<option value="${p}" ${plat===p?'selected':''}>${PLATFORMS[p].label}</option>`).join('');
+  const statOpts=STATUSES.map(s=>`<option value="${s.v}" ${(r.status||'in-progress')===s.v?'selected':''}>${s.lbl}</option>`).join('');
+  const prioOpts=PRIO.map(p=>`<option value="${p.v}" ${(r.priority||'medium')===p.v?'selected':''}>${p.lbl}</option>`).join('');
+  const tiChecks=TEST_ITEMS.map(i=>`<label class="chk-lbl"><input type="checkbox" value="${i.v}" ${(r.testItems||[]).includes(i.v)?'checked':''}> ${i.l}</label>`).join('');
+
+  document.getElementById('form-area').innerHTML=`
+    <div class="form-panel">
+      <div class="fp-title"><i class="ti ti-edit-box" style="color:#3b82f6" aria-hidden="true"></i> ${editId?'編輯記錄':'新增工作記錄'}</div>
+
+      <div class="fg2">
+        <div>
+          <label for="f-plat">測試平台 *</label>
+          <select id="f-plat" onchange="onPlatChange()">${platOpts}</select>
+        </div>
+        <div class="cat-group ff">
+          <div>
+            <label for="f-cat" id="f-cat-lbl">平台分類 *</label>
+            <select id="f-cat" onchange="onCatChange()">${catOptsHtml(plat,r.category||'',r.subCategory||'')}</select>
+          </div>
+          <div id="f-subcat-wrap" class="subcat-nested" style="display:none">
+            <label for="f-subcat">Function 子分類 *</label>
+            <select id="f-subcat">${subcatOptsHtml(plat,r.category||'',r.subCategory||'')}</select>
+          </div>
+        </div>
+        <div>
+          <label for="f-type">記錄類型 *</label>
+          <select id="f-type" onchange="onTypeChange()">
+            ${TYPES.map(t=>`<option value="${t.v}" ${(r.type||'issue')===t.v?'selected':''}>${t.lbl}</option>`).join('')}
+          </select>
+        </div>
+        <div>
+          <label for="f-dut">產品 / DUT（選填）</label>
+          <input type="text" id="f-dut" placeholder="e.g. Headset Pro X" value="${r.dut||''}">
+        </div>
+        <div class="ff">
+          <label for="f-title">標題 *</label>
+          <input type="text" id="f-title" placeholder="請輸入簡短核心摘要..." value="${r.title||''}">
+        </div>
+      </div>
+
+      <div style="margin-bottom:12px">
+        <label>測試項目（可複選）</label>
+        <div class="check-row">${tiChecks}</div>
+      </div>
+
+      <div class="fg2">
+        <div class="ff">
+          <label for="f-desc">詳細描述 / 問題現象 / 重現步驟</label>
+          <textarea id="f-desc" placeholder="請詳細填寫測試手法、指令或 Log 觀察...">${r.desc||''}</textarea>
+        </div>
+      </div>
+
+      <div class="sec-div"><hr><span>版 本 · 負 責 · 排 程</span><hr></div>
+
+      <div class="fg3">
+        <div>
+          <label for="f-who">負責人</label>
+          <input type="text" id="f-who" placeholder="負責工程師" value="${esc(r.assignee||getCurrentUser())}">
+        </div>
+        <div id="fw-wrap">
+          <label for="f-fw">FW 版本</label>
+          <input type="text" id="f-fw" placeholder="e.g. v1.5.2" value="${r.fwVersion||''}">
+        </div>
+        <div>
+          <label for="f-due">截止日期</label>
+          <input type="date" id="f-due" value="${r.deadline||''}">
+        </div>
+        <div>
+          <label for="f-stat">狀態</label>
+          <select id="f-stat">${statOpts}</select>
+        </div>
+        <div>
+          <label for="f-prio">優先度</label>
+          <select id="f-prio">${prioOpts}</select>
+        </div>
+      </div>
+
+      <div class="fg2">
+        <div class="ff">
+          <label for="f-sol">解決方案 / Root Cause / FW 更新說明</label>
+          <textarea id="f-sol" placeholder="若已解決，請記錄 Root Cause、對應的 FW 修正版號或解決手法...">${r.solution||''}</textarea>
+        </div>
+      </div>
+
+      <div class="form-actions">
+        <button class="btn" onclick="cancelForm()">取消</button>
+        <button class="btn primary" onclick="submitForm()">${editId?'儲存修改':'新增記錄'}</button>
+      </div>
+    </div>`;
+  onPlatChange();
+  if(r.category){
+    const catSel=document.getElementById('f-cat');
+    if(catSel) catSel.value=r.category;
+  }
+  onCatChange();
+  if(r.subCategory){
+    const subSel=document.getElementById('f-subcat');
+    if(subSel) subSel.value=r.subCategory;
+  }
+  onTypeChange();
+}
+
+function onTypeChange(){
+  const t=(document.getElementById('f-type')||{}).value;
+  const fw=document.getElementById('fw-wrap');
+  if(fw) fw.style.display=(t==='issue'||t==='acqua-fw')?'block':'none';
+}
+
+function submitForm(){
+  const titleEl = document.getElementById('f-title');
+  const title = titleEl ? titleEl.value : '';
+  if(!title.trim()){alert('請填入標題');return;}
+  
+  const plat = document.getElementById('f-plat').value;
+  const category = (document.getElementById('f-cat')||{}).value||'';
+  const subCategory = (document.getElementById('f-subcat')||{}).value||'';
+  const cfg = PLATFORMS[plat];
+  if(cfg?.categories?.length && !category){alert('請選擇平台分類');return;}
+  const catObj = cfg?.categories?.find(c=>c.v===category);
+  if(catObj?.children?.length && !subCategory){alert('請選擇 Function 子分類');return;}
+  const now = new Date().toISOString().slice(0,10);
+  const items = Array.from(document.querySelectorAll('#form-area input[type=checkbox]:checked')).map(c=>c.value);
+  
+  const obj={
+    platform:plat,
+    category:category||'',
+    subCategory:subCategory||'',
+    type:document.getElementById('f-type').value,
+    dut:document.getElementById('f-dut').value,
+    title:title.trim(),
+    testItems:items,
+    desc:document.getElementById('f-desc').value,
+    assignee:(document.getElementById('f-who').value||'').trim()||getCurrentUser(),
+    fwVersion:(document.getElementById('f-fw')||{}).value||'',
+    deadline:document.getElementById('f-due').value,
+    status:document.getElementById('f-stat').value,
+    priority:document.getElementById('f-prio').value,
+    solution:document.getElementById('f-sol').value,
+    updated:now
+  };
+  
+  if(editId){
+    const i=records.findIndex(x=>x.id===editId);
+    if(i>-1){
+      records[i]={...records[i],...obj};
+      applyStatusOnRecord(records[i], obj.status);
+    }
+  } else {
+    const nr={...obj,id:genId(plat),created:now};
+    applyStatusOnRecord(nr, nr.status);
+    records.push(nr);
+  }
+  
+  save(); 
+  editId=null;
+  document.getElementById('form-area').innerHTML='';
+  render();
+}
+
+function cancelForm(){document.getElementById('form-area').innerHTML='';editId=null;}
+
+function cycleStatus(id){
+  const r=records.find(x=>x.id===id);
+  if(!r) return;
+  const st=recordStatus(r);
+  applyStatusOnRecord(r, STATUS_NEXT[st]||'in-progress');
+  save(); render();
+}
+function delRecord(id){
+  if(!confirm('確認刪除此記錄？')) return;
+  records=records.filter(r=>r.id!==id);
+  save(); render();
+}
+
+function genProjectId(){
+  const n=projects.length+1;
+  return 'PRJ-'+String(n).padStart(3,'0');
+}
+function genLogId(proj){
+  const n=(proj.logs||[]).length+1;
+  return 'LOG-'+String(n).padStart(3,'0');
+}
+function getProject(id){return projects.find(p=>p.id===id);}
+function sortedLogs(logs){
+  return [...(logs||[])].sort((a,b)=>new Date(b.date)-new Date(a.date)||(b.id||'').localeCompare(a.id||''));
+}
+function latestFw(proj){
+  const l=sortedLogs(proj.logs).find(x=>x.fwVersion);
+  return l?l.fwVersion:'';
+}
+
+function renderProjectView(){
+  if(curProjectId) renderProjectDetail();
+  else renderProjectList();
+}
+
+function setProjToolbar(mode){
+  const list=document.getElementById('proj-tb-list');
+  const detail=document.getElementById('proj-tb-detail');
+  if(list) list.hidden=(mode!=='list');
+  if(detail) detail.hidden=(mode!=='detail');
+}
+function onProjSearch(){renderProjectListContent();}
+function backToProjectList(){
+  curProjectId=null;
+  document.getElementById('proj-form-area').innerHTML='';
+  setProjToolbar('list');
+  renderProjectListContent();
+}
+function renderProjectList(){
+  curProjectId=null;
+  setProjToolbar('list');
+  renderProjectListContent();
+}
+function renderProjectListContent(){
+  const q=(document.getElementById('pq-s')||{}).value||'';
+  let list=[...projects];
+  if(q) list=list.filter(p=>{
+    const blob=[p.name,p.customer,productTypeSummary(p)].join(' ').toLowerCase();
+    return blob.includes(q.toLowerCase());
+  });
+  list.sort((a,b)=>new Date((sortedLogs(b.logs)[0]||{}).date||b.created)-new Date((sortedLogs(a.logs)[0]||{}).date||a.created));
+
+  const el=document.getElementById('proj-content');
+  if(!list.length){
+    el.innerHTML='<div class="empty"><i class="ti ti-briefcase-off" style="font-size:26px;display:block;margin:0 auto 8px;color:#6b7280" aria-hidden="true"></i>尚無專案，請建立第一個案子（例如：123）</div>';
+    return;
+  }
+  el.innerHTML=list.map(p=>{
+    const logs=sortedLogs(p.logs);
+    const last=logs[0];
+    const fw=latestFw(p);
+    return`<div class="record proj-card" onclick="openProject('${p.id}')">
+      <div class="rec-top">
+        <div class="rec-title">${esc(p.name)}</div>
+        <span class="badge b-cat">${logs.length} 筆日誌</span>
+      </div>
+      <div class="proj-hint">
+        ${productTypeSummary(p)?`<span class="meta"><i class="ti ti-device-audio" aria-hidden="true"></i>${esc(productTypeSummary(p))}</span> · `:''}
+        ${p.customer?`<span class="meta"><i class="ti ti-building" aria-hidden="true"></i>${esc(p.customer)}</span> · `:''}
+        ${last?`最近 ${fmtDateShort(last.date)} · ${PHASE_MAP[last.phase]?.lbl||last.phase}`:'尚無日誌'}
+        ${fw?` · FW ${esc(fw)}`:''}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function openProject(id){
+  curProjectId=id;
+  document.getElementById('proj-form-area').innerHTML='';
+  renderProjectDetail();
+}
+
+function renderProjectDetail(){
+  const p=getProject(curProjectId);
+  if(!p){curProjectId=null;renderProjectList();return;}
+  const logs=sortedLogs(p.logs);
+  setProjToolbar('detail');
+
+  const fwHistory=[...new Set(logs.filter(l=>l.fwVersion).map(l=>`${fmtDateShort(l.date)}: ${l.fwVersion}`))].join(' → ');
+
+  let timeline='';
+  if(!logs.length){
+    timeline='<div class="empty" style="margin-top:12px">尚無日誌。點「新增今日日誌」記錄今天的 Debug / 測試內容與 FW 版本。</div>';
+  }else{
+    timeline='<div class="timeline">'+logs.map(l=>{
+      const ph=PHASE_MAP[l.phase]||PHASES[0];
+      const plat=l.platform?`<span class="badge b-${PLAT_COLOR[l.platform]||'cat'}">${esc(PLATFORMS[l.platform]?.label||l.platform)}</span>`:'';
+      return`<div class="log-entry">
+        <div class="log-head">
+          <span class="log-date">${fmtDateShort(l.date)}</span>
+          <span class="badge ${ph.cls}">${ph.lbl}</span>
+          ${plat}
+        </div>
+        <div class="meta-row" style="border:none;padding-top:0">
+          ${l.fwVersion?`<span class="meta"><i class="ti ti-cpu" aria-hidden="true"></i>FW ${esc(l.fwVersion)}</span>`:''}
+          ${l.lab?`<span class="meta"><i class="ti ti-building-community" aria-hidden="true"></i>${esc(l.lab)}</span>`:''}
+          ${l.reporter?`<span class="meta"><i class="ti ti-user" aria-hidden="true"></i>${esc(l.reporter)}</span>`:''}
+        </div>
+        ${l.summary?`<div class="log-summary">${esc(l.summary)}</div>`:''}
+        <div class="rec-actions">
+          <button class="ra" onclick="event.stopPropagation();showLogForm('${l.id}')"><i class="ti ti-edit" aria-hidden="true"></i> 編輯</button>
+          <button class="ra danger" onclick="event.stopPropagation();delLog('${l.id}')"><i class="ti ti-trash" aria-hidden="true"></i> 刪除</button>
+        </div>
+      </div>`;
+    }).join('')+'</div>';
+  }
+
+  document.getElementById('proj-content').innerHTML=`
+    <div class="detail-header">
+      <div>
+        <div class="detail-title">${esc(p.name)}</div>
+        <div class="proj-hint" style="margin-top:6px">
+          ${productTypeSummary(p)?`產品類型：${esc(productTypeSummary(p))} · `:''}
+          ${p.customer?`客戶：${esc(p.customer)} · `:''}
+          建立 ${esc(p.created)}
+        </div>
+        ${fwHistory?`<div class="fw-timeline"><i class="ti ti-history" aria-hidden="true"></i> FW 歷程：${esc(fwHistory)}</div>`:''}
+        ${p.notes?`<div class="desc" style="margin-top:10px">${esc(p.notes)}</div>`:''}
+      </div>
+    </div>
+    <div class="sec-div"><hr><span>測 試 日 誌（新 → 舊）</span><hr></div>
+    ${timeline}`;
+}
+
+function showProjectForm(id){
+  editProjId=id||null;
+  const p=id?getProject(id):{};
+  document.getElementById('proj-form-area').innerHTML=`
+    <div class="form-panel">
+      <div class="fp-title">${editProjId?'編輯案子':'新增案子'}</div>
+      <div class="fg2">
+        <div class="ff">
+          <label for="pf-name">案子名稱 / 專案代號 *</label>
+          <input type="text" id="pf-name" placeholder="e.g. 123、PRJ-Teams-2026" value="${esc(p.name||'')}">
+        </div>
+        <div class="ff">
+          <label for="pf-type">產品類型 *</label>
+          <select id="pf-type" onchange="onProductTypeChange()">${productTypeOpts(p.productType||'')}</select>
+          <div id="pf-type-extra" class="type-extra" style="display:none">${buildProductTypeExtra(p)}</div>
+        </div>
+        <div>
+          <label for="pf-cust">客戶（選填）</label>
+          <input type="text" id="pf-cust" placeholder="客戶名稱" value="${esc(p.customer||'')}">
+        </div>
+        <div class="ff">
+          <label for="pf-notes">案子備註</label>
+          <textarea id="pf-notes" placeholder="認證目標、交付時程等...">${esc(p.notes||'')}</textarea>
+        </div>
+      </div>
+      <div class="form-actions">
+        <button class="btn" onclick="cancelProjForm()">取消</button>
+        <button class="btn primary" onclick="submitProject()">${editProjId?'儲存':'建立案子'}</button>
+      </div>
+    </div>`;
+  onProductTypeChange();
+  document.getElementById('proj-form-area').scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+
+function submitProject(){
+  const name=(document.getElementById('pf-name')||{}).value||'';
+  if(!name.trim()){alert('請填入案子名稱');return;}
+  const pt=collectProductTypeFields();
+  if(!pt) return;
+  const obj={
+    name:name.trim(),
+    ...pt,
+    dut:productTypeSummary({...pt}),
+    customer:(document.getElementById('pf-cust')||{}).value||'',
+    notes:(document.getElementById('pf-notes')||{}).value||'',
+    updated:todayISO()
+  };
+  if(editProjId){
+    const i=projects.findIndex(x=>x.id===editProjId);
+    if(i>-1) projects[i]={...projects[i],...obj};
+  }else{
+    const np={...obj,id:genProjectId(),created:todayISO(),logs:[]};
+    projects.push(np);
+    curProjectId=np.id;
+  }
+  editProjId=null;
+  document.getElementById('proj-form-area').innerHTML='';
+  save();
+  renderProjectView();
+}
+
+function showLogForm(logId){
+  editLogId=logId||null;
+  const p=getProject(curProjectId);
+  if(!p) return;
+  const l=logId?(p.logs||[]).find(x=>x.id===logId):{};
+  const phaseOpts=PHASES.map(ph=>`<option value="${ph.v}" ${(l.phase||'debug')===ph.v?'selected':''}>${ph.lbl}</option>`).join('');
+  const platOpts=['<option value="">— 平台（選填）—</option>',...PLAT_NAMES.map(pl=>`<option value="${pl}" ${l.platform===pl?'selected':''}>${PLATFORMS[pl].label}</option>`)].join('');
+
+  document.getElementById('proj-form-area').innerHTML=`
+    <div class="form-panel">
+      <div class="fp-title"><i class="ti ti-calendar-event" style="color:#3b82f6" aria-hidden="true"></i> ${editLogId?'編輯日誌':'新增測試日誌'} — ${esc(p.name)}</div>
+      <div class="fg3">
+        <div>
+          <label for="lf-date">測試日期 *</label>
+          <input type="date" id="lf-date" value="${l.date||todayISO()}">
+        </div>
+        <div>
+          <label for="lf-phase">測試階段 *</label>
+          <select id="lf-phase">${phaseOpts}</select>
+        </div>
+        <div>
+          <label for="lf-lab">實驗室 *</label>
+          <input type="text" id="lf-lab" placeholder="e.g. 台北 Lab A" value="${esc(l.lab||'')}">
+        </div>
+        <div>
+          <label for="lf-fw">FW 版本 *</label>
+          <input type="text" id="lf-fw" placeholder="e.g. v1.5.2 / Build 1234" value="${esc(l.fwVersion||'')}">
+        </div>
+        <div>
+          <label for="lf-plat">測試平台</label>
+          <select id="lf-plat">${platOpts}</select>
+        </div>
+        <div>
+          <label for="lf-who">記錄者</label>
+          <input type="text" id="lf-who" placeholder="您的姓名" value="${esc(l.reporter||getCurrentUser())}">
+        </div>
+      </div>
+      ${productTypeSummary(p)?`<div style="font-size:12px;color:var(--text-secondary);margin-bottom:10px"><i class="ti ti-device-audio" aria-hidden="true"></i> 案子產品類型：${esc(productTypeSummary(p))}</div>`:''}
+      <div class="fg2">
+        <div class="ff">
+          <label for="lf-sum">今日工作摘要 *</label>
+          <textarea id="lf-sum" placeholder="簡述今日 Debug / 測試項目、現象、通過與否、與前版差異...">${esc(l.summary||'')}</textarea>
+        </div>
+      </div>
+      <div class="form-actions">
+        <button class="btn" onclick="cancelProjForm()">取消</button>
+        <button class="btn primary" onclick="submitLog()">${editLogId?'儲存日誌':'新增日誌'}</button>
+      </div>
+    </div>`;
+  document.getElementById('proj-form-area').scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+
+function submitLog(){
+  const p=getProject(curProjectId);
+  if(!p) return;
+  const date=(document.getElementById('lf-date')||{}).value||'';
+  const phase=(document.getElementById('lf-phase')||{}).value||'';
+  const lab=(document.getElementById('lf-lab')||{}).value||'';
+  const fw=(document.getElementById('lf-fw')||{}).value||'';
+  const summary=(document.getElementById('lf-sum')||{}).value||'';
+  if(!date){alert('請選擇日期');return;}
+  if(!lab.trim()){alert('請填入實驗室');return;}
+  if(!fw.trim()){alert('請填入 FW 版本（認證追溯很重要）');return;}
+  if(!summary.trim()){alert('請填入今日工作摘要');return;}
+  const obj={
+    date,
+    phase,
+    lab:lab.trim(),
+    fwVersion:fw.trim(),
+    platform:(document.getElementById('lf-plat')||{}).value||'',
+    reporter:((document.getElementById('lf-who')||{}).value||'').trim()||getCurrentUser(),
+    summary:summary.trim(),
+    updated:todayISO()
+  };
+  if(!p.logs) p.logs=[];
+  if(editLogId){
+    const i=p.logs.findIndex(x=>x.id===editLogId);
+    if(i>-1) p.logs[i]={...p.logs[i],...obj};
+  }else{
+    p.logs.push({...obj,id:genLogId(p),created:todayISO()});
+  }
+  p.updated=todayISO();
+  editLogId=null;
+  document.getElementById('proj-form-area').innerHTML='';
+  save();
+  renderProjectDetail();
+}
+
+function cancelProjForm(){
+  document.getElementById('proj-form-area').innerHTML='';
+  editProjId=null; editLogId=null;
+}
+
+function delLog(logId){
+  if(!confirm('確認刪除此筆日誌？')) return;
+  const p=getProject(curProjectId);
+  if(!p) return;
+  p.logs=(p.logs||[]).filter(l=>l.id!==logId);
+  save();
+  renderProjectDetail();
+}
+
+function delProject(id){
+  const pid=id||curProjectId;
+  if(!pid) return;
+  if(!confirm('刪除案子將一併刪除所有日誌，確定？')) return;
+  projects=projects.filter(p=>p.id!==pid);
+  curProjectId=null;
+  document.getElementById('proj-form-area').innerHTML='';
+  save();
+  renderProjectList();
+}
+
+initApp();
+</script>
+</body>
+</html>
