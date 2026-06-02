@@ -42,6 +42,8 @@
         
         /* Topbar */
         .topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem; }
+        .topbar-main { display: flex; align-items: center; }
+        .topbar-actions { display: flex; align-items: center; gap: 8px; margin-left: auto; }
         .logo-wrap { display: flex; align-items: center; gap: 12px; }
         .logo-icon { 
             width: 48px; height: 48px; border-radius: 50%;
@@ -263,7 +265,7 @@
         .login-err.err {
             display: block;
         }
-        .topbar-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+        .topbar-actions { display: flex; align-items: center; gap: 8px; margin-left: auto; }
         #sync-lbl { font-size: 15px; color: var(--text-secondary); }
         #sync-lbl.ok { color: #34d399; }
         #sync-lbl.err { color: #f87171; }
@@ -271,38 +273,84 @@
 
         /* ============ Mobile Responsive ============ */
         @media (max-width: 640px) {
-          .app-header { padding: 10px 14px; flex-wrap: wrap; gap: 8px; }
-          .logo-title { font-size: 15px; }
-          .logo-sub { font-size: 12px; }
-          .mode-tabs { gap: 4px; }
-          .mode-tab { padding: 6px 12px; font-size: 13px; }
-          .stat-row { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+          /* Header: 變成上下兩列，Logo 在上，按鈕在下 */
+          .topbar {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 0;
+            margin-bottom: 0;
+            padding: 0;
+            border-bottom: 1px solid var(--border-color);
+          }
+          /* Logo 列 */
+          .logo-wrap {
+            padding: 12px 14px 10px;
+            border-bottom: 1px solid var(--border-color);
+          }
+          /* 按鈕列：三欄 grid */
+          .topbar-actions {
+            margin-left: 0;
+            padding: 8px 14px;
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            grid-template-rows: auto auto;
+            gap: 6px;
+            align-items: center;
+          }
+          /* sync 狀態跨 2 欄，日期靠右 1 欄 */
+          #sync-lbl  { grid-column: 1 / 3; font-size: 13px; }
+          #date-lbl  { grid-column: 3 / 4; text-align: right; font-size: 12px; }
+          /* 匯出/匯入/登出各佔 1 欄 */
+          .topbar-actions .btn {
+            padding: 10px 4px;
+            justify-content: center;
+            font-size: 13px;
+          }
+          /* 隱藏按鈕文字，只顯示 icon（空間不夠時） */
+          @media (max-width: 380px) {
+            .topbar-actions .btn span { display: none; }
+          }
+          /* Mode tabs */
+          .mode-nav { padding: 10px 14px 0; }
+          .mode-tab { padding: 8px 14px; font-size: 14px; }
+          /* 主內容區塊 padding */
+          .app { padding: 0 0 2.5rem; }
+          .main-content { padding: 12px 14px; }
+          /* 統計列 */
+          .stat-row { gap: 8px; }
           .stat-n { font-size: 20px; }
-          .toolbar { flex-wrap: wrap; gap: 6px; padding: 8px 10px; }
+          /* Toolbar */
+          .toolbar { flex-wrap: wrap; gap: 6px; padding: 8px 0; }
           .toolbar input, .toolbar select { width: 100%; }
           .tb-spacer { display: none; }
-          .btn { padding: 8px 12px; font-size: 14px; }
+          /* 卡片 */
           .record { padding: 10px 12px; }
           .rec-title { font-size: 15px; }
           .rec-top { flex-wrap: wrap; gap: 6px; }
-          .badge { font-size: 11px; }
-          .meta { font-size: 12px; }
-          .main-content { padding: 12px 10px; }
-          #proj-toolbar { gap: 6px; }
-          #proj-tb-detail { flex-wrap: wrap; gap: 6px; }
-          #proj-tb-detail .btn { flex: 1; min-width: 120px; justify-content: center; }
-          .detail-title { font-size: 17px; }
-          .timeline { padding-left: 16px; }
-          .log-date { font-size: 14px; }
-          .log-summary { font-size: 13px; }
-          .fp-panel { padding: 14px; }
-          .login-box { padding: 22px 18px; margin: 0 12px; }
           .proj-card { padding: 12px; }
           .proj-hint { font-size: 12px; }
           .rec-actions { flex-wrap: wrap; }
           .rec-actions .ra { flex: 1; justify-content: center; }
-          #sync-bar { flex-wrap: wrap; gap: 6px; padding: 6px 10px; }
-          .ptab { padding: 5px 10px; font-size: 12px; }
+          /* 專案 toolbar detail 按鈕：2欄 */
+          #proj-tb-detail {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 6px;
+            width: 100%;
+          }
+          #proj-tb-detail .tb-spacer { display: none; }
+          #proj-tb-detail .btn { justify-content: center; }
+          /* Timeline */
+          .detail-title { font-size: 17px; }
+          .timeline { padding-left: 16px; }
+          /* Platform tabs 橫向滾動 */
+          .ptabs {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            flex-wrap: nowrap;
+            padding-bottom: 4px;
+          }
+          .ptab { white-space: nowrap; flex-shrink: 0; font-size: 13px; padding: 5px 10px; }
         }
     </style>
 </head>
@@ -404,7 +452,6 @@
           <button type="button" class="btn primary" onclick="showProjectForm()"><i class="ti ti-folder-plus" aria-hidden="true"></i> New Project</button>
         </div>
         <div id="proj-tb-detail" class="proj-tb-row" hidden>
-          <button type="button" class="btn" onclick="backToProjectList()" style="opacity:0.5;font-size:13px"><i class="ti ti-arrow-left" aria-hidden="true"></i> Back to List</button>
           <div class="tb-spacer"></div>
           <button type="button" class="btn" onclick="showProjectForm(curProjectId)"><i class="ti ti-edit" aria-hidden="true"></i> Edit Project</button>
           <button type="button" class="btn primary" onclick="showLogForm()"><i class="ti ti-calendar-plus" aria-hidden="true"></i> New Daily Log</button>
@@ -1047,7 +1094,12 @@ async function doLogin(){
     }catch(e){}
     setCurrentLoginEmail(email.trim());
     setLoginMsg('登入成功，載入資料…','ok');
+    const _ts=Date.now().toString();
+    localStorage.setItem('aclab_login_at',_ts);
+    sessionStorage.setItem('aclab_login_at',_ts);
     showApp();
+    startIdleTimer();
+    initSwipeBack();
     await load();
   }catch(e){
     setLoginMsg(loginErrorMessage(e),'');
@@ -1058,6 +1110,8 @@ async function doLogin(){
   }
 }
 async function doLogout(){
+  localStorage.removeItem('aclab_login_at');
+  sessionStorage.removeItem('aclab_login_at');
   await sb.auth.signOut();
   setCurrentLoginEmail('');
   showLogin();
@@ -1069,14 +1123,16 @@ async function initApp(){
   });
   updateLoginFileWarn();
   document.getElementById('date-lbl').textContent=new Date().toLocaleDateString('zh-TW',{year:'numeric',month:'long',day:'numeric',weekday:'short'});
-  // 檢查是否有現有 session（5 分鐘內 refresh 不需重新登入）
+  // 檢查是否有現有 session（10 分鐘內 refresh 不需重新登入）
   sb.auth.getSession().then(({data:{session}})=>{
-    const savedAt=parseInt(sessionStorage.getItem('aclab_login_at')||'0');
-    const elapsed=(Date.now()-savedAt)/1000/60; // minutes
-    if(session&&elapsed<5){
+    const savedAt=parseInt(localStorage.getItem('aclab_login_at')||sessionStorage.getItem('aclab_login_at')||'0');
+    const elapsed=(Date.now()-savedAt)/1000/60;
+    if(session&&savedAt>0&&elapsed<10){
       currentLoginEmail=session.user.email;
       showApp();
+      load();
       startIdleTimer();
+      initSwipeBack();
     } else {
       if(session) sb.auth.signOut();
       showLogin();
@@ -1093,6 +1149,7 @@ function resetIdleTimer(){
   idleTimer=setTimeout(()=>{
     sb.auth.signOut();
     showLogin();
+    localStorage.removeItem('aclab_login_at');
     sessionStorage.removeItem('aclab_login_at');
   },IDLE_TIMEOUT_MS);
 }
@@ -1101,8 +1158,38 @@ function startIdleTimer(){
     document.addEventListener(e,resetIdleTimer,{passive:true});
   });
   resetIdleTimer();
+  // 關閉分頁 / 瀏覽器時立刻清除 session 時間戳並登出
+  window.addEventListener('pagehide', ()=>{
+    localStorage.removeItem('aclab_login_at');
+    sessionStorage.removeItem('aclab_login_at');
+  });
+  document.addEventListener('visibilitychange', ()=>{
+    if(document.visibilityState==='hidden'){
+      localStorage.removeItem('aclab_login_at');
+      sessionStorage.removeItem('aclab_login_at');
+    }
+  });
 }
 
+
+function initSwipeBack(){
+  let startX=0,startY=0;
+  document.addEventListener('touchstart',e=>{
+    startX=e.touches[0].clientX;
+    startY=e.touches[0].clientY;
+  },{passive:true});
+  document.addEventListener('touchend',e=>{
+    const dx=e.changedTouches[0].clientX-startX;
+    const dy=e.changedTouches[0].clientY-startY;
+    // 向右滑動超過 80px，且水平大於垂直方向
+    if(dx>80&&Math.abs(dx)>Math.abs(dy)*1.5){
+      // 在專案詳細頁時返回列表
+      if(curProjectId){
+        backToProjectList();
+      }
+    }
+  },{passive:true});
+}
 function onRememberToggle(checked){
   try{
     localStorage.setItem(REMEMBER_CREDS_KEY,checked?'1':'0');
