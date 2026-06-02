@@ -311,8 +311,26 @@
             .topbar-actions .btn span { display: none; }
           }
           /* Mode tabs */
-          .mode-nav { padding: 10px 14px 0; width: calc(100% - 28px); justify-content: stretch; }
-          .mode-nav .mode-tab { flex: 1; text-align: center; padding: 10px 8px; font-size: 14px; }
+          .mode-nav {
+            margin: 10px 14px 0;
+            padding: 4px;
+            width: calc(100% - 28px);
+            box-sizing: border-box;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+          }
+          .mode-nav .mode-tab {
+            flex: unset;
+            width: 100%;
+            text-align: center;
+            padding: 10px 8px;
+            font-size: 14px;
+            border-radius: 7px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+          }
           /* 主內容區塊 padding */
           .app { padding: 0 0 2.5rem; }
           .main-content { padding: 12px 14px; }
@@ -1174,26 +1192,43 @@ function startIdleTimer(){
 
 function initSwipeBack(){
   let startX=0,startY=0,tracking=false;
+  let indicator=null;
+
+  function getIndicator(){
+    if(!indicator){
+      indicator=document.createElement('div');
+      indicator.style.cssText='position:fixed;left:0;top:50%;transform:translateY(-50%);width:4px;height:60px;background:#3b82f6;border-radius:0 4px 4px 0;opacity:0;transition:opacity .15s;z-index:9999;pointer-events:none';
+      document.body.appendChild(indicator);
+    }
+    return indicator;
+  }
+
   document.addEventListener('touchstart',e=>{
     startX=e.touches[0].clientX;
     startY=e.touches[0].clientY;
-    // 只追蹤從畫面左側邊緣（30px 內）開始的滑動，避免干擾瀏覽器返回手勢
-    tracking=(startX<50)&&!!curProjectId;
+    // 從畫面左側 15~120px 開始才追蹤（避開瀏覽器系統手勢區 < 15px）
+    tracking=(startX>=15&&startX<=120)&&!!curProjectId;
   },{passive:true});
+
   document.addEventListener('touchmove',e=>{
     if(!tracking) return;
     const dx=e.touches[0].clientX-startX;
     const dy=e.touches[0].clientY-startY;
-    if(dx>10&&Math.abs(dx)>Math.abs(dy)*1.2){
-      e.preventDefault(); // 阻止瀏覽器返回
+    if(dx>0&&Math.abs(dx)>Math.abs(dy)){
+      // 顯示藍色指示條
+      const ind=getIndicator();
+      ind.style.opacity=Math.min(dx/80,1).toFixed(2);
+      ind.style.width=Math.min(4+dx/10,16)+'px';
     }
-  },{passive:false});
+  },{passive:true});
+
   document.addEventListener('touchend',e=>{
+    if(indicator) indicator.style.opacity='0';
     if(!tracking) return;
     tracking=false;
     const dx=e.changedTouches[0].clientX-startX;
     const dy=e.changedTouches[0].clientY-startY;
-    if(dx>60&&Math.abs(dx)>Math.abs(dy)*1.5){
+    if(dx>70&&Math.abs(dx)>Math.abs(dy)*1.5){
       if(curProjectId) backToProjectList();
     }
   },{passive:true});
