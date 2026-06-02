@@ -1159,6 +1159,7 @@ async function initApp(){
   sb.auth.onAuthStateChange((event)=>{
     if(event==='SIGNED_OUT'&&!loginBusy) showLogin();
   });
+  initHistoryGuard();
 }
 const IDLE_TIMEOUT_MS=5*60*1000; // 5 分鐘閒置登出
 let idleTimer=null;
@@ -1659,11 +1660,20 @@ function backToProjectList(){
 // 攔截瀏覽器返回手勢（Android 右滑 / 返回鍵）
 window.addEventListener('popstate',function(e){
   if(curProjectId){
+    // 使用者按返回/右滑：回到列表
     backToProjectList();
-    // 再推一個假紀錄，防止連續返回直接關閉
-    history.pushState({aclab:'list'},'','  ');
+    // 推回一個 list 根紀錄，確保下次仍可攔截，不會直接關頁面
+    history.replaceState({aclab:'list'},'');
+    history.pushState({aclab:'list-guard'},'');
   }
 });
+// 確保頁面一載入時就有一個基底歷史紀錄（防止第一次右滑關閉頁面）
+function initHistoryGuard(){
+  if(!history.state||!history.state.aclab){
+    history.replaceState({aclab:'root'},'');
+    history.pushState({aclab:'list-guard'},'');
+  }
+}
 function renderProjectList(){
   curProjectId=null;
   setProjToolbar('list');
@@ -1726,7 +1736,11 @@ function renderProjectDetail(){
   const logs=sortedLogs(p.logs);
   setProjToolbar('detail');
 
-  const fwHistory=[...new Set(logs.filter(l=>l.fwVersion).map(l=>`${fmtDateShort(l.date)}: ${l.fwVersion}`))].join(' → ');
+  // FW History：只顯示上一版 → 目前最新版
+  const fwVersions=[...new Set(logs.filter(l=>l.fwVersion).map(l=>l.fwVersion))];
+  const fwHistory=fwVersions.length>=2
+    ?`${fwVersions[1]} → ${fwVersions[0]}`
+    :fwVersions[0]||'';
 
   let timeline='';
   if(!logs.length){
