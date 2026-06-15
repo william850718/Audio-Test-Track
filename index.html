@@ -56,9 +56,13 @@
 
         /* Stats Row */
         .stat-row { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 1.5rem; }
-        .stat { background: var(--bg-panel); border: 1px solid var(--border-color); border-radius: 8px; padding: 14px; text-align: center; }
-        .stat-n { font-size: 24px; font-weight: 600; font-family: monospace; }
-        .stat-l { font-size: 15px; color: var(--text-secondary); margin-top: 4px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .stat { background: var(--bg-panel); border: 1px solid var(--border-color); border-radius: 8px; padding: 14px; text-align: center; cursor: pointer; transition: transform .15s, box-shadow .15s, border-color .15s; user-select: none; }
+        .stat:hover { transform: translateY(-2px); box-shadow: 0 4px 16px rgba(0,0,0,0.3); border-color: #3b82f6; }
+        .stat.active-filter { border-color: #3b82f6; box-shadow: 0 0 0 2px rgba(59,130,246,0.3); }
+        .stat-n { font-size: 24px; font-weight: 600; font-family: monospace; transition: color .2s; }
+        .stat-n.zero { color: #4b5563 !important; }
+        .stat-l { font-size: 15px; color: var(--text-secondary); margin-top: 4px; text-transform: uppercase; letter-spacing: 0.5px; transition: color .2s; }
+        .stat-l.zero { color: #374151 !important; }
 
         /* Platform Tabs */
         .ptabs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 1.25rem; }
@@ -76,14 +80,27 @@
         .ptab.p-google { background: rgba(16, 185, 129, 0.15); color: #a7f3d0; border-color: var(--color-google); }
 
         /* Toolbar */
-        .toolbar { 
-            display: flex; gap: 8px; align-items: center; margin-bottom: 1rem; flex-wrap: wrap; 
-            background: var(--bg-panel); padding: 10px; border-radius: 8px; border: 1px solid var(--border-color);
+        .toolbar {
+            display: flex; flex-direction: row; align-items: center;
+            gap: 6px; margin-bottom: 1rem; flex-wrap: nowrap;
+            overflow-x: auto; -webkit-overflow-scrolling: touch;
+            background: var(--bg-panel); padding: 8px 10px; border-radius: 8px;
+            border: 1px solid var(--border-color); min-width: 0; width: 100%; box-sizing: border-box;
         }
-        .toolbar input, .toolbar select { font-size: 14px; height: 32px; background: var(--bg-input); border: 1px solid var(--border-color); color: var(--text-primary); padding: 0 8px; border-radius: 6px; }
-        .toolbar input { min-width: 180px; }
-        .toolbar select { min-width: 130px; cursor: pointer; }
-        .tb-spacer { flex: 1; }
+        .toolbar::-webkit-scrollbar { height: 4px; }
+        .toolbar::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 2px; }
+        .toolbar input, .toolbar select {
+            font-size: 14px; height: 36px; background: var(--bg-input);
+            border: 1px solid var(--border-color); color: var(--text-primary);
+            padding: 0 28px 0 10px; border-radius: 6px; flex-shrink: 0;
+            white-space: nowrap; cursor: pointer; width: auto;
+        }
+        .toolbar select { min-width: 0; width: auto; }
+        .tb-search-wrap { position: relative; flex-shrink: 0; display: flex; align-items: center; }
+        .tb-search-wrap input { padding-left: 32px; min-width: 180px; width: 200px; }
+        .tb-search-icon { position: absolute; left: 9px; top: 50%; transform: translateY(-50%); color: var(--text-secondary); pointer-events: none; font-size: 14px; }
+        .tb-spacer { flex: 1; min-width: 8px; }
+        #q-subtype-update-wrap { display: none; }
 
         /* Buttons */
         .btn { 
@@ -105,13 +122,6 @@
         input, select, textarea { width: 100%; background: var(--bg-input); border: 1px solid var(--border-color); color: var(--text-primary); padding: 8px 10px; border-radius: 6px; font-size: 15px; }
         input:focus, select:focus, textarea:focus { outline: none; border-color: #3b82f6; }
         textarea { resize: vertical; min-height: 70px; }
-        
-        .check-row { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
-        .chk-lbl { 
-            display: inline-flex; align-items: center; gap: 6px; font-size: 14px; cursor: pointer; 
-            color: var(--text-primary); background: var(--bg-input); padding: 4px 10px; border-radius: 14px; 
-            border: 1px solid var(--border-color); transition: all 0.15s; margin: 0;
-        }
         .chk-lbl:has(input:checked) { background: rgba(59, 130, 246, 0.15); border-color: #3b82f6; color: #60a5fa; }
         .chk-lbl input[type=checkbox] { width: auto; margin: 0; cursor: pointer; }
         .form-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; }
@@ -168,7 +178,6 @@
         .ti-chip { font-size: 12px; padding: 1px 6px; border-radius: 4px; background: #1f2937; color: #9ca3af; border: 1px solid var(--border-color); }
         
         .desc { font-size: 14px; color: #d1d5db; line-height: 1.5; margin-bottom: 8px; background: #151f32; padding: 6px 10px; border-radius: 6px; border-left: 2px solid #4b5563; }
-        .solution { font-size: 14px; color: #a7f3d0; line-height: 1.5; background: rgba(16, 185, 129, 0.1); padding: 6px 10px; border-radius: 6px; border-left: 2px solid #10b981; margin-bottom: 4px; }
         
         .rec-actions { display: flex; gap: 6px; margin-top: 10px; justify-content: flex-end; border-top: 1px solid rgba(255,255,255,0.03); padding-top: 8px; }
         .ra { 
@@ -180,9 +189,6 @@
         .ra.danger:hover { background: #451a1a; border-color: #7f1d1d; }
         
         .empty { text-align: center; padding: 3rem; color: var(--text-secondary); font-size: 15px; background: var(--bg-panel); border-radius: 10px; border: 1px solid var(--border-color); }
-        .prio-high { color: #f87171; font-weight: bold; }
-        .prio-medium { color: #fbbf24; }
-        .prio-low { color: #34d399; }
         
         .sec-div { display: flex; align-items: center; gap: 8px; margin: 12px 0 10px; }
         .sec-div span { font-size: 15px; color: #6b7280; white-space: nowrap; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
@@ -338,8 +344,9 @@
           .stat-row { gap: 8px; }
           .stat-n { font-size: 20px; }
           /* Toolbar */
-          .toolbar { flex-wrap: wrap; gap: 6px; padding: 8px 0; }
-          .toolbar input, .toolbar select { width: 100%; }
+          .toolbar { flex-wrap: nowrap; overflow-x: auto; gap: 6px; padding: 8px; }
+          .tb-search-wrap input { min-width: 140px; width: 140px; }
+          .toolbar select { min-width: 110px; }
           .tb-spacer { display: none; }
           /* 卡片 */
           .record { padding: 10px 12px; }
@@ -432,23 +439,35 @@
     </div>
 
     <div class="toolbar">
-      <input type="text" id="q-s" placeholder="Search keyword / ID..." oninput="renderList()">
+      <div class="tb-search-wrap">
+        <i class="ti ti-search tb-search-icon" aria-hidden="true"></i>
+        <input type="text" id="q-s" placeholder="Search keyword / ID..." oninput="renderList()">
+      </div>
       <select id="q-cat" onchange="onCatFilterChange()">
         <option value="">All Categories</option>
       </select>
-      <select id="q-type" onchange="renderList()">
+      <span id="q-subcat-wrap" style="display:none">
+        <select id="q-subcat" onchange="renderList()" title="Function subcategory">
+          <option value="">All Functions</option>
+        </select>
+      </span>
+      <select id="q-type" onchange="onTypeFilterChange()">
         <option value="">All Types</option>
       </select>
+      <span id="q-subtype-update-wrap">
+        <select id="q-subtype-update" onchange="renderList()">
+          <option value="">All Update Types</option>
+          <option value="spec">Spec</option>
+          <option value="sequence">Sequence</option>
+          <option value="firmware">Firmware</option>
+          <option value="test-tool">Test Tool</option>
+        </select>
+      </span>
       <select id="q-stat" onchange="renderList()">
         <option value="">All Status</option>
         <option value="in-progress">In Progress</option>
         <option value="closed">Closed</option>
       </select>
-      <span id="q-subcat-wrap">
-        <select id="q-subcat" onchange="renderList()" title="Function subcategory">
-          <option value="">All Functions</option>
-        </select>
-      </span>
       <div class="tb-spacer"></div>
       <button class="btn primary" onclick="showForm()"><i class="ti ti-plus" style="font-size:13px" aria-hidden="true"></i> Add Record</button>
     </div>
@@ -573,7 +592,8 @@ function fillTypeFilter(){
   if(!sel) return;
   const prev=sel.value;
   let opts='<option value="">All Types</option>';
-  TYPES.forEach(t=>{opts+=`<option value="${t.v}">${t.lbl}</option>`;});
+  const allTypes=getTypesForPlat(curP==='all'?'':curP,(document.getElementById('q-cat')||{}).value||'');
+  allTypes.forEach(t=>{opts+=`<option value="${t.v}">${t.lbl}</option>`;});
   sel.innerHTML=opts;
   if([...sel.options].some(o=>o.value===prev)) sel.value=prev; else sel.value='';
 }
@@ -609,6 +629,16 @@ function fillSubcatFilter(){
 }
 function onCatFilterChange(){
   fillSubcatFilter();
+  fillTypeFilter();
+  renderList();
+}
+function onTypeFilterChange(){
+  const t=(document.getElementById('q-type')||{}).value||'';
+  const wrap=document.getElementById('q-subtype-update-wrap');
+  if(wrap){
+    if(t==='update') wrap.style.display='inline-block';
+    else{ wrap.style.display='none'; const s=document.getElementById('q-subtype-update'); if(s) s.value=''; }
+  }
   renderList();
 }
 
@@ -634,21 +664,30 @@ const TYPES=[
   {v:'hw-cal',lbl:'Hardware Calibration/Maint.',cls:'b-hw-cal'}
 ];
 const TYPE_MAP=Object.fromEntries(TYPES.map(t=>[t.v,t]));
+
+const TYPES_ALT=[
+  {v:'issue',lbl:'ISSUE',cls:'b-issue'},
+  {v:'note',lbl:'Note',cls:'b-spec'},
+  {v:'spec',lbl:'Spec Update',cls:'b-spec'},
+  {v:'hw-update',lbl:'Hardware Update',cls:'b-hw-cal'}
+];
+const TYPES_ALT_MAP=Object.fromEntries(TYPES_ALT.map(t=>[t.v,t]));
+
+const TYPES_AUDIO=[
+  {v:'note',lbl:'Note',cls:'b-spec'},
+  {v:'issue',lbl:'Issue',cls:'b-issue'},
+  {v:'update',lbl:'Update',cls:'b-test-seq'},
+  {v:'hw-cal',lbl:'Hardware Calibration/Maint.',cls:'b-hw-cal'}
+];
+const TYPES_AUDIO_MAP=Object.fromEntries(TYPES_AUDIO.map(t=>[t.v,t]));
+
+function getTypesForPlat(plat,cat){ return TYPES_AUDIO; }
 const CLOSED_RETENTION_DAYS=30;
 
 const CERT_LBL={'teams-cert':'Teams Cert','uc-cert':'UC Cert','internal':'Internal'};
 const CERT_CLS={'teams-cert':'b-teams-cert','uc-cert':'b-uc-cert','internal':'b-internal'};
 
-const TEST_ITEMS=[
-  {v:'MIC',l:'MIC Recording'},{v:'Speaker',l:'Speaker Output'},
-  {v:'AEC',l:'AEC Echo Cancellation'},{v:'NS',l:'Noise Suppression NS'},
-  {v:'AGC',l:'AGC Gain'},{v:'Latency',l:'Latency'},
-  {v:'Sidetone',l:'Sidetone'},{v:'Other',l:'Other'}
-];
-const TEST_MAP=Object.fromEntries(TEST_ITEMS.map(t=>[t.v,t.l]));
 
-const PRIO=[{v:'high',lbl:'High',cls:'prio-high'},{v:'medium',lbl:'Medium',cls:'prio-medium'},{v:'low',lbl:'Low',cls:'prio-low'}];
-const PRIO_MAP=Object.fromEntries(PRIO.map(p=>[p.v,p]));
 
 const PRODUCT_TYPES=[
   {v:'shared-sp',l:'Shared Space - Speakerphone',group:'shared'},
@@ -835,6 +874,8 @@ function applyRecordFilters(list){
   const qsub=(document.getElementById('q-subcat')||{}).value||'';
   if(qs) d=d.filter(r=>(r.title||'').toLowerCase().includes(qs.toLowerCase())||(r.id||'').includes(qs)||catDisplay(r).toLowerCase().includes(qs.toLowerCase()));
   if(qt) d=d.filter(r=>r.type===qt);
+  const qsub_update=(document.getElementById('q-subtype-update')||{}).value||'';
+  if(qt==='update'&&qsub_update) d=d.filter(r=>r.updateSubtype===qsub_update);
   if(qcat){
     d=d.filter(r=>r.category===qcat);
     if(qcat==='Function'&&qsub) d=d.filter(r=>r.subCategory===qsub);
@@ -849,9 +890,7 @@ function recordCardHtml(r,opts={}){
   const pc=PLAT_COLOR[r.platform]||'other';
   const st=recordStatus(r);
   const so=STATUS_MAP[st]||STATUSES[0];
-  const to=TYPE_MAP[r.type]||{lbl:legacyTypeLabel(r.type),cls:'b-cat'};
-  const pr=PRIO_MAP[r.priority]||PRIO_MAP.medium;
-  const chips=(r.testItems||[]).map(i=>`<span class="ti-chip">${TEST_MAP[i]||i}</span>`).join('');
+  const to=TYPE_MAP[r.type]||TYPES_ALT_MAP[r.type]||TYPES_AUDIO_MAP[r.type]||{lbl:legacyTypeLabel(r.type),cls:'b-cat'};
   const certBadge=r.certType?`<span class="badge ${CERT_CLS[r.certType]||''}">${CERT_LBL[r.certType]||r.certType}</span>`:'';
   const catBadge=catDisplay(r)?`<span class="badge b-cat">${esc(catDisplay(r))}</span>`:'';
   const closedAt=r.closedAt||r.updated||r.created;
@@ -867,19 +906,15 @@ function recordCardHtml(r,opts={}){
       <span class="badge ${so.cls}">${so.lbl}</span>
       ${certBadge}
     </div>
-    ${chips?`<div class="ti-chips">${chips}</div>`:''}
     <div class="meta-row">
       <span class="meta"><i class="ti ti-hash" aria-hidden="true"></i>${esc(r.id)}</span>
       ${r.assignee?`<span class="meta"><i class="ti ti-user" aria-hidden="true"></i>${esc(r.assignee)}</span>`:''}
       ${r.fwVersion?`<span class="meta"><i class="ti ti-cpu" aria-hidden="true"></i>FW ${esc(r.fwVersion)}</span>`:''}
-      ${r.dut?`<span class="meta"><i class="ti ti-device-audio" aria-hidden="true"></i>${esc(r.dut)}</span>`:''}
       ${r.deadline?`<span class="meta"><i class="ti ti-calendar" aria-hidden="true"></i>${esc(r.deadline)}</span>`:''}
-      <span class="meta ${pr.cls}"><i class="ti ti-flag" aria-hidden="true"></i>${pr.lbl} Priority</span>
       <span class="meta"><i class="ti ti-clock" aria-hidden="true"></i>${esc(r.created)}</span>
       ${archiveMeta}
     </div>
     ${r.desc?`<div class="desc">${esc(r.desc)}</div>`:''}
-    ${r.solution?`<div class="solution"><i class="ti ti-circle-check" style="font-size:12px;color:#34d399" aria-hidden="true"></i> ${esc(r.solution)}</div>`:''}
     <div class="rec-actions">
       <button class="ra" onclick="editRecord('${r.id}')"><i class="ti ti-edit" aria-hidden="true"></i> Edit</button>
       <button class="ra" onclick="cycleStatus('${r.id}')" title="Toggle status"><i class="ti ti-refresh" aria-hidden="true"></i> ${STATUS_NEXT_LBL[st]||''}</button>
@@ -1145,7 +1180,7 @@ async function initApp(){
   sb.auth.getSession().then(({data:{session}})=>{
     const savedAt=parseInt(localStorage.getItem('aclab_login_at')||sessionStorage.getItem('aclab_login_at')||'0');
     const elapsed=(Date.now()-savedAt)/1000/60;
-    if(session&&savedAt>0&&elapsed<10){
+    if(session&&savedAt>0&&elapsed<1440){
       currentLoginEmail=session.user.email;
       showApp();
       load();
@@ -1161,10 +1196,13 @@ async function initApp(){
   });
   initHistoryGuard();
 }
-const IDLE_TIMEOUT_MS=5*60*1000; // 5 分鐘閒置登出
+const IDLE_TIMEOUT_MS=20*60*1000; // 20 分鐘閒置登出
 let idleTimer=null;
 function resetIdleTimer(){
   clearTimeout(idleTimer);
+  const _ts=Date.now().toString();
+  localStorage.setItem('aclab_login_at',_ts);
+  sessionStorage.setItem('aclab_login_at',_ts);
   idleTimer=setTimeout(()=>{
     sb.auth.signOut();
     showLogin();
@@ -1177,17 +1215,6 @@ function startIdleTimer(){
     document.addEventListener(e,resetIdleTimer,{passive:true});
   });
   resetIdleTimer();
-  // 關閉分頁 / 瀏覽器時立刻清除 session 時間戳並登出
-  window.addEventListener('pagehide', ()=>{
-    localStorage.removeItem('aclab_login_at');
-    sessionStorage.removeItem('aclab_login_at');
-  });
-  document.addEventListener('visibilitychange', ()=>{
-    if(document.visibilityState==='hidden'){
-      localStorage.removeItem('aclab_login_at');
-      sessionStorage.removeItem('aclab_login_at');
-    }
-  });
 }
 
 
@@ -1290,16 +1317,31 @@ function renderStats(){
   const active=base.filter(r=>recordStatus(r)!=='closed');
   const closed=base.filter(r=>recordStatus(r)==='closed');
   const soonExpiring=closed.filter(r=>{const closedAt=r.closedAt||r.updated||r.created;return Math.max(0,CLOSED_RETENTION_DAYS-daysSince(closedAt))<=7;}).length;
+  const curStat=(document.getElementById('q-stat')||{}).value||'';
   document.getElementById('stats-row').innerHTML=`
-    <div class="stat"><div class="stat-n" style="color:var(--text-primary)">${active.length}</div><div class="stat-l">In Progress</div></div>
-    <div class="stat"><div class="stat-n" style="color:#34d399">${closed.length}</div><div class="stat-l">Closed${soonExpiring>0?` <span style="font-size:11px;color:#f87171;font-family:sans-serif;font-weight:500"> (${soonExpiring} expiring in 7 days)</span>`:''}</div></div>`;
+    <div class="stat${curStat==='in-progress'?' active-filter':''}" onclick="onStatCardClick('in-progress')">
+      <div class="stat-n${active.length===0?' zero':''}" style="${active.length>0?'color:#60a5fa':''}">${active.length}</div>
+      <div class="stat-l${active.length===0?' zero':''}">In Progress</div>
+    </div>
+    <div class="stat${curStat==='closed'?' active-filter':''}" onclick="onStatCardClick('closed')">
+      <div class="stat-n${closed.length===0?' zero':''}" style="${closed.length>0?'color:#34d399':''}">${closed.length}</div>
+      <div class="stat-l${closed.length===0?' zero':''}">Closed${soonExpiring>0?` <span style="font-size:11px;color:#f87171;font-family:sans-serif;font-weight:500"> (${soonExpiring} expiring in 7 days)</span>`:''}</div>
+    </div>`;
 }
 
+function onStatCardClick(status){
+  const sel=document.getElementById('q-stat');
+  if(!sel) return;
+  if(sel.value===status) sel.value='';
+  else sel.value=status;
+  renderStats();
+  renderList();
+}
 function renderList(){
   const d=filtered();
   const el=document.getElementById('list-area');
   if(!d.length){
-    el.innerHTML='<div class="empty"><i class="ti ti-clipboard-off" style="font-size:26px;display:block;margin:0 auto 8px;color:#6b7280" aria-hidden="true"></i>No active records</div>';
+    el.innerHTML='<div class="empty"><i class="ti ti-clipboard-off" style="font-size:26px;display:block;margin:0 auto 8px;color:#6b7280" aria-hidden="true"></i>No active records<br><button onclick="showForm()" class="btn primary" style="margin-top:14px;font-size:14px"><i class="ti ti-plus" style="font-size:13px" aria-hidden="true"></i> Add Record</button></div>';
   }else{
     el.innerHTML=d.map(r=>recordCardHtml(r)).join('');
   }
@@ -1331,7 +1373,11 @@ function render(){
   else renderProjectView();
 }
 
-function showForm(){editId=null;renderForm({});}
+function showForm(){
+  editId=null;
+  const today=new Date().toISOString().slice(0,10);
+  renderForm({deadline:today});
+}
 function editRecord(id){
   editId=id;
   const r=records.find(x=>x.id===id);
@@ -1368,6 +1414,13 @@ function onPlatChange(){
 function onCatChange(){
   const plat=document.getElementById('f-plat')?.value||'Teams';
   const cat=document.getElementById('f-cat')?.value||'';
+  const typeSel=document.getElementById('f-type');
+  if(typeSel){
+    const cur=typeSel.value;
+    const types=getTypesForPlat(plat,cat);
+    typeSel.innerHTML=types.map(t=>`<option value="${t.v}"${t.v===cur?' selected':''}>${t.lbl}</option>`).join('');
+    if(!types.find(t=>t.v===cur)) typeSel.value=types[0].v;
+  }
   const wrap=document.getElementById('f-subcat-wrap');
   const sel=document.getElementById('f-subcat');
   const c=PLATFORMS[plat]?.categories?.find(x=>x.v===cat);
@@ -1383,8 +1436,6 @@ function renderForm(r){
   const plat=r.platform||'Teams';
   const platOpts=PLAT_NAMES.map(p=>`<option value="${p}" ${plat===p?'selected':''}>${PLATFORMS[p].label}</option>`).join('');
   const statOpts=STATUSES.map(s=>`<option value="${s.v}" ${(r.status||'in-progress')===s.v?'selected':''}>${s.lbl}</option>`).join('');
-  const prioOpts=PRIO.map(p=>`<option value="${p.v}" ${(r.priority||'medium')===p.v?'selected':''}>${p.lbl}</option>`).join('');
-  const tiChecks=TEST_ITEMS.map(i=>`<label class="chk-lbl"><input type="checkbox" value="${i.v}" ${(r.testItems||[]).includes(i.v)?'checked':''}> ${i.l}</label>`).join('');
 
   document.getElementById('form-area').innerHTML=`
     <div class="form-panel">
@@ -1395,7 +1446,7 @@ function renderForm(r){
           <label for="f-plat">Test Platform *</label>
           <select id="f-plat" onchange="onPlatChange()">${platOpts}</select>
         </div>
-        <div class="cat-group ff">
+        <div class="cat-group">
           <div>
             <label for="f-cat" id="f-cat-lbl">Platform Category *</label>
             <select id="f-cat" onchange="onCatChange()">${catOptsHtml(plat,r.category||'',r.subCategory||'')}</select>
@@ -1408,23 +1459,27 @@ function renderForm(r){
         <div>
           <label for="f-type">Record Type *</label>
           <select id="f-type" onchange="onTypeChange()">
-            ${TYPES.map(t=>`<option value="${t.v}" ${(r.type||'issue')===t.v?'selected':''}>${t.lbl}</option>`).join('')}
+            <option value="" ${!r.type?'selected':''} disabled>— Select record type —</option>
+            ${getTypesForPlat(r.platform||'',r.category||'').map(t=>`<option value="${t.v}" ${(r.type||'')===t.v?'selected':''}>${t.lbl}</option>`).join('')}
           </select>
         </div>
-        <div>
-          <label for="f-dut">Product / DUT (optional)</label>
-          <input type="text" id="f-dut" placeholder="e.g. Headset Pro X" value="${r.dut||''}">
+        <div id="f-subtype-wrap" style="display:${(r.type||'')==='update'?'block':'none'}">
+          <label for="f-subtype">Update Type *</label>
+          <select id="f-subtype">
+            <option value="" ${!(r.updateSubtype)?'selected':''} disabled>— Select update type —</option>
+            <option value="spec" ${'spec'===(r.updateSubtype||'')?'selected':''}>Spec</option>
+            <option value="sequence" ${'sequence'===(r.updateSubtype||'')?'selected':''}>Sequence</option>
+            <option value="firmware" ${'firmware'===(r.updateSubtype||'')?'selected':''}>Firmware</option>
+            <option value="test-tool" ${'test-tool'===(r.updateSubtype||'')?'selected':''}>Test Tool</option>
+          </select>
         </div>
+
         <div class="ff">
           <label for="f-title">Title *</label>
           <input type="text" id="f-title" placeholder="Enter a short summary..." value="${r.title||''}">
         </div>
       </div>
 
-      <div style="margin-bottom:12px">
-        <label>Test Items (multi-select)</label>
-        <div class="check-row">${tiChecks}</div>
-      </div>
 
       <div class="fg2">
         <div class="ff">
@@ -1452,18 +1507,9 @@ function renderForm(r){
           <label for="f-stat">Status</label>
           <select id="f-stat">${statOpts}</select>
         </div>
-        <div>
-          <label for="f-prio">Priority</label>
-          <select id="f-prio">${prioOpts}</select>
-        </div>
+
       </div>
 
-      <div class="fg2">
-        <div class="ff">
-          <label for="f-sol">Solution / Root Cause / FW Update Notes</label>
-          <textarea id="f-sol" placeholder="If resolved, record the root cause, FW fix version, or solution...">${r.solution||''}</textarea>
-        </div>
-      </div>
 
       <div class="form-actions">
         <button class="btn" onclick="cancelForm()">Cancel</button>
@@ -1487,6 +1533,8 @@ function onTypeChange(){
   const t=(document.getElementById('f-type')||{}).value;
   const fw=document.getElementById('fw-wrap');
   if(fw) fw.style.display=(t==='issue'||t==='acqua-fw')?'block':'none';
+  const sw=document.getElementById('f-subtype-wrap');
+  if(sw) sw.style.display=(t==='update')?'block':'none';
 }
 
 function submitForm(){
@@ -1502,23 +1550,19 @@ function submitForm(){
   const catObj = cfg?.categories?.find(c=>c.v===category);
   if(catObj?.children?.length && !subCategory){alert('Please select a Function subcategory.');return;}
   const now = new Date().toISOString().slice(0,10);
-  const items = Array.from(document.querySelectorAll('#form-area input[type=checkbox]:checked')).map(c=>c.value);
   
   const obj={
     platform:plat,
     category:category||'',
     subCategory:subCategory||'',
     type:document.getElementById('f-type').value,
-    dut:document.getElementById('f-dut').value,
+    updateSubtype:(document.getElementById('f-subtype')||{}).value||'',
     title:title.trim(),
-    testItems:items,
     desc:document.getElementById('f-desc').value,
     assignee:(document.getElementById('f-who').value||'').trim()||getCurrentUser(),
     fwVersion:(document.getElementById('f-fw')||{}).value||'',
     deadline:document.getElementById('f-due').value,
     status:document.getElementById('f-stat').value,
-    priority:document.getElementById('f-prio').value,
-    solution:document.getElementById('f-sol').value,
     updated:now
   };
   
