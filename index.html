@@ -397,6 +397,44 @@
     <button type="button" class="btn primary" id="login-btn" style="width:100%;margin-top:14px;justify-content:center" onclick="doLogin()">Sign In</button>
     <div class="login-err" id="login-err" role="alert" aria-live="polite"></div>
     <button type="button" class="btn" style="width:100%;margin-top:8px;justify-content:center;font-size:11px" onclick="testSupabaseConnection()">Test Cloud Connection</button>
+    <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border-color);text-align:center;font-size:13px;color:var(--text-secondary)">
+      No account? <a href="#" onclick="showRegister();return false;" style="color:#60a5fa;text-decoration:none;font-weight:600">Register here</a>
+    </div>
+  </div>
+
+  <!-- 註冊面板 -->
+  <div class="login-card" id="register-card" style="display:none">
+    <div class="login-title">Create Account</div>
+    <div class="login-sub">Please register with your company email.</div>
+
+    <!-- Step 1: Email -->
+    <div id="reg-step-email">
+      <label for="reg-email">Company Email</label>
+      <input type="email" id="reg-email" placeholder="yourname@company.com" autocomplete="username" onkeydown="if(event.key==='Enter')sendRegisterOTP()">
+      <button type="button" class="btn primary" id="reg-otp-btn" style="width:100%;margin-top:14px;justify-content:center" onclick="sendRegisterOTP()">Send Verification Code</button>
+    </div>
+
+    <!-- Step 2: OTP -->
+    <div id="reg-step-otp" style="display:none">
+      <label for="reg-otp">Verification Code</label>
+      <input type="text" id="reg-otp" placeholder="6-digit code from your email" inputmode="numeric" maxlength="6" onkeydown="if(event.key==='Enter')verifyRegisterOTP()">
+      <button type="button" class="btn primary" id="reg-verify-btn" style="width:100%;margin-top:14px;justify-content:center" onclick="verifyRegisterOTP()">Verify Code</button>
+      <button type="button" class="btn" style="width:100%;margin-top:8px;justify-content:center;font-size:11px" onclick="sendRegisterOTP()">Resend Code</button>
+    </div>
+
+    <!-- Step 3: Set Password -->
+    <div id="reg-step-pass" style="display:none">
+      <label for="reg-pass">Set Password</label>
+      <input type="password" id="reg-pass" placeholder="At least 6 characters" autocomplete="new-password" style="margin-bottom:10px">
+      <label for="reg-pass2">Confirm Password</label>
+      <input type="password" id="reg-pass2" placeholder="Re-enter password" autocomplete="new-password" onkeydown="if(event.key==='Enter')completeRegister()">
+      <button type="button" class="btn primary" id="reg-complete-btn" style="width:100%;margin-top:14px;justify-content:center" onclick="completeRegister()">Complete Registration</button>
+    </div>
+
+    <div class="login-err" id="reg-err" role="alert" aria-live="polite"></div>
+    <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border-color);text-align:center;font-size:13px;color:var(--text-secondary)">
+      Already have an account? <a href="#" onclick="showLoginPanel();return false;" style="color:#60a5fa;text-decoration:none;font-weight:600">Sign in</a>
+    </div>
   </div>
 </div>
 
@@ -1104,6 +1142,11 @@ async function importBackup(input){
 function showLogin(){
   document.getElementById('login-screen').hidden=false;
   document.getElementById('app-main').hidden=true;
+  // 確保顯示登入面板而非註冊面板
+  const lc=document.querySelector('#login-screen .login-card');
+  const rc=document.getElementById('register-card');
+  if(lc) lc.style.display='';
+  if(rc) rc.style.display='none';
   const remember=(localStorage.getItem(REMEMBER_CREDS_KEY)==='1');
   const cb=document.getElementById('remember-creds');
   if(cb) cb.checked=remember;
@@ -1168,6 +1211,109 @@ async function doLogout(){
   await sb.auth.signOut();
   setCurrentLoginEmail('');
   showLogin();
+}
+
+// ========== 註冊流程 ==========
+const ALLOWED_EMAIL_DOMAIN='@pal-labs.com';
+let regEmail='';
+function setRegMsg(text,kind){
+  const el=document.getElementById('reg-err');
+  if(!el) return;
+  el.textContent=text||'';
+  el.className=text?('login-err'+(kind==='ok'?' ok':kind==='busy'?' busy':' err')):'login-err';
+}
+function showRegister(){
+  document.querySelector('#login-screen .login-card').style.display='none';
+  document.getElementById('register-card').style.display='';
+  // reset to step 1
+  document.getElementById('reg-step-email').style.display='';
+  document.getElementById('reg-step-otp').style.display='none';
+  document.getElementById('reg-step-pass').style.display='none';
+  setRegMsg('','');
+}
+function showLoginPanel(){
+  document.getElementById('register-card').style.display='none';
+  document.querySelector('#login-screen .login-card').style.display='';
+}
+async function sendRegisterOTP(){
+  if(!sb){setRegMsg('System not ready. Please refresh.','');return;}
+  const email=(document.getElementById('reg-email')||{}).value.trim().toLowerCase();
+  if(!email){setRegMsg('Please enter your email.','');return;}
+  if(!email.endsWith(ALLOWED_EMAIL_DOMAIN)){
+    setRegMsg('Please use your company email address.','');return;
+  }
+  const btn=document.getElementById('reg-otp-btn');
+  if(btn){btn.disabled=true;btn.textContent='Sending…';}
+  setRegMsg('Sending verification code…','busy');
+  try{
+    const {error}=await sb.auth.signInWithOtp({
+      email:email,
+      options:{shouldCreateUser:true}
+    });
+    if(error) throw error;
+    regEmail=email;
+    document.getElementById('reg-step-email').style.display='none';
+    document.getElementById('reg-step-otp').style.display='';
+    setRegMsg('Code sent! Check your inbox (and spam folder).','ok');
+  }catch(e){
+    setRegMsg(e?.message||'Failed to send code.','');
+    console.error('OTP send failed',e);
+  }finally{
+    if(btn){btn.disabled=false;btn.textContent='Send Verification Code';}
+  }
+}
+async function verifyRegisterOTP(){
+  if(!sb){setRegMsg('System not ready. Please refresh.','');return;}
+  const code=(document.getElementById('reg-otp')||{}).value.trim();
+  if(!code){setRegMsg('Please enter the verification code.','');return;}
+  const btn=document.getElementById('reg-verify-btn');
+  if(btn){btn.disabled=true;btn.textContent='Verifying…';}
+  setRegMsg('Verifying…','busy');
+  try{
+    const {error}=await sb.auth.verifyOtp({
+      email:regEmail,
+      token:code,
+      type:'email'
+    });
+    if(error) throw error;
+    document.getElementById('reg-step-otp').style.display='none';
+    document.getElementById('reg-step-pass').style.display='';
+    setRegMsg('Verified! Please set your password.','ok');
+  }catch(e){
+    setRegMsg(e?.message||'Invalid or expired code.','');
+    console.error('OTP verify failed',e);
+  }finally{
+    if(btn){btn.disabled=false;btn.textContent='Verify Code';}
+  }
+}
+async function completeRegister(){
+  if(!sb){setRegMsg('System not ready. Please refresh.','');return;}
+  const p1=(document.getElementById('reg-pass')||{}).value||'';
+  const p2=(document.getElementById('reg-pass2')||{}).value||'';
+  if(p1.length<6){setRegMsg('Password must be at least 6 characters.','');return;}
+  if(p1!==p2){setRegMsg('Passwords do not match.','');return;}
+  const btn=document.getElementById('reg-complete-btn');
+  if(btn){btn.disabled=true;btn.textContent='Saving…';}
+  setRegMsg('Creating account…','busy');
+  try{
+    // 此時 OTP 已驗證，使用者已登入，直接設定密碼
+    const {error}=await sb.auth.updateUser({password:p1});
+    if(error) throw error;
+    setRegMsg('Account created! Loading…','ok');
+    setCurrentLoginEmail(regEmail);
+    const _ts=Date.now().toString();
+    localStorage.setItem('aclab_login_at',_ts);
+    sessionStorage.setItem('aclab_login_at',_ts);
+    showApp();
+    startIdleTimer();
+    initSwipeBack();
+    await load();
+  }catch(e){
+    setRegMsg(e?.message||'Failed to create account.','');
+    console.error('register complete failed',e);
+  }finally{
+    if(btn){btn.disabled=false;btn.textContent='Complete Registration';}
+  }
 }
 async function initApp(){
   if(!window.supabase){alert('Failed to load Supabase JS. Please check your connection to cdn.jsdelivr.net.');return;}
