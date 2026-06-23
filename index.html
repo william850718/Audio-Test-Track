@@ -470,7 +470,7 @@
     <div class="ptabs" id="ptabs">
       <button class="ptab p-all" data-p="all" onclick="switchP(this)"><i class="ti ti-layout-grid" style="font-size:12px" aria-hidden="true"></i> All Platforms</button>
       <button class="ptab" data-p="Teams" onclick="switchP(this)">Teams</button>
-      <button class="ptab" data-p="Cortana" onclick="switchP(this)">Cortana</button>
+      <button class="ptab" data-p="Microsoft HDE" onclick="switchP(this)">Microsoft HDE</button>
       <button class="ptab" data-p="Zoom" onclick="switchP(this)">Zoom</button>
       <button class="ptab" data-p="Intel" onclick="switchP(this)">Intel</button>
       <button class="ptab" data-p="Google" onclick="switchP(this)">Google</button>
@@ -553,11 +553,14 @@ const PLATFORMS={
       {v:'RTC',l:'RTC (Real-time Communication)'}
     ]
   },
-  Cortana:{
-    color:'cortana',pfx:'CO',label:'Cortana',
+  'Microsoft HDE':{
+    color:'cortana',pfx:'CO',label:'Microsoft HDE',
     categories:[
-      {v:'HWKWS',l:'HWKWS'},
-      {v:'SWKWS',l:'SWKWS'}
+      {v:'Cortana',l:'Cortana',children:[
+        {v:'HWKWS',l:'HWKWS'},
+        {v:'SWKWS',l:'SWKWS'}
+      ]},
+      {v:'Talk Analysis Suite',l:'Talk Analysis Suite'}
     ]
   },
   Zoom:{
@@ -654,14 +657,15 @@ function fillSubcatFilter(){
   const wrap=document.getElementById('q-subcat-wrap');
   const sel=document.getElementById('q-subcat');
   const qcat=(document.getElementById('q-cat')||{}).value||'';
-  const show=qcat==='Function'&&(curP==='all'||curP==='Teams');
+  // 只有當特定平台被選中、且該 category 有子分類時才顯示
+  const show=curP!=='all'&&!!qcat&&catHasChildren(curP,qcat);
   if(wrap) wrap.classList.toggle('visible',show);
   if(!sel) return;
   if(!show){sel.value='';return;}
   const prev=sel.value;
-  const fn=PLATFORMS.Teams.categories.find(x=>x.v==='Function');
-  let opts='<option value="">All Functions</option>';
-  (fn?.children||[]).forEach(ch=>{opts+=`<option value="${ch.v}">${ch.l}</option>`;});
+  const cat=PLATFORMS[curP]?.categories?.find(x=>x.v===qcat);
+  let opts='<option value="">All</option>';
+  (cat?.children||[]).forEach(ch=>{opts+=`<option value="${ch.v}">${ch.l}</option>`;});
   sel.innerHTML=opts;
   if([...sel.options].some(o=>o.value===prev)) sel.value=prev; else sel.value='';
 }
@@ -916,7 +920,7 @@ function applyRecordFilters(list){
   if(qt==='update'&&qsub_update) d=d.filter(r=>r.updateSubtype===qsub_update);
   if(qcat){
     d=d.filter(r=>r.category===qcat);
-    if(qcat==='Function'&&qsub) d=d.filter(r=>r.subCategory===qsub);
+    if(qsub&&catHasChildren(curP,qcat)) d=d.filter(r=>r.subCategory===qsub);
   }
   return d.sort((a,b)=>new Date(b.created)-new Date(a.created));
 }
