@@ -385,6 +385,24 @@
           }
           .ptab { white-space: nowrap; flex-shrink: 0; font-size: 13px; padding: 5px 10px; }
         }
+
+        /* ===== Image attachments ===== */
+        .img-thumbs { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-start; }
+        .img-thumb { position: relative; width: 84px; height: 84px; border-radius: 8px; overflow: hidden; border: 1px solid var(--border-color); background: #0b0f19; }
+        .img-thumb img { width: 100%; height: 100%; object-fit: cover; cursor: pointer; display: block; }
+        .img-thumb .rm { position: absolute; top: 3px; right: 3px; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; border: none; border-radius: 50%; background: rgba(0,0,0,.65); color: #fff; cursor: pointer; font-size: 12px; line-height: 1; padding: 0; }
+        .img-thumb .rm:hover { background: #ef4444; }
+        .img-add-btn { width: 84px; height: 84px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; border: 1px dashed var(--border-color); border-radius: 8px; color: var(--text-secondary); cursor: pointer; font-size: 12px; transition: all .15s; }
+        .img-add-btn:hover { border-color: #6366f1; color: #a5b4fc; }
+        .img-add-btn i { font-size: 20px; }
+        .img-hint { font-size: 12px; color: var(--text-secondary); margin-top: 8px; }
+        .rec-images { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+        .rec-images img { width: 72px; height: 72px; object-fit: cover; border-radius: 6px; border: 1px solid var(--border-color); cursor: pointer; transition: transform .12s; }
+        .rec-images img:hover { transform: scale(1.04); border-color: #6366f1; }
+        .img-lightbox { position: fixed; inset: 0; z-index: 10000; background: rgba(0,0,0,.85); display: flex; align-items: center; justify-content: center; padding: 24px; cursor: zoom-out; }
+        .img-lightbox img { max-width: 95%; max-height: 95%; border-radius: 8px; box-shadow: 0 10px 40px rgba(0,0,0,.6); }
+        .img-lightbox .lb-close { position: fixed; top: 18px; right: 22px; width: 40px; height: 40px; border: none; border-radius: 50%; background: rgba(255,255,255,.12); color: #fff; font-size: 20px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+        .img-lightbox .lb-close:hover { background: rgba(255,255,255,.25); }
     </style>
 </head>
 <body>
@@ -771,6 +789,102 @@ function distanceOpts(sel){
 }
 function fmtDist(d){return d?(String(d).endsWith('m')?d:d+'m'):'';}
 
+/* ===== Note Sample Type (Platform Tracking) ===== */
+const NOTE_SAMPLE_TYPES=[
+  {v:'personal-hs-usb',l:'Personal - Headset (USB)'},
+  {v:'personal-hs-dongle',l:'Personal - Headset (Dongle)'},
+  {v:'personal-hs-nbt-classic',l:'Personal - Headset (NBT-Classic)'},
+  {v:'personal-hs-nbt-lea',l:'Personal - Headset (NBT-LE Audio)'},
+  {v:'shared-speakerphone',l:'Shared - Speakerphone'},
+  {v:'shared-deskphone',l:'Shared - Deskphone'}
+];
+const NOTE_SAMPLE_TYPE_MAP=Object.fromEntries(NOTE_SAMPLE_TYPES.map(t=>[t.v,t]));
+function noteSampleOpts(sel){
+  return '<option value="">— Select sample type (optional) —</option>'+NOTE_SAMPLE_TYPES.map(t=>
+    `<option value="${t.v}" ${sel===t.v?'selected':''}>${t.l}</option>`
+  ).join('');
+}
+
+/* ===== Image attachments (Supabase Storage) ===== */
+const ATTACH_BUCKET='attachments';
+const MAX_IMG_BYTES=2*1024*1024;   // 2MB per file
+const MAX_IMG_COUNT=5;             // up to 5 images per record / log
+function imgPublicUrl(path){
+  try{ return sb.storage.from(ATTACH_BUCKET).getPublicUrl(path).data.publicUrl; }catch(e){ return ''; }
+}
+// imgState.list items: {kind:'existing',path,name} | {kind:'new',file,name,url(objectURL)}
+let imgState={list:[],original:[]};
+function initImageUploader(existing){
+  const arr=Array.isArray(existing)?existing:[];
+  imgState={list:arr.map(im=>({kind:'existing',path:im.path,name:im.name||'image'})),original:arr.slice()};
+  renderImageUploader();
+}
+function renderImageUploader(){
+  const wrap=document.getElementById('img-uploader');
+  if(!wrap) return;
+  const thumbs=imgState.list.map((im,i)=>{
+    const url=im.kind==='new'?im.url:imgPublicUrl(im.path);
+    return `<div class="img-thumb">
+      <img src="${url}" alt="${esc(im.name)}" onclick="openImageLightbox('${url.replace(/'/g,"\\'")}')">
+      <button type="button" class="rm" title="Remove" onclick="removeUploadImage(${i})"><i class="ti ti-x" aria-hidden="true"></i></button>
+    </div>`;
+  }).join('');
+  const canAdd=imgState.list.length<MAX_IMG_COUNT;
+  wrap.innerHTML=`<div class="img-thumbs">${thumbs}
+    ${canAdd?`<label class="img-add-btn"><i class="ti ti-camera-plus" aria-hidden="true"></i><span>Add image</span>
+      <input type="file" accept="image/*" multiple hidden onchange="onPickImages(this)"></label>`:''}
+  </div>
+  <div class="img-hint">Up to ${MAX_IMG_COUNT} images · max 2MB each · ${imgState.list.length}/${MAX_IMG_COUNT} used</div>`;
+}
+function onPickImages(input){
+  const files=Array.from(input.files||[]);
+  input.value='';
+  for(const f of files){
+    if(imgState.list.length>=MAX_IMG_COUNT){ alert('You can attach at most '+MAX_IMG_COUNT+' images.'); break; }
+    if(!/^image\//.test(f.type)){ alert('"'+f.name+'" is not an image file.'); continue; }
+    if(f.size>MAX_IMG_BYTES){ alert('"'+f.name+'" is '+(f.size/1048576).toFixed(1)+'MB — exceeds the 2MB limit.'); continue; }
+    imgState.list.push({kind:'new',file:f,name:f.name,url:URL.createObjectURL(f)});
+  }
+  renderImageUploader();
+}
+function removeUploadImage(i){
+  const im=imgState.list[i];
+  if(im&&im.kind==='new'&&im.url) URL.revokeObjectURL(im.url);
+  imgState.list.splice(i,1);
+  renderImageUploader();
+}
+function sanitizeImgName(n){ return String(n||'image').replace(/[^a-zA-Z0-9._-]/g,'_').slice(-60); }
+// Uploads new files, deletes removed existing ones, returns final images array [{path,name}]
+async function commitImages(scope){
+  const finalList=[];
+  for(const im of imgState.list){
+    if(im.kind==='existing'){ finalList.push({path:im.path,name:im.name}); continue; }
+    const path=`${scope}/${Date.now()}-${Math.random().toString(36).slice(2,8)}-${sanitizeImgName(im.name)}`;
+    const {error}=await sb.storage.from(ATTACH_BUCKET).upload(path,im.file,{contentType:im.file.type,upsert:false});
+    if(error) throw new Error('Image upload failed: '+(error.message||error));
+    finalList.push({path,name:im.name});
+  }
+  const kept=new Set(finalList.map(f=>f.path));
+  const removed=(imgState.original||[]).filter(im=>!kept.has(im.path)).map(im=>im.path);
+  if(removed.length){ try{ await sb.storage.from(ATTACH_BUCKET).remove(removed); }catch(e){ console.warn('Image cleanup failed',e); } }
+  return finalList;
+}
+function imagesDisplayHtml(images){
+  if(!Array.isArray(images)||!images.length) return '';
+  return '<div class="rec-images">'+images.map(im=>{
+    const url=imgPublicUrl(im.path);
+    return `<img src="${url}" alt="${esc(im.name||'')}" loading="lazy" onclick="openImageLightbox('${url.replace(/'/g,"\\'")}')">`;
+  }).join('')+'</div>';
+}
+function openImageLightbox(url){
+  if(!url) return;
+  const ov=document.createElement('div');
+  ov.className='img-lightbox';
+  ov.onclick=()=>ov.remove();
+  ov.innerHTML=`<img src="${url}" alt=""><button type="button" class="lb-close" title="Close"><i class="ti ti-x" aria-hidden="true"></i></button>`;
+  document.body.appendChild(ov);
+}
+
 function productTypeSummary(p){
   if(!p) return '';
   const t=PRODUCT_TYPE_MAP[p.productType];
@@ -953,6 +1067,7 @@ function recordCardHtml(r,opts={}){
       <span class="badge b-${pc}">${esc(PLATFORMS[r.platform]?.label||r.platform)}</span>
       ${catBadge}
       <span class="badge ${to.cls}">${esc(to.lbl)}</span>
+      ${r.sampleType&&NOTE_SAMPLE_TYPE_MAP[r.sampleType]?`<span class="badge b-cat">${esc(NOTE_SAMPLE_TYPE_MAP[r.sampleType].l)}</span>`:''}
       <span class="badge ${so.cls}">${so.lbl}</span>
       ${certBadge}
     </div>
@@ -965,6 +1080,7 @@ function recordCardHtml(r,opts={}){
       ${archiveMeta}
     </div>
     ${r.desc?`<div class="desc">${esc(r.desc)}</div>`:''}
+    ${imagesDisplayHtml(r.images)}
     <div class="rec-actions">
       <button class="ra" onclick="editRecord('${r.id}')"><i class="ti ti-edit" aria-hidden="true"></i> Edit</button>
       <button class="ra" onclick="cycleStatus('${r.id}')" title="Toggle status"><i class="ti ti-refresh" aria-hidden="true"></i> ${STATUS_NEXT_LBL[st]||''}</button>
@@ -1631,6 +1747,10 @@ function renderForm(r){
             <option value="test-tool" ${'test-tool'===(r.updateSubtype||'')?'selected':''}>Test Tool</option>
           </select>
         </div>
+        <div id="f-sample-wrap" style="display:${(r.type||'')==='note'?'block':'none'}">
+          <label for="f-sample">Sample Type</label>
+          <select id="f-sample">${noteSampleOpts(r.sampleType||'')}</select>
+        </div>
 
         <div class="ff">
           <label for="f-title">Title *</label>
@@ -1669,6 +1789,9 @@ function renderForm(r){
       </div>
 
 
+      <div class="sec-div"><hr><span>Screenshots</span><hr></div>
+      <div id="img-uploader"></div>
+
       <div class="form-actions">
         <button class="btn" onclick="cancelForm()">Cancel</button>
         <button class="btn primary" onclick="submitForm()">${editId?'Save Changes':'Add Record'}</button>
@@ -1685,6 +1808,7 @@ function renderForm(r){
     if(subSel) subSel.value=r.subCategory;
   }
   onTypeChange();
+  initImageUploader(r.images);
 }
 
 function onTypeChange(){
@@ -1693,13 +1817,15 @@ function onTypeChange(){
   if(fw) fw.style.display=(t==='issue'||t==='acqua-fw')?'block':'none';
   const sw=document.getElementById('f-subtype-wrap');
   if(sw) sw.style.display=(t==='update')?'block':'none';
+  const ss=document.getElementById('f-sample-wrap');
+  if(ss) ss.style.display=(t==='note')?'block':'none';
 }
 
-function submitForm(){
+async function submitForm(){
   const titleEl = document.getElementById('f-title');
   const title = titleEl ? titleEl.value : '';
   if(!title.trim()){alert('Please enter a title.');return;}
-  
+
   const plat = document.getElementById('f-plat').value;
   const category = (document.getElementById('f-cat')||{}).value||'';
   const subCategory = (document.getElementById('f-subcat')||{}).value||'';
@@ -1708,22 +1834,30 @@ function submitForm(){
   const catObj = cfg?.categories?.find(c=>c.v===category);
   if(catObj?.children?.length && !subCategory){alert('Please select a Function subcategory.');return;}
   const now = new Date().toISOString().slice(0,10);
-  
+  const type=document.getElementById('f-type').value;
+
+  const recId = editId || genId(plat);
+  let images;
+  try{ images = await commitImages('records/'+recId); }
+  catch(e){ alert(e.message||e); return; }
+
   const obj={
     platform:plat,
     category:category||'',
     subCategory:subCategory||'',
-    type:document.getElementById('f-type').value,
+    type,
     updateSubtype:(document.getElementById('f-subtype')||{}).value||'',
+    sampleType:type==='note'?((document.getElementById('f-sample')||{}).value||''):'',
     title:title.trim(),
     desc:document.getElementById('f-desc').value,
     assignee:(document.getElementById('f-who').value||'').trim()||getCurrentUser(),
     fwVersion:(document.getElementById('f-fw')||{}).value||'',
     deadline:document.getElementById('f-due').value,
     status:document.getElementById('f-stat').value,
+    images,
     updated:now
   };
-  
+
   if(editId){
     const i=records.findIndex(x=>x.id===editId);
     if(i>-1){
@@ -1731,12 +1865,12 @@ function submitForm(){
       applyStatusOnRecord(records[i], obj.status);
     }
   } else {
-    const nr={...obj,id:genId(plat),created:now};
+    const nr={...obj,id:recId,created:now};
     applyStatusOnRecord(nr, nr.status);
     records.push(nr);
   }
-  
-  save(); 
+
+  save();
   editId=null;
   document.getElementById('form-area').innerHTML='';
   render();
@@ -1963,6 +2097,7 @@ function renderProjectDetail(){
           ${l.reporter?`<span class="meta"><i class="ti ti-user" aria-hidden="true"></i>${esc(l.reporter)}</span>`:''}
         </div>
         ${l.summary?`<div class="log-summary">${esc(l.summary)}</div>`:''}
+        ${imagesDisplayHtml(l.images)}
         <div class="rec-actions">
           <button class="ra" onclick="event.stopPropagation();showLogForm('${l.id}')"><i class="ti ti-edit" aria-hidden="true"></i> Edit</button>
           <button class="ra danger" onclick="event.stopPropagation();delLog('${l.id}')"><i class="ti ti-trash" aria-hidden="true"></i> Delete</button>
@@ -2096,15 +2231,18 @@ function showLogForm(logId){
           <textarea id="lf-sum" placeholder="Summarize today's debug / test items, observations, pass/fail, changes from previous version...">${esc(l.summary||'')}</textarea>
         </div>
       </div>
+      <div class="sec-div"><hr><span>Screenshots</span><hr></div>
+      <div id="img-uploader"></div>
       <div class="form-actions">
         <button class="btn" onclick="cancelProjForm()">Cancel</button>
         <button class="btn primary" onclick="submitLog()">${editLogId?'Save Log':'Add Log'}</button>
       </div>
     </div>`;
+  initImageUploader(l.images);
   document.getElementById('proj-form-area').scrollIntoView({behavior:'smooth',block:'nearest'});
 }
 
-function submitLog(){
+async function submitLog(){
   const p=getProject(curProjectId);
   if(!p) return;
   const date=(document.getElementById('lf-date')||{}).value||'';
@@ -2116,6 +2254,10 @@ function submitLog(){
   if(!lab.trim()){alert('Please enter the lab name.');return;}
   if(!fw.trim()){alert('Please enter the FW version (required for certification traceability).');return;}
   if(!summary.trim()){alert('Please enter today\'s work summary.');return;}
+  const logId = editLogId || genLogId(p);
+  let images;
+  try{ images = await commitImages('logs/'+p.id+'/'+logId); }
+  catch(e){ alert(e.message||e); return; }
   const obj={
     date,
     phase,
@@ -2124,6 +2266,7 @@ function submitLog(){
     platform:(document.getElementById('lf-plat')||{}).value||'',
     reporter:((document.getElementById('lf-who')||{}).value||'').trim()||getCurrentUser(),
     summary:summary.trim(),
+    images,
     updated:todayISO()
   };
   if(!p.logs) p.logs=[];
@@ -2131,7 +2274,7 @@ function submitLog(){
     const i=p.logs.findIndex(x=>x.id===editLogId);
     if(i>-1) p.logs[i]={...p.logs[i],...obj};
   }else{
-    p.logs.push({...obj,id:genLogId(p),created:todayISO()});
+    p.logs.push({...obj,id:logId,created:todayISO()});
   }
   p.updated=todayISO();
   editLogId=null;
