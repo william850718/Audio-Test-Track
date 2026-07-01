@@ -396,6 +396,24 @@
         .img-add-btn:hover { border-color: #6366f1; color: #a5b4fc; }
         .img-add-btn i { font-size: 20px; }
         .img-hint { font-size: 12px; color: var(--text-secondary); margin-top: 8px; }
+        .db-panel { background: var(--bg-panel); border: 1px solid var(--border-color); border-radius: 12px; padding: 16px; margin-bottom: 14px; }
+        .db-cards { display: grid; grid-template-columns: repeat(4,1fr); gap: 10px; margin-bottom: 16px; }
+        .db-card { background: var(--bg-input); border: 1px solid var(--border-color); border-radius: 8px; padding: 12px; text-align: center; }
+        .db-n { font-size: 26px; font-weight: 700; color: var(--text-primary); line-height: 1.1; }
+        .db-cl { font-size: 12px; color: var(--text-secondary); margin-top: 4px; }
+        .db-charts { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .db-chart .db-title { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--text-secondary); margin-bottom: 10px; }
+        .db-bar-row { display: flex; align-items: center; gap: 8px; margin-bottom: 7px; font-size: 13px; }
+        .db-bar-lbl { width: 130px; flex-shrink: 0; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .db-bar-track { flex: 1; height: 12px; background: var(--bg-input); border: 1px solid var(--border-color); border-radius: 6px; overflow: hidden; }
+        .db-bar-fill { display: block; height: 100%; border-radius: 6px; min-width: 2px; transition: width .3s; }
+        .db-bar-val { width: 34px; text-align: right; color: var(--text-secondary); flex-shrink: 0; font-variant-numeric: tabular-nums; }
+        .db-empty { color: var(--text-secondary); font-size: 13px; }
+        .btn.active { border-color: #6366f1; color: #a5b4fc; }
+        @media (max-width: 720px){ .db-cards { grid-template-columns: repeat(2,1fr); } .db-charts { grid-template-columns: 1fr; } .db-bar-lbl { width: 96px; } }
+        .sample-checks { display: flex; flex-wrap: wrap; gap: 8px 16px; padding: 10px 12px; background: var(--bg-input); border: 1px solid var(--border-color); border-radius: 8px; }
+        .sample-chk { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text-primary); cursor: pointer; white-space: nowrap; }
+        .sample-chk input { width: 15px; height: 15px; accent-color: #6366f1; cursor: pointer; }
         .rec-images { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 8px; }
         .rec-images img { max-width: 100%; max-height: 360px; width: auto; height: auto; object-fit: contain; border-radius: 8px; border: 1px solid var(--border-color); background: #0b0f19; cursor: zoom-in; transition: border-color .12s; }
         .rec-images img:hover { border-color: #6366f1; }
@@ -492,6 +510,7 @@
 
     <div id="view-platform">
     <div class="stat-row" id="stats-row"></div>
+    <div id="dashboard" hidden></div>
 
     <div class="ptabs" id="ptabs">
       <button class="ptab p-all" data-p="all" onclick="switchP(this)"><i class="ti ti-layout-grid" style="font-size:12px" aria-hidden="true"></i> All Platforms</button>
@@ -532,7 +551,16 @@
         <option value="in-progress">In Progress</option>
         <option value="closed">Closed</option>
       </select>
+      <select id="q-sort" onchange="renderList()" title="Sort records">
+        <option value="created-desc">Sort: Newest</option>
+        <option value="created-asc">Sort: Oldest</option>
+        <option value="updated-desc">Sort: Recently updated</option>
+        <option value="due-asc">Sort: Due date</option>
+        <option value="title-asc">Sort: Title (A–Z)</option>
+        <option value="platform">Sort: Platform</option>
+      </select>
       <div class="tb-spacer"></div>
+      <button class="btn" id="dash-toggle" onclick="toggleDashboard()" title="Show / hide dashboard"><i class="ti ti-chart-bar" style="font-size:13px" aria-hidden="true"></i> Dashboard</button>
       <button class="btn" onclick="exportRecordsPDF()" title="Print / Save the current view as a PDF report"><i class="ti ti-file-type-pdf" style="font-size:13px" aria-hidden="true"></i> Export PDF</button>
       <button class="btn" onclick="exportRecordsCSV()" title="Export the current view to Excel (CSV)"><i class="ti ti-file-spreadsheet" style="font-size:13px" aria-hidden="true"></i> Export Excel</button>
       <button class="btn primary" onclick="showForm()"><i class="ti ti-plus" style="font-size:13px" aria-hidden="true"></i> Add Record</button>
@@ -803,10 +831,18 @@ const NOTE_SAMPLE_TYPES=[
   {v:'shared-deskphone',l:'Shared - Deskphone'}
 ];
 const NOTE_SAMPLE_TYPE_MAP=Object.fromEntries(NOTE_SAMPLE_TYPES.map(t=>[t.v,t]));
-function noteSampleOpts(sel){
-  return '<option value="">— Select sample type (optional) —</option>'+NOTE_SAMPLE_TYPES.map(t=>
-    `<option value="${t.v}" ${sel===t.v?'selected':''}>${t.l}</option>`
+function noteSampleChecks(selected){
+  const sel=new Set(selected||[]);
+  return NOTE_SAMPLE_TYPES.map(t=>
+    `<label class="sample-chk"><input type="checkbox" class="f-sample-cb" value="${t.v}" ${sel.has(t.v)?'checked':''}><span>${t.l}</span></label>`
   ).join('');
+}
+// Backward-compatible: new records use sampleTypes[] , old records used sampleType (string)
+function recordSampleValues(r){
+  return Array.isArray(r.sampleTypes)?r.sampleTypes:(r.sampleType?[r.sampleType]:[]);
+}
+function recordSampleLabels(r){
+  return recordSampleValues(r).map(v=>(NOTE_SAMPLE_TYPE_MAP[v]&&NOTE_SAMPLE_TYPE_MAP[v].l)||v).filter(Boolean);
 }
 
 /* ===== Image attachments (Supabase Storage) ===== */
@@ -1063,7 +1099,21 @@ function applyRecordFilters(list){
     d=d.filter(r=>r.category===qcat);
     if(qsub&&catHasChildren(curP,qcat)) d=d.filter(r=>r.subCategory===qsub);
   }
-  return d.sort((a,b)=>new Date(b.created)-new Date(a.created));
+  return sortRecords(d);
+}
+function sortRecords(list){
+  const s=(document.getElementById('q-sort')||{}).value||'created-desc';
+  const arr=[...list];
+  const t=v=>new Date(v||0).getTime()||0;
+  switch(s){
+    case 'created-asc': arr.sort((a,b)=>t(a.created)-t(b.created)); break;
+    case 'updated-desc': arr.sort((a,b)=>t(b.updated||b.created)-t(a.updated||a.created)); break;
+    case 'due-asc': arr.sort((a,b)=>{const x=a.deadline||'9999-12-31',y=b.deadline||'9999-12-31';return x<y?-1:x>y?1:0;}); break;
+    case 'title-asc': arr.sort((a,b)=>(a.title||'').localeCompare(b.title||'')); break;
+    case 'platform': arr.sort((a,b)=>(a.platform||'').localeCompare(b.platform||'')||t(b.created)-t(a.created)); break;
+    default: arr.sort((a,b)=>t(b.created)-t(a.created)); // created-desc
+  }
+  return arr;
 }
 function legacyTypeLabel(type){
   const map={update:'ACQUA FW Update',teststatus:'Test SEQ Update'};
@@ -1086,7 +1136,7 @@ function recordCardHtml(r,opts={}){
       <span class="badge b-${pc}">${esc(PLATFORMS[r.platform]?.label||r.platform)}</span>
       ${catBadge}
       <span class="badge ${to.cls}">${esc(to.lbl)}</span>
-      ${r.sampleType&&NOTE_SAMPLE_TYPE_MAP[r.sampleType]?`<span class="badge b-cat">${esc(NOTE_SAMPLE_TYPE_MAP[r.sampleType].l)}</span>`:''}
+      ${recordSampleLabels(r).map(l=>`<span class="badge b-cat">${esc(l)}</span>`).join('')}
       <span class="badge ${so.cls}">${so.lbl}</span>
       ${certBadge}
     </div>
@@ -1440,7 +1490,7 @@ function exportRecordsCSV(){
       PLATFORMS[r.platform]?.label||r.platform||'',
       catDisplay(r),
       recordTypeLabel(r),
-      (r.type==='note'&&NOTE_SAMPLE_TYPE_MAP[r.sampleType])?NOTE_SAMPLE_TYPE_MAP[r.sampleType].l:'',
+      r.type==='note'?recordSampleLabels(r).join('; '):'',
       r.title||'',
       r.desc||'',
       r.assignee||'',
@@ -1503,7 +1553,8 @@ function exportRecordsPDF(){
   if(!list.length){ alert('No records to export in the current view.'); return; }
   const scope=curP==='all'?'All Platforms':(PLATFORMS[curP]?.label||curP);
   const rows=list.map(r=>{
-    const sample=(r.type==='note'&&NOTE_SAMPLE_TYPE_MAP[r.sampleType])?` · ${esc(NOTE_SAMPLE_TYPE_MAP[r.sampleType].l)}`:'';
+    const sampleLbls=r.type==='note'?recordSampleLabels(r):[];
+    const sample=sampleLbls.length?` · ${esc(sampleLbls.join(', '))}`:'';
     const metaBits=[r.assignee&&('Assignee: '+esc(r.assignee)),r.fwVersion&&('FW: '+esc(r.fwVersion)),r.deadline&&('Due: '+esc(r.deadline)),r.updatedBy&&('Edited by: '+esc(r.updatedBy))].filter(Boolean).join(' · ');
     return `<tr>
       <td class="nowrap">${esc(r.id)}</td>
@@ -1941,8 +1992,57 @@ function renderClosedArchive(){
 }
 
 function render(){
-  if(viewMode==='platform'){renderStats();renderList();}
+  if(viewMode==='platform'){renderStats();renderDashboard();renderList();}
   else renderProjectView();
+}
+
+let showDashboard=(localStorage.getItem('aclab_dashboard')==='1');
+function toggleDashboard(){
+  showDashboard=!showDashboard;
+  try{localStorage.setItem('aclab_dashboard',showDashboard?'1':'0');}catch(e){}
+  renderDashboard();
+}
+function closeDaysOf(r){
+  const end=r.closedAt||r.updated;
+  if(!r.created||!end) return null;
+  const d=Math.round((new Date(end)-new Date(r.created))/86400000);
+  return d>=0?d:null;
+}
+function dashBars(items,color){
+  const max=Math.max(1,...items.map(i=>i.count));
+  return items.map(i=>`<div class="db-bar-row">
+    <span class="db-bar-lbl" title="${esc(i.label)}">${esc(i.label)}</span>
+    <span class="db-bar-track"><span class="db-bar-fill" style="width:${i.count/max*100}%;background:${color}"></span></span>
+    <span class="db-bar-val">${i.count}</span>
+  </div>`).join('');
+}
+function renderDashboard(){
+  const el=document.getElementById('dashboard');
+  const btn=document.getElementById('dash-toggle');
+  if(btn) btn.classList.toggle('active',showDashboard);
+  if(!el) return;
+  if(!showDashboard){ el.hidden=true; el.innerHTML=''; return; }
+  el.hidden=false;
+  const base=curP==='all'?records:records.filter(r=>r.platform===curP);
+  const total=base.length;
+  const active=base.filter(r=>recordStatus(r)!=='closed').length;
+  const closed=base.filter(r=>recordStatus(r)==='closed');
+  const cds=closed.map(closeDaysOf).filter(v=>v!=null);
+  const avgClose=cds.length?Math.round(cds.reduce((a,b)=>a+b,0)/cds.length):null;
+  const byPlatform=PLAT_NAMES.map(p=>({label:PLATFORMS[p].label,count:records.filter(r=>r.platform===p).length})).filter(i=>i.count>0);
+  const byType=TYPES_AUDIO.map(t=>({label:t.lbl,count:base.filter(r=>r.type===t.v).length})).filter(i=>i.count>0);
+  el.innerHTML=`<div class="db-panel">
+    <div class="db-cards">
+      <div class="db-card"><div class="db-n">${total}</div><div class="db-cl">Total</div></div>
+      <div class="db-card"><div class="db-n" style="color:#60a5fa">${active}</div><div class="db-cl">In Progress</div></div>
+      <div class="db-card"><div class="db-n" style="color:#34d399">${closed.length}</div><div class="db-cl">Closed</div></div>
+      <div class="db-card"><div class="db-n" style="color:#fbbf24">${avgClose==null?'—':avgClose}</div><div class="db-cl">Avg days to close</div></div>
+    </div>
+    <div class="db-charts">
+      ${curP==='all'?`<div class="db-chart"><div class="db-title">By Platform</div>${byPlatform.length?dashBars(byPlatform,'#6366f1'):'<div class="db-empty">No data</div>'}</div>`:''}
+      <div class="db-chart"><div class="db-title">By Record Type</div>${byType.length?dashBars(byType,'#0ea5e9'):'<div class="db-empty">No data</div>'}</div>
+    </div>
+  </div>`;
 }
 
 function showForm(){
@@ -2046,8 +2146,8 @@ function renderForm(r){
           </select>
         </div>
         <div id="f-sample-wrap" style="display:${(r.type||'')==='note'?'block':'none'}">
-          <label for="f-sample">Sample Type</label>
-          <select id="f-sample">${noteSampleOpts(r.sampleType||'')}</select>
+          <label>Sample Type <span style="color:var(--text-secondary);font-weight:400">(select one or more)</span></label>
+          <div class="sample-checks">${noteSampleChecks(recordSampleValues(r))}</div>
         </div>
 
         <div class="ff">
@@ -2145,7 +2245,8 @@ async function submitForm(){
     subCategory:subCategory||'',
     type,
     updateSubtype:(document.getElementById('f-subtype')||{}).value||'',
-    sampleType:type==='note'?((document.getElementById('f-sample')||{}).value||''):'',
+    sampleTypes:type==='note'?Array.from(document.querySelectorAll('.f-sample-cb:checked')).map(c=>c.value):[],
+    sampleType:'',
     title:title.trim(),
     desc:document.getElementById('f-desc').value,
     assignee:(document.getElementById('f-who').value||'').trim()||getCurrentUser(),
