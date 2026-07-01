@@ -396,9 +396,9 @@
         .img-add-btn:hover { border-color: #6366f1; color: #a5b4fc; }
         .img-add-btn i { font-size: 20px; }
         .img-hint { font-size: 12px; color: var(--text-secondary); margin-top: 8px; }
-        .rec-images { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
-        .rec-images img { width: 72px; height: 72px; object-fit: cover; border-radius: 6px; border: 1px solid var(--border-color); cursor: pointer; transition: transform .12s; }
-        .rec-images img:hover { transform: scale(1.04); border-color: #6366f1; }
+        .rec-images { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 8px; }
+        .rec-images img { max-width: 100%; max-height: 360px; width: auto; height: auto; object-fit: contain; border-radius: 8px; border: 1px solid var(--border-color); background: #0b0f19; cursor: zoom-in; transition: border-color .12s; }
+        .rec-images img:hover { border-color: #6366f1; }
         .img-lightbox { position: fixed; inset: 0; z-index: 10000; background: rgba(0,0,0,.85); display: flex; align-items: center; justify-content: center; padding: 24px; cursor: zoom-out; }
         .img-lightbox img { max-width: 95%; max-height: 95%; border-radius: 8px; box-shadow: 0 10px 40px rgba(0,0,0,.6); }
         .img-lightbox .lb-close { position: fixed; top: 18px; right: 22px; width: 40px; height: 40px; border: none; border-radius: 50%; background: rgba(255,255,255,.12); color: #fff; font-size: 20px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
@@ -533,6 +533,8 @@
         <option value="closed">Closed</option>
       </select>
       <div class="tb-spacer"></div>
+      <button class="btn" onclick="exportRecordsPDF()" title="Print / Save the current view as a PDF report"><i class="ti ti-file-type-pdf" style="font-size:13px" aria-hidden="true"></i> Export PDF</button>
+      <button class="btn" onclick="exportRecordsCSV()" title="Export the current view to Excel (CSV)"><i class="ti ti-file-spreadsheet" style="font-size:13px" aria-hidden="true"></i> Export Excel</button>
       <button class="btn primary" onclick="showForm()"><i class="ti ti-plus" style="font-size:13px" aria-hidden="true"></i> Add Record</button>
     </div>
 
@@ -556,6 +558,8 @@
           <div class="tb-spacer"></div>
           <button type="button" class="btn" onclick="showProjectForm(curProjectId)"><i class="ti ti-edit" aria-hidden="true"></i> Edit Project</button>
           <button type="button" class="btn primary" onclick="showLogForm()"><i class="ti ti-calendar-plus" aria-hidden="true"></i> New Daily Log</button>
+          <button type="button" class="btn" onclick="exportProjectPDF()" title="Print / Save as PDF report"><i class="ti ti-file-type-pdf" aria-hidden="true"></i> Export PDF</button>
+          <button type="button" class="btn" onclick="exportProjectCSV()" title="Export logs to Excel (CSV)"><i class="ti ti-file-spreadsheet" aria-hidden="true"></i> Export Excel</button>
           <button type="button" class="btn" style="color:#f87171" onclick="delProject()"><i class="ti ti-trash" aria-hidden="true"></i> Delete Project</button>
         </div>
       </div>
@@ -807,16 +811,25 @@ function noteSampleOpts(sel){
 
 /* ===== Image attachments (Supabase Storage) ===== */
 const ATTACH_BUCKET='attachments';
-const MAX_IMG_BYTES=2*1024*1024;   // 2MB per file
+const TOTAL_IMG_BYTES=5*1024*1024; // 5MB total across all images in one record / log
 const MAX_IMG_COUNT=5;             // up to 5 images per record / log
 function imgPublicUrl(path){
   try{ return sb.storage.from(ATTACH_BUCKET).getPublicUrl(path).data.publicUrl; }catch(e){ return ''; }
 }
-// imgState.list items: {kind:'existing',path,name} | {kind:'new',file,name,url(objectURL)}
+// Delete a set of images {path} from Storage (best-effort; used when a record/log is removed)
+async function deleteStoredImages(images){
+  const paths=(images||[]).map(im=>im&&im.path).filter(Boolean);
+  if(!paths.length) return;
+  try{ await sb.storage.from(ATTACH_BUCKET).remove(paths); }catch(e){ console.warn('Image cleanup failed',e); }
+}
+function imgItemBytes(im){ return im.kind==='new'?(im.file?.size||0):(im.size||0); }
+function currentImgBytes(){ return imgState.list.reduce((s,im)=>s+imgItemBytes(im),0); }
+function fmtMB(b){ return (b/1048576).toFixed(2)+'MB'; }
+// imgState.list items: {kind:'existing',path,name,size} | {kind:'new',file,name,url(objectURL)}
 let imgState={list:[],original:[]};
 function initImageUploader(existing){
   const arr=Array.isArray(existing)?existing:[];
-  imgState={list:arr.map(im=>({kind:'existing',path:im.path,name:im.name||'image'})),original:arr.slice()};
+  imgState={list:arr.map(im=>({kind:'existing',path:im.path,name:im.name||'image',size:im.size||0})),original:arr.slice()};
   renderImageUploader();
 }
 function renderImageUploader(){
@@ -834,7 +847,7 @@ function renderImageUploader(){
     ${canAdd?`<label class="img-add-btn"><i class="ti ti-camera-plus" aria-hidden="true"></i><span>Add image</span>
       <input type="file" accept="image/*" multiple hidden onchange="onPickImages(this)"></label>`:''}
   </div>
-  <div class="img-hint">Up to ${MAX_IMG_COUNT} images · max 2MB each · ${imgState.list.length}/${MAX_IMG_COUNT} used</div>`;
+  <div class="img-hint">Up to ${MAX_IMG_COUNT} images · ${fmtMB(currentImgBytes())} / ${fmtMB(TOTAL_IMG_BYTES)} total used</div>`;
 }
 function onPickImages(input){
   const files=Array.from(input.files||[]);
@@ -842,8 +855,11 @@ function onPickImages(input){
   for(const f of files){
     if(imgState.list.length>=MAX_IMG_COUNT){ alert('You can attach at most '+MAX_IMG_COUNT+' images.'); break; }
     if(!/^image\//.test(f.type)){ alert('"'+f.name+'" is not an image file.'); continue; }
-    if(f.size>MAX_IMG_BYTES){ alert('"'+f.name+'" is '+(f.size/1048576).toFixed(1)+'MB — exceeds the 2MB limit.'); continue; }
-    imgState.list.push({kind:'new',file:f,name:f.name,url:URL.createObjectURL(f)});
+    if(currentImgBytes()+f.size>TOTAL_IMG_BYTES){
+      alert('"'+f.name+'" ('+fmtMB(f.size)+') would exceed the '+fmtMB(TOTAL_IMG_BYTES)+' total limit.\nCurrently used: '+fmtMB(currentImgBytes())+' / '+fmtMB(TOTAL_IMG_BYTES)+'.');
+      continue;
+    }
+    imgState.list.push({kind:'new',file:f,name:f.name,size:f.size,url:URL.createObjectURL(f)});
   }
   renderImageUploader();
 }
@@ -858,11 +874,11 @@ function sanitizeImgName(n){ return String(n||'image').replace(/[^a-zA-Z0-9._-]/
 async function commitImages(scope){
   const finalList=[];
   for(const im of imgState.list){
-    if(im.kind==='existing'){ finalList.push({path:im.path,name:im.name}); continue; }
+    if(im.kind==='existing'){ finalList.push({path:im.path,name:im.name,size:im.size||0}); continue; }
     const path=`${scope}/${Date.now()}-${Math.random().toString(36).slice(2,8)}-${sanitizeImgName(im.name)}`;
     const {error}=await sb.storage.from(ATTACH_BUCKET).upload(path,im.file,{contentType:im.file.type,upsert:false});
     if(error) throw new Error('Image upload failed: '+(error.message||error));
-    finalList.push({path,name:im.name});
+    finalList.push({path,name:im.name,size:im.file.size});
   }
   const kept=new Set(finalList.map(f=>f.path));
   const removed=(imgState.original||[]).filter(im=>!kept.has(im.path)).map(im=>im.path);
@@ -1022,13 +1038,16 @@ function applyStatusOnRecord(r,status){
   }
 }
 function purgeExpiredClosedRecords(){
-  const before=records.length;
-  records=records.filter(r=>{
-    if(recordStatus(r)!=='closed') return true;
-    const closedAt=r.closedAt||r.updated||r.created;
-    return daysSince(closedAt)<CLOSED_RETENTION_DAYS;
+  const keep=[], removed=[];
+  records.forEach(r=>{
+    if(recordStatus(r)==='closed'){
+      const closedAt=r.closedAt||r.updated||r.created;
+      if(daysSince(closedAt)>=CLOSED_RETENTION_DAYS){ removed.push(r); return; }
+    }
+    keep.push(r);
   });
-  return before!==records.length;
+  records=keep;
+  return removed; // array of expired records that were removed
 }
 function applyRecordFilters(list){
   let d=[...list];
@@ -1077,6 +1096,7 @@ function recordCardHtml(r,opts={}){
       ${r.fwVersion?`<span class="meta"><i class="ti ti-cpu" aria-hidden="true"></i>FW ${esc(r.fwVersion)}</span>`:''}
       ${r.deadline?`<span class="meta"><i class="ti ti-calendar" aria-hidden="true"></i>${esc(r.deadline)}</span>`:''}
       <span class="meta"><i class="ti ti-clock" aria-hidden="true"></i>${esc(r.created)}</span>
+      ${r.updatedBy?`<span class="meta" title="Last edited by"><i class="ti ti-pencil" aria-hidden="true"></i>${esc(r.updatedBy)}</span>`:''}
       ${archiveMeta}
     </div>
     ${r.desc?`<div class="desc">${esc(r.desc)}</div>`:''}
@@ -1185,42 +1205,165 @@ function setSyncStatus(state,msg){
   const map={loading:'Syncing…',saving:'Saving…',ok:'Synced',err:'Sync failed',offline:'Local backup only'};
   el.textContent=msg||(map[state]||'—');
 }
-async function cloudLoad(){
-  const {data,error}=await sb.from('app_snapshot').select('records,projects').eq('id','main').maybeSingle();
+function nowISO(){return new Date().toISOString();}
+function bumpId(id){
+  const m=String(id||'').match(/^(.*?)(\d+)\s*$/);
+  if(!m) return id+'-2';
+  return m[1]+String(parseInt(m[2],10)+1).padStart(m[2].length,'0');
+}
+
+/* ---- Per-row cloud persistence (records / projects / logs) ---- */
+async function saveRecordRow(r,isNew){
+  r.updated=todayISO(); r.updatedBy=getCurrentUser();
+  const row=()=>({id:r.id,data:r,updated_at:nowISO(),updated_by:r.updatedBy});
+  if(isNew){
+    for(let t=0;t<30;t++){
+      const {error}=await sb.from('records').insert(row());
+      if(!error) return;
+      if(error.code==='23505'){ r.id=bumpId(r.id); continue; } // ID taken -> next number
+      throw error;
+    }
+    throw new Error('Could not allocate a unique record ID.');
+  }
+  const {error}=await sb.from('records').upsert(row());
   if(error) throw error;
-  if(data){
-    records=migrateRecords(data.records||[]);
-    projects=data.projects||[];
-  }else{
-    records=[]; projects=[];
-    const {error:e2}=await sb.from('app_snapshot').upsert({id:'main',records:[],projects:[]});
-    if(e2) throw e2;
+}
+async function removeRecordRow(id){
+  const {error}=await sb.from('records').delete().eq('id',id);
+  if(error) throw error;
+}
+async function saveProjectRow(p,isNew){
+  p.updated=todayISO(); p.updatedBy=getCurrentUser();
+  const row=()=>{ const {logs,...pd}=p; return {id:p.id,data:pd,updated_at:nowISO(),updated_by:p.updatedBy}; };
+  if(isNew){
+    for(let t=0;t<30;t++){
+      const {error}=await sb.from('projects').insert(row());
+      if(!error) return;
+      if(error.code==='23505'){ p.id=bumpId(p.id); continue; }
+      throw error;
+    }
+    throw new Error('Could not allocate a unique project ID.');
+  }
+  const {error}=await sb.from('projects').upsert(row());
+  if(error) throw error;
+}
+async function removeProjectRow(id){
+  const {error}=await sb.from('projects').delete().eq('id',id); // logs cascade-delete in DB
+  if(error) throw error;
+}
+async function saveLogRow(projId,l,isNew){
+  l.updated=todayISO(); l.updatedBy=getCurrentUser();
+  const row=()=>({project_id:projId,id:l.id,data:l,updated_at:nowISO(),updated_by:l.updatedBy});
+  if(isNew){
+    for(let t=0;t<30;t++){
+      const {error}=await sb.from('logs').insert(row());
+      if(!error) return;
+      if(error.code==='23505'){ l.id=bumpId(l.id); continue; }
+      throw error;
+    }
+    throw new Error('Could not allocate a unique log ID.');
+  }
+  const {error}=await sb.from('logs').upsert(row());
+  if(error) throw error;
+}
+async function removeLogRow(projId,id){
+  const {error}=await sb.from('logs').delete().eq('project_id',projId).eq('id',id);
+  if(error) throw error;
+}
+// Bulk upsert everything (used by import + one-time migration)
+async function persistAll(){
+  if(records.length){
+    const rows=records.map(r=>({id:r.id,data:r,updated_at:nowISO(),updated_by:r.updatedBy||getCurrentUser()}));
+    const {error}=await sb.from('records').upsert(rows); if(error) throw error;
+  }
+  if(projects.length){
+    const prows=projects.map(p=>{const {logs,...pd}=p; return {id:p.id,data:pd,updated_at:nowISO(),updated_by:p.updatedBy||getCurrentUser()};});
+    const {error}=await sb.from('projects').upsert(prows); if(error) throw error;
+    const lrows=[];
+    projects.forEach(p=>(p.logs||[]).forEach(l=>lrows.push({project_id:p.id,id:l.id,data:l,updated_at:nowISO(),updated_by:l.updatedBy||getCurrentUser()})));
+    if(lrows.length){ const {error:le}=await sb.from('logs').upsert(lrows); if(le) throw le; }
   }
   localBackup();
 }
-async function cloudSave(){
-  const {error}=await sb.from('app_snapshot').upsert({
-    id:'main',
-    records,
-    projects,
-    updated_at:new Date().toISOString()
-  });
-  if(error) throw error;
+async function replaceAllData(){
+  await sb.from('logs').delete().neq('project_id',' ');
+  await sb.from('records').delete().neq('id',' ');
+  await sb.from('projects').delete().neq('id',' ');
+  await persistAll();
+}
+
+// One-time migration: split the old single-row snapshot into the new tables
+async function maybeMigrateSnapshot(){
+  const [{count:rc},{count:pc}]=await Promise.all([
+    sb.from('records').select('id',{count:'exact',head:true}),
+    sb.from('projects').select('id',{count:'exact',head:true})
+  ]).then(a=>a.map(x=>({count:x.count||0})));
+  if(rc>0||pc>0) return; // already has normalized data
+  const {data}=await sb.from('app_snapshot').select('records,projects').eq('id','main').maybeSingle();
+  if(!data) return;
+  const oldRecords=migrateRecords(data.records||[]);
+  const oldProjects=data.projects||[];
+  if(!oldRecords.length&&!oldProjects.length) return;
+  setSyncStatus('loading','Migrating data…');
+  if(oldRecords.length){
+    const rows=oldRecords.map(r=>({id:r.id,data:r,updated_at:nowISO(),updated_by:null}));
+    const {error}=await sb.from('records').upsert(rows); if(error) throw error;
+  }
+  if(oldProjects.length){
+    const prows=oldProjects.map(p=>{const {logs,...pd}=p; return {id:p.id,data:pd,updated_at:nowISO(),updated_by:null};});
+    const {error}=await sb.from('projects').upsert(prows); if(error) throw error;
+    const lrows=[];
+    oldProjects.forEach(p=>(p.logs||[]).forEach(l=>lrows.push({project_id:p.id,id:l.id,data:l,updated_at:nowISO(),updated_by:null})));
+    if(lrows.length){ const {error:le}=await sb.from('logs').upsert(lrows); if(le) throw le; }
+  }
+}
+
+async function cloudLoad(){
+  await maybeMigrateSnapshot();
+  const [recRes,projRes,logRes]=await Promise.all([
+    sb.from('records').select('id,data,updated_by'),
+    sb.from('projects').select('id,data,updated_by'),
+    sb.from('logs').select('project_id,id,data,updated_by')
+  ]);
+  if(recRes.error) throw recRes.error;
+  if(projRes.error) throw projRes.error;
+  if(logRes.error) throw logRes.error;
+  records=migrateRecords((recRes.data||[]).map(row=>({...row.data,id:row.id,updatedBy:row.updated_by})));
+  const logsByProj={};
+  (logRes.data||[]).forEach(row=>{(logsByProj[row.project_id]=logsByProj[row.project_id]||[]).push({...row.data,id:row.id,updatedBy:row.updated_by});});
+  projects=(projRes.data||[]).map(row=>({...row.data,id:row.id,updatedBy:row.updated_by,logs:logsByProj[row.id]||[]}));
   localBackup();
 }
+
+// Wrap an in-memory mutation's cloud write: local backup always, cloud best-effort
+async function afterMutation(writeFn){
+  localBackup();
+  try{
+    setSyncStatus('saving');
+    if(sb&&(await sb.auth.getSession()).data.session){ await writeFn(); }
+    localBackup();
+    setSyncStatus('ok');
+  }catch(e){
+    console.error(e);
+    setSyncStatus('err','Saved locally, cloud failed');
+  }
+}
+
 async function load(){
   try{
     setSyncStatus('loading');
     await cloudLoad();
-    if(purgeExpiredClosedRecords()) await cloudSave();
+    const expired=purgeExpiredClosedRecords();
+    if(expired.length){ try{ for(const r of expired){ await removeRecordRow(r.id); await deleteStoredImages(r.images); } }catch(e){ console.warn(e); } }
     setSyncStatus('ok');
+    startRealtime();
   }catch(e){
     console.error(e);
     const local=localStorage.getItem(STORAGE_KEY);
     if(local){
       const s=parseStore(local);
       records=s.records; projects=s.projects;
-      if(purgeExpiredClosedRecords()) localBackup();
+      if(purgeExpiredClosedRecords().length) localBackup();
       setSyncStatus('offline','Offline: loaded local backup');
     }else{
       records=[]; projects=[];
@@ -1231,16 +1374,29 @@ async function load(){
   fillTypeFilter();
   render();
 }
-async function save(){
-  localBackup();
-  try{
-    setSyncStatus('saving');
-    if(sb&&(await sb.auth.getSession()).data.session) await cloudSave();
-    setSyncStatus('ok');
-  }catch(e){
-    console.error(e);
-    setSyncStatus('err','Saved locally, cloud failed');
-  }
+
+/* ---- Realtime: refresh when any user changes a row ---- */
+let _rtChannel=null, _rtTimer=null;
+function startRealtime(){
+  if(_rtChannel||!sb) return;
+  const bump=()=>{
+    clearTimeout(_rtTimer);
+    _rtTimer=setTimeout(async()=>{
+      try{
+        await cloudLoad();
+        if(viewMode==='project') renderProjectView(); else { fillCatFilter(); fillTypeFilter(); render(); }
+        setSyncStatus('ok');
+      }catch(e){ console.error(e); }
+    },600);
+  };
+  _rtChannel=sb.channel('aclab-sync')
+    .on('postgres_changes',{event:'*',schema:'public',table:'records'},bump)
+    .on('postgres_changes',{event:'*',schema:'public',table:'projects'},bump)
+    .on('postgres_changes',{event:'*',schema:'public',table:'logs'},bump)
+    .subscribe();
+}
+function stopRealtime(){
+  if(_rtChannel){ try{ sb.removeChannel(_rtChannel); }catch(e){} _rtChannel=null; }
 }
 function exportBackup(){
   const name='aclab-backup-'+todayISO()+'.json';
@@ -1251,6 +1407,146 @@ function exportBackup(){
   a.click();
   URL.revokeObjectURL(a.href);
 }
+
+/* ===== Excel (CSV) / PDF export ===== */
+function csvCell(v){
+  const s=(v==null?'':String(v));
+  return /[",\n\r]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s;
+}
+function csvRow(arr){ return arr.map(csvCell).join(','); }
+function downloadTextFile(name,content,mime){
+  const blob=new Blob(['﻿'+content],{type:(mime||'text/plain')+';charset=utf-8'}); // BOM => Excel reads UTF-8
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob); a.download=name; a.click();
+  setTimeout(()=>URL.revokeObjectURL(a.href),1000);
+}
+function recordTypeLabel(r){
+  const to=TYPE_MAP[r.type]||TYPES_ALT_MAP[r.type]||TYPES_AUDIO_MAP[r.type];
+  return to?to.lbl:legacyTypeLabel(r.type);
+}
+// Records currently matching the platform tab + filters (all statuses)
+function recordsForExport(){
+  const base=curP==='all'?records:records.filter(r=>r.platform===curP);
+  return applyRecordFilters(base);
+}
+function exportRecordsCSV(){
+  const list=recordsForExport();
+  if(!list.length){ alert('No records to export in the current view.'); return; }
+  const head=['ID','Platform','Category','Record Type','Sample Type','Title','Details','Assignee','FW Version','Due Date','Status','Created','Updated','Last Edited By','Images'];
+  const lines=[csvRow(head)];
+  list.forEach(r=>{
+    lines.push(csvRow([
+      r.id,
+      PLATFORMS[r.platform]?.label||r.platform||'',
+      catDisplay(r),
+      recordTypeLabel(r),
+      (r.type==='note'&&NOTE_SAMPLE_TYPE_MAP[r.sampleType])?NOTE_SAMPLE_TYPE_MAP[r.sampleType].l:'',
+      r.title||'',
+      r.desc||'',
+      r.assignee||'',
+      r.fwVersion||'',
+      r.deadline||'',
+      (STATUS_MAP[recordStatus(r)]||{}).lbl||recordStatus(r),
+      r.created||'',
+      r.updated||'',
+      r.updatedBy||'',
+      (r.images||[]).length
+    ]));
+  });
+  const scope=curP==='all'?'all':curP.replace(/\s+/g,'-');
+  downloadTextFile('aclab-records-'+scope+'-'+todayISO()+'.csv',lines.join('\r\n'),'text/csv');
+}
+function exportProjectCSV(id){
+  const p=getProject(id||curProjectId); if(!p) return;
+  const logs=sortedLogs(p.logs);
+  const head=['Date','Phase','Lab','FW Version','Platform','Reported By','Summary','Images','Last Edited By'];
+  const lines=[csvRow(head)];
+  logs.forEach(l=>{
+    lines.push(csvRow([
+      l.date||'',
+      (PHASE_MAP[l.phase]||{}).lbl||l.phase||'',
+      l.lab||'',
+      l.fwVersion||'',
+      l.platform?(PLATFORMS[l.platform]?.label||l.platform):'',
+      l.reporter||'',
+      l.summary||'',
+      (l.images||[]).length,
+      l.updatedBy||''
+    ]));
+  });
+  downloadTextFile('aclab-'+(p.name||'project').replace(/[^a-zA-Z0-9._-]/g,'_')+'-logs-'+todayISO()+'.csv',lines.join('\r\n'),'text/csv');
+}
+function imagesReportHtml(images){
+  if(!Array.isArray(images)||!images.length) return '';
+  return '<div class="imgs">'+images.map(im=>`<img src="${imgPublicUrl(im.path)}" alt="">`).join('')+'</div>';
+}
+function openPrintReport(title,bodyHtml,footHtml){
+  const html=`<!doctype html><html><head><meta charset="utf-8"><title>${esc(title)}</title>
+  <style>
+    *{box-sizing:border-box} body{font-family:Segoe UI,Arial,"Microsoft JhengHei",sans-serif;color:#111;margin:28px;font-size:12px}
+    h1{font-size:20px;margin:0 0 4px} .meta{color:#444;font-size:12px;margin-bottom:6px}
+    .notes{margin:6px 0 12px;color:#333}
+    table{border-collapse:collapse;width:100%;margin-top:10px} th,td{border:1px solid #bbb;padding:6px 8px;vertical-align:top;text-align:left}
+    th{background:#f0f2f5;font-size:11px;text-transform:uppercase;letter-spacing:.03em}
+    .nowrap{white-space:nowrap} .sub{color:#666;font-size:11px} .imgs{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+    .imgs img{max-width:180px;max-height:130px;border:1px solid #ccc;border-radius:4px}
+    .foot{margin-top:16px;color:#888;font-size:11px} tr{break-inside:avoid}
+    @media print{body{margin:12mm}}
+  </style></head><body>${bodyHtml}<div class="foot">${footHtml||''}</div></body></html>`;
+  const w=window.open('','_blank');
+  if(!w){ alert('Please allow pop-ups for this site to export the PDF report.'); return; }
+  w.document.open(); w.document.write(html); w.document.close();
+  w.onload=()=>{ setTimeout(()=>{ try{ w.focus(); w.print(); }catch(e){} },400); };
+}
+function exportRecordsPDF(){
+  const list=recordsForExport();
+  if(!list.length){ alert('No records to export in the current view.'); return; }
+  const scope=curP==='all'?'All Platforms':(PLATFORMS[curP]?.label||curP);
+  const rows=list.map(r=>{
+    const sample=(r.type==='note'&&NOTE_SAMPLE_TYPE_MAP[r.sampleType])?` · ${esc(NOTE_SAMPLE_TYPE_MAP[r.sampleType].l)}`:'';
+    const metaBits=[r.assignee&&('Assignee: '+esc(r.assignee)),r.fwVersion&&('FW: '+esc(r.fwVersion)),r.deadline&&('Due: '+esc(r.deadline)),r.updatedBy&&('Edited by: '+esc(r.updatedBy))].filter(Boolean).join(' · ');
+    return `<tr>
+      <td class="nowrap">${esc(r.id)}</td>
+      <td class="nowrap">${esc(PLATFORMS[r.platform]?.label||r.platform||'')}</td>
+      <td>${esc(catDisplay(r))}</td>
+      <td class="nowrap">${esc(recordTypeLabel(r))}${sample}</td>
+      <td><strong>${esc(r.title||'(Untitled)')}</strong>${r.desc?`<div>${esc(r.desc).replace(/\n/g,'<br>')}</div>`:''}${metaBits?`<div class="sub">${metaBits}</div>`:''}${imagesReportHtml(r.images)}</td>
+      <td class="nowrap">${esc((STATUS_MAP[recordStatus(r)]||{}).lbl||recordStatus(r))}</td>
+    </tr>`;
+  }).join('');
+  const body=`<h1>Platform Tracking Report</h1>
+    <div class="meta">Scope: ${esc(scope)} &nbsp;·&nbsp; ${list.length} record(s)</div>
+    <table><thead><tr><th>ID</th><th>Platform</th><th>Category</th><th>Type</th><th>Title / Details</th><th>Status</th></tr></thead><tbody>${rows}</tbody></table>`;
+  openPrintReport('Platform Tracking Report',body,`Generated ${new Date().toLocaleString()} · ${list.length} record(s) · AudioTracker`);
+}
+function exportProjectPDF(id){
+  const p=getProject(id||curProjectId); if(!p) return;
+  const logs=sortedLogs(p.logs);
+  const fwHist=[...new Set(logs.map(l=>l.fwVersion).filter(Boolean))].join(' → ');
+  const rows=logs.map(l=>`<tr>
+    <td class="nowrap">${esc(fmtDateShort(l.date))}</td>
+    <td class="nowrap">${esc((PHASE_MAP[l.phase]||{}).lbl||l.phase||'')}</td>
+    <td>${esc(l.lab||'')}</td>
+    <td class="nowrap">${esc(l.fwVersion||'')}</td>
+    <td>${esc(l.platform?(PLATFORMS[l.platform]?.label||l.platform):'')}</td>
+    <td>${esc(l.reporter||'')}</td>
+    <td>${esc(l.summary||'').replace(/\n/g,'<br>')}${imagesReportHtml(l.images)}</td>
+  </tr>`).join('')||'<tr><td colspan="7" style="text-align:center;color:#888">No logs</td></tr>';
+  const meta=[
+    productTypeSummary(p)?'Product: '+esc(productTypeSummary(p)):'',
+    p.customer?'Customer: '+esc(p.customer):'',
+    'Created: '+esc(p.created||''),
+    fwHist?'FW History: '+esc(fwHist):''
+  ].filter(Boolean).join(' &nbsp;·&nbsp; ');
+  const body=`<h1>${esc(p.name)} — Test Log Report</h1>
+    <div class="meta">${meta}</div>
+    ${p.notes?`<div class="notes"><strong>Notes:</strong> ${esc(p.notes)}</div>`:''}
+    <table>
+      <thead><tr><th>Date</th><th>Phase</th><th>Lab</th><th>FW</th><th>Platform</th><th>Reporter</th><th>Summary</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+  openPrintReport(esc(p.name)+' — Test Log Report',body,`Generated ${new Date().toLocaleString()} · ${logs.length} log(s) · AudioTracker`);
+}
 async function importBackup(input){
   const file=input.files&&input.files[0];
   input.value='';
@@ -1259,7 +1555,9 @@ async function importBackup(input){
   try{
     const s=parseStore(await file.text());
     records=s.records; projects=s.projects;
-    await save();
+    setSyncStatus('saving');
+    if(sb&&(await sb.auth.getSession()).data.session) await replaceAllData(); else localBackup();
+    setSyncStatus('ok');
     fillCatFilter();
     render();
     alert('Import complete');
@@ -1858,19 +2156,23 @@ async function submitForm(){
     updated:now
   };
 
+  const isNew=!editId;
+  let target;
   if(editId){
     const i=records.findIndex(x=>x.id===editId);
     if(i>-1){
       records[i]={...records[i],...obj};
       applyStatusOnRecord(records[i], obj.status);
+      target=records[i];
     }
   } else {
     const nr={...obj,id:recId,created:now};
     applyStatusOnRecord(nr, nr.status);
     records.push(nr);
+    target=nr;
   }
 
-  save();
+  if(target) await afterMutation(()=>saveRecordRow(target,isNew));
   editId=null;
   document.getElementById('form-area').innerHTML='';
   render();
@@ -1878,17 +2180,19 @@ async function submitForm(){
 
 function cancelForm(){document.getElementById('form-area').innerHTML='';editId=null;}
 
-function cycleStatus(id){
+async function cycleStatus(id){
   const r=records.find(x=>x.id===id);
   if(!r) return;
   const st=recordStatus(r);
   applyStatusOnRecord(r, STATUS_NEXT[st]||'in-progress');
-  save(); render();
+  await afterMutation(()=>saveRecordRow(r,false)); render();
 }
-function delRecord(id){
+async function delRecord(id){
   if(!confirm('Delete this record?')) return;
+  const rec=records.find(r=>r.id===id);
   records=records.filter(r=>r.id!==id);
-  save(); render();
+  await afterMutation(async()=>{ await removeRecordRow(id); await deleteStoredImages(rec&&rec.images); });
+  render();
 }
 
 function genProjectId(){
@@ -1926,13 +2230,14 @@ function closeProjectFromCard(id){
   if(!p) return;
   showProjectCloseModal(p);
 }
-function reopenProject(id){
+async function reopenProject(id){
   const p=getProject(id);
   if(!p) return;
   p.status='active';
   delete p.closedAt;
   delete p.deleteAfter;
-  cloudSave().then(()=>{ if(curProjectId===id) renderProjectDetail(); else renderProjectListContent(); });
+  await afterMutation(()=>saveProjectRow(p,false));
+  if(curProjectId===id) renderProjectDetail(); else renderProjectListContent();
 }
 function showProjectCloseModal(p){
   const modal=document.createElement('div');
@@ -1960,7 +2265,7 @@ function showProjectCloseModal(p){
       if(months>0){const d=new Date();d.setMonth(d.getMonth()+months);p.deleteAfter=d.toISOString().slice(0,10);}
       else delete p.deleteAfter;
       document.body.removeChild(modal);
-      cloudSave().then(()=>renderProjectListContent());
+      afterMutation(()=>saveProjectRow(p,false)).then(()=>renderProjectListContent());
     };
   });
 }
@@ -1983,9 +2288,9 @@ function checkProjectDeleteReminders(){
     </div>
   </div>`;
   document.body.appendChild(modal);
-  modal.querySelector('#pdr-keep').onclick=()=>{due.forEach(p=>{delete p.deleteAfter;});document.body.removeChild(modal);cloudSave();};
-  modal.querySelector('#pdr-extend').onclick=()=>{due.forEach(p=>{const d=new Date();d.setMonth(d.getMonth()+6);p.deleteAfter=d.toISOString().slice(0,10);});document.body.removeChild(modal);cloudSave().then(()=>renderProjectListContent());};
-  modal.querySelector('#pdr-delete').onclick=async()=>{const ids=new Set(due.map(p=>p.id));projects=projects.filter(p=>!ids.has(p.id));document.body.removeChild(modal);await cloudSave();renderProjectView();};
+  modal.querySelector('#pdr-keep').onclick=async()=>{due.forEach(p=>{delete p.deleteAfter;});document.body.removeChild(modal);await afterMutation(async()=>{for(const p of due) await saveProjectRow(p,false);});};
+  modal.querySelector('#pdr-extend').onclick=async()=>{due.forEach(p=>{const d=new Date();d.setMonth(d.getMonth()+6);p.deleteAfter=d.toISOString().slice(0,10);});document.body.removeChild(modal);await afterMutation(async()=>{for(const p of due) await saveProjectRow(p,false);});renderProjectListContent();};
+  modal.querySelector('#pdr-delete').onclick=async()=>{const ids=new Set(due.map(p=>p.id));const imgs=due.flatMap(p=>(p.logs||[]).flatMap(l=>l.images||[]));projects=projects.filter(p=>!ids.has(p.id));document.body.removeChild(modal);await afterMutation(async()=>{for(const id of ids) await removeProjectRow(id); await deleteStoredImages(imgs);});renderProjectView();};
 }
 function backToProjectList(){
   curProjectId=null;
@@ -2095,6 +2400,7 @@ function renderProjectDetail(){
           ${l.fwVersion?`<span class="meta"><i class="ti ti-cpu" aria-hidden="true"></i>FW ${esc(l.fwVersion)}</span>`:''}
           ${l.lab?`<span class="meta"><i class="ti ti-building-community" aria-hidden="true"></i>${esc(l.lab)}</span>`:''}
           ${l.reporter?`<span class="meta"><i class="ti ti-user" aria-hidden="true"></i>${esc(l.reporter)}</span>`:''}
+          ${l.updatedBy?`<span class="meta" title="Last edited by"><i class="ti ti-pencil" aria-hidden="true"></i>${esc(l.updatedBy)}</span>`:''}
         </div>
         ${l.summary?`<div class="log-summary">${esc(l.summary)}</div>`:''}
         ${imagesDisplayHtml(l.images)}
@@ -2160,7 +2466,7 @@ function showProjectForm(id){
   document.getElementById('proj-form-area').scrollIntoView({behavior:'smooth',block:'nearest'});
 }
 
-function submitProject(){
+async function submitProject(){
   const name=(document.getElementById('pf-name')||{}).value||'';
   if(!name.trim()){alert('Please enter a project name.');return;}
   const pt=collectProductTypeFields();
@@ -2173,17 +2479,20 @@ function submitProject(){
     notes:(document.getElementById('pf-notes')||{}).value||'',
     updated:todayISO()
   };
+  const isNew=!editProjId;
+  let target;
   if(editProjId){
     const i=projects.findIndex(x=>x.id===editProjId);
-    if(i>-1) projects[i]={...projects[i],...obj};
+    if(i>-1){ projects[i]={...projects[i],...obj}; target=projects[i]; }
   }else{
     const np={...obj,id:genProjectId(),created:todayISO(),logs:[]};
     projects.push(np);
-    curProjectId=np.id;
+    target=np;
   }
   editProjId=null;
   document.getElementById('proj-form-area').innerHTML='';
-  save();
+  if(target) await afterMutation(()=>saveProjectRow(target,isNew));
+  if(isNew&&target) curProjectId=target.id;
   renderProjectView();
 }
 
@@ -2270,16 +2579,19 @@ async function submitLog(){
     updated:todayISO()
   };
   if(!p.logs) p.logs=[];
+  const isNew=!editLogId;
+  let target;
   if(editLogId){
     const i=p.logs.findIndex(x=>x.id===editLogId);
-    if(i>-1) p.logs[i]={...p.logs[i],...obj};
+    if(i>-1){ p.logs[i]={...p.logs[i],...obj}; target=p.logs[i]; }
   }else{
-    p.logs.push({...obj,id:logId,created:todayISO()});
+    target={...obj,id:logId,created:todayISO()};
+    p.logs.push(target);
   }
   p.updated=todayISO();
   editLogId=null;
   document.getElementById('proj-form-area').innerHTML='';
-  save();
+  if(target) await afterMutation(()=>saveLogRow(p.id,target,isNew));
   renderProjectDetail();
 }
 
@@ -2288,23 +2600,26 @@ function cancelProjForm(){
   editProjId=null; editLogId=null;
 }
 
-function delLog(logId){
+async function delLog(logId){
   if(!confirm('Delete this log entry?')) return;
   const p=getProject(curProjectId);
   if(!p) return;
+  const logObj=(p.logs||[]).find(l=>l.id===logId);
   p.logs=(p.logs||[]).filter(l=>l.id!==logId);
-  save();
+  await afterMutation(async()=>{ await removeLogRow(p.id,logId); await deleteStoredImages(logObj&&logObj.images); });
   renderProjectDetail();
 }
 
-function delProject(id){
+async function delProject(id){
   const pid=id||curProjectId;
   if(!pid) return;
   if(!confirm('Deleting this project will also delete all its logs. Confirm?')) return;
+  const proj=getProject(pid);
+  const imgs=((proj&&proj.logs)||[]).flatMap(l=>l.images||[]);
   projects=projects.filter(p=>p.id!==pid);
   curProjectId=null;
   document.getElementById('proj-form-area').innerHTML='';
-  save();
+  await afterMutation(async()=>{ await removeProjectRow(pid); await deleteStoredImages(imgs); });
   renderProjectList();
 }
 
