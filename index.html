@@ -60,6 +60,30 @@
         [data-theme="light"] .btn-danger-text:hover { background: #fee2e2; border-color: #fca5a5; color: #b91c1c; }
         [data-theme="light"] .desc { background: #f1f5f9; color: #334155; border-left-color: #cbd5e1; }
         [data-theme="light"] .b-cat { background: #eef2f7; color: #475569; border-color: #cbd5e1; }
+        /* Light-theme badge palettes (light tint bg + darker readable text) */
+        [data-theme="light"] .b-teams { background: #e0e7ff; color: #4338ca; }
+        [data-theme="light"] .b-cortana { background: #ede9fe; color: #6d28d9; }
+        [data-theme="light"] .b-zoom { background: #fef3c7; color: #b45309; }
+        [data-theme="light"] .b-intel { background: #e0f2fe; color: #0369a1; }
+        [data-theme="light"] .b-google { background: #d1fae5; color: #047857; }
+        [data-theme="light"] .b-issue { background: #fee2e2; color: #b91c1c; border-color: #fecaca; }
+        [data-theme="light"] .b-acqua-fw { background: #dbeafe; color: #1d4ed8; border-color: #bfdbfe; }
+        [data-theme="light"] .b-test-seq { background: #ede9fe; color: #6d28d9; border-color: #ddd6fe; }
+        [data-theme="light"] .b-spec { background: #e0f2fe; color: #0369a1; border-color: #bae6fd; }
+        [data-theme="light"] .b-hw-cal { background: #e5e7eb; color: #374151; border-color: #d1d5db; }
+        [data-theme="light"] .b-inprog { background: #fef3c7; color: #b45309; }
+        [data-theme="light"] .b-pending { background: #fee2e2; color: #b91c1c; }
+        [data-theme="light"] .b-closed { background: #d1fae5; color: #047857; }
+        [data-theme="light"] .b-teams-cert { background: #e0e7ff; color: #4338ca; }
+        [data-theme="light"] .b-uc-cert { background: #ede9fe; color: #6d28d9; }
+        [data-theme="light"] .b-internal { background: #f1f5f9; color: #475569; border-color: #cbd5e1; }
+        /* Light-theme active platform pills */
+        [data-theme="light"] .ptab.p-all { background: #e2e8f0; color: #0f172a; border-color: #cbd5e1; }
+        [data-theme="light"] .ptab.p-teams { background: #e0e7ff; color: #4338ca; border-color: #a5b4fc; }
+        [data-theme="light"] .ptab.p-cortana { background: #ede9fe; color: #6d28d9; border-color: #c4b5fd; }
+        [data-theme="light"] .ptab.p-zoom { background: #fef3c7; color: #b45309; border-color: #fcd34d; }
+        [data-theme="light"] .ptab.p-intel { background: #e0f2fe; color: #0369a1; border-color: #7dd3fc; }
+        [data-theme="light"] .ptab.p-google { background: #d1fae5; color: #047857; border-color: #6ee7b7; }
         [data-theme="light"] .img-thumb, [data-theme="light"] .rec-images img, [data-theme="light"] .img-add-btn { background: #f1f5f9; }
         [data-theme="light"] .meta-row, [data-theme="light"] .rec-actions { border-top-color: rgba(15,23,42,0.06); }
         [data-theme="light"] .record:hover { box-shadow: 0 6px 16px rgba(15,23,42,.12); }
@@ -128,12 +152,18 @@
 
         /* Toolbar */
         .toolbar {
-            display: flex; flex-direction: row; align-items: center;
-            gap: 8px; margin-bottom: 1rem; flex-wrap: wrap;
+            display: flex; flex-direction: column; align-items: stretch;
+            gap: 10px; margin-bottom: 1rem;
             overflow: visible;
-            background: var(--bg-panel); padding: 10px 12px; border-radius: 10px;
+            background: var(--bg-panel); padding: 12px; border-radius: 10px;
             border: 1px solid var(--border-color); min-width: 0; width: 100%; box-sizing: border-box;
         }
+        .tb-primary { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+        .tb-primary .tb-search-wrap { flex: 1 1 260px; max-width: none; }
+        .tb-filters { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+        .tb-filters > select, .tb-filters > span { flex: 1 1 160px; }
+        .tb-filters > span select { width: 100%; }
+        .tb-filters > .dropdown { flex: 0 0 auto; }
         .toolbar::-webkit-scrollbar { height: 4px; }
         .toolbar::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 2px; }
         .toolbar input, .toolbar select {
@@ -449,7 +479,10 @@
         .img-hint { font-size: 12px; color: var(--text-secondary); margin-top: 8px; }
         .db-panel { background: var(--bg-panel); border: 1px solid var(--border-color); border-radius: 12px; padding: 16px; margin-bottom: 14px; }
         .db-cards { display: grid; grid-template-columns: repeat(4,1fr); gap: 10px; margin-bottom: 16px; }
-        .db-card { background: var(--bg-input); border: 1px solid var(--border-color); border-radius: 8px; padding: 12px; text-align: center; }
+        .db-card { background: var(--bg-input); border: 1px solid var(--border-color); border-radius: 8px; padding: 12px; text-align: center; transition: transform .15s, border-color .15s, box-shadow .15s; }
+        .db-card.clickable { cursor: pointer; user-select: none; }
+        .db-card.clickable:hover { border-color: var(--accent); transform: translateY(-2px); box-shadow: 0 8px 20px -8px rgba(99,102,241,.5); }
+        .db-card.active-filter { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(99,102,241,.35); }
         .db-n { font-size: 26px; font-weight: 700; color: var(--text-primary); line-height: 1.1; }
         .db-cl { font-size: 12px; color: var(--text-secondary); margin-top: 4px; }
         .db-charts { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
@@ -502,6 +535,9 @@
         .dropdown-menu button { display: flex; align-items: center; gap: 9px; width: 100%; padding: 9px 12px; background: none; border: none; border-radius: 6px; color: var(--text-primary); font-size: 14px; text-align: left; cursor: pointer; }
         .dropdown-menu button:hover { background: var(--bg-input); }
         .dropdown-menu button i { font-size: 16px; color: var(--text-secondary); }
+        .dropdown-menu button.active { color: var(--accent-2); font-weight: 600; background: rgba(99,102,241,.12); }
+        .btn.icon-btn { padding: 6px 10px; }
+        .btn.icon-btn i { font-size: 16px; }
         .btn .chev { font-size: 11px; margin-left: 2px; opacity: .7; }
     </style>
 </head>
@@ -592,7 +628,6 @@
     </div>
 
     <div id="view-platform">
-    <div class="stat-row" id="stats-row"></div>
     <div id="dashboard" hidden></div>
 
     <div class="ptabs" id="ptabs">
@@ -605,53 +640,60 @@
     </div>
 
     <div class="toolbar">
-      <div class="tb-search-wrap">
-        <i class="ti ti-search tb-search-icon" aria-hidden="true"></i>
-        <input type="text" id="q-s" placeholder="Search keyword / ID..." oninput="renderList()">
+      <div class="tb-primary">
+        <div class="tb-search-wrap">
+          <i class="ti ti-search tb-search-icon" aria-hidden="true"></i>
+          <input type="text" id="q-s" placeholder="Search keyword / ID..." oninput="renderList()">
+        </div>
+        <div class="tb-actions">
+          <button class="btn" id="dash-toggle" onclick="toggleDashboard()" title="Show / hide dashboard"><i class="ti ti-chart-bar" style="font-size:13px" aria-hidden="true"></i> Dashboard</button>
+          <div class="dropdown">
+            <button class="btn" onclick="toggleDropdown(event,this)" title="Export the current view"><i class="ti ti-download" style="font-size:13px" aria-hidden="true"></i> Export <i class="ti ti-chevron-down chev" aria-hidden="true"></i></button>
+            <div class="dropdown-menu">
+              <button onclick="exportRecordsPDF()"><i class="ti ti-file-type-pdf" aria-hidden="true"></i> PDF report</button>
+              <button onclick="exportRecordsCSV()"><i class="ti ti-file-spreadsheet" aria-hidden="true"></i> Excel (CSV)</button>
+            </div>
+          </div>
+          <button class="btn primary" onclick="showForm()"><i class="ti ti-plus" style="font-size:13px" aria-hidden="true"></i> Add Record</button>
+        </div>
       </div>
-      <select id="q-cat" onchange="onCatFilterChange()">
-        <option value="">All Categories</option>
-      </select>
-      <span id="q-subcat-wrap" style="display:none">
-        <select id="q-subcat" onchange="renderList()" title="Function subcategory">
-          <option value="">All Functions</option>
+      <div class="tb-filters">
+        <select id="q-cat" onchange="onCatFilterChange()">
+          <option value="">All Categories</option>
         </select>
-      </span>
-      <select id="q-type" onchange="onTypeFilterChange()">
-        <option value="">All Types</option>
-      </select>
-      <span id="q-subtype-update-wrap">
-        <select id="q-subtype-update" onchange="renderList()">
-          <option value="">All Update Types</option>
-          <option value="spec">Spec</option>
-          <option value="sequence">Sequence</option>
-          <option value="firmware">Firmware</option>
-          <option value="test-tool">Test Tool</option>
+        <span id="q-subcat-wrap" style="display:none">
+          <select id="q-subcat" onchange="renderList()" title="Function subcategory">
+            <option value="">All Functions</option>
+          </select>
+        </span>
+        <select id="q-type" onchange="onTypeFilterChange()">
+          <option value="">All Types</option>
         </select>
-      </span>
-      <select id="q-stat" onchange="renderList()">
-        <option value="">All Status</option>
-        <option value="in-progress">In Progress</option>
-        <option value="closed">Closed</option>
-      </select>
-      <select id="q-sort" onchange="renderList()" title="Sort records">
-        <option value="created-desc">Sort: Newest</option>
-        <option value="created-asc">Sort: Oldest</option>
-        <option value="updated-desc">Sort: Recently updated</option>
-        <option value="due-asc">Sort: Due date</option>
-        <option value="title-asc">Sort: Title (A–Z)</option>
-        <option value="platform">Sort: Platform</option>
-      </select>
-      <div class="tb-actions">
-        <button class="btn" id="dash-toggle" onclick="toggleDashboard()" title="Show / hide dashboard"><i class="ti ti-chart-bar" style="font-size:13px" aria-hidden="true"></i> Dashboard</button>
+        <span id="q-subtype-update-wrap">
+          <select id="q-subtype-update" onchange="renderList()">
+            <option value="">All Update Types</option>
+            <option value="spec">Spec</option>
+            <option value="sequence">Sequence</option>
+            <option value="firmware">Firmware</option>
+            <option value="test-tool">Test Tool</option>
+          </select>
+        </span>
+        <select id="q-stat" onchange="renderList()">
+          <option value="">All Status</option>
+          <option value="in-progress">In Progress</option>
+          <option value="closed">Closed</option>
+        </select>
         <div class="dropdown">
-          <button class="btn" onclick="toggleDropdown(event,this)" title="Export the current view"><i class="ti ti-download" style="font-size:13px" aria-hidden="true"></i> Export <i class="ti ti-chevron-down chev" aria-hidden="true"></i></button>
-          <div class="dropdown-menu">
-            <button onclick="exportRecordsPDF()"><i class="ti ti-file-type-pdf" aria-hidden="true"></i> PDF report</button>
-            <button onclick="exportRecordsCSV()"><i class="ti ti-file-spreadsheet" aria-hidden="true"></i> Excel (CSV)</button>
+          <button class="btn icon-btn" onclick="toggleDropdown(event,this)" title="Sort records" aria-label="Sort records"><i class="ti ti-arrows-sort" aria-hidden="true"></i></button>
+          <div class="dropdown-menu" id="sort-menu">
+            <button data-sort="created-desc" class="active" onclick="setSort('created-desc')">Newest</button>
+            <button data-sort="created-asc" onclick="setSort('created-asc')">Oldest</button>
+            <button data-sort="updated-desc" onclick="setSort('updated-desc')">Recently updated</button>
+            <button data-sort="due-asc" onclick="setSort('due-asc')">Due date</button>
+            <button data-sort="title-asc" onclick="setSort('title-asc')">Title (A–Z)</button>
+            <button data-sort="platform" onclick="setSort('platform')">Platform</button>
           </div>
         </div>
-        <button class="btn primary" onclick="showForm()"><i class="ti ti-plus" style="font-size:13px" aria-hidden="true"></i> Add Record</button>
       </div>
     </div>
 
@@ -1256,8 +1298,14 @@ function applyRecordFilters(list){
   }
   return sortRecords(d);
 }
+let curSort='created-desc';
+function setSort(v){
+  curSort=v;
+  document.querySelectorAll('#sort-menu button').forEach(b=>b.classList.toggle('active',b.dataset.sort===v));
+  renderList();
+}
 function sortRecords(list){
-  const s=(document.getElementById('q-sort')||{}).value||'created-desc';
+  const s=curSort||'created-desc';
   const arr=[...list];
   const t=v=>new Date(v||0).getTime()||0;
   switch(s){
@@ -2088,29 +2136,12 @@ function filteredClosed(){
   return applyRecordFilters(base.filter(r=>recordStatus(r)==='closed'));
 }
 
-function renderStats(){
-  const base=curP==='all'?records:records.filter(r=>r.platform===curP);
-  const active=base.filter(r=>recordStatus(r)!=='closed');
-  const closed=base.filter(r=>recordStatus(r)==='closed');
-  const soonExpiring=closed.filter(r=>{const closedAt=r.closedAt||r.updated||r.created;return Math.max(0,CLOSED_RETENTION_DAYS-daysSince(closedAt))<=7;}).length;
-  const curStat=(document.getElementById('q-stat')||{}).value||'';
-  document.getElementById('stats-row').innerHTML=`
-    <div class="stat${curStat==='in-progress'?' active-filter':''}" onclick="onStatCardClick('in-progress')">
-      <div class="stat-n${active.length===0?' zero':''}" style="${active.length>0?'color:#60a5fa':''}">${active.length}</div>
-      <div class="stat-l${active.length===0?' zero':''}">In Progress</div>
-    </div>
-    <div class="stat${curStat==='closed'?' active-filter':''}" onclick="onStatCardClick('closed')">
-      <div class="stat-n${closed.length===0?' zero':''}" style="${closed.length>0?'color:#34d399':''}">${closed.length}</div>
-      <div class="stat-l${closed.length===0?' zero':''}">Closed${soonExpiring>0?` <span style="font-size:11px;color:#f87171;font-family:sans-serif;font-weight:500"> (${soonExpiring} expiring in 7 days)</span>`:''}</div>
-    </div>`;
-}
-
 function onStatCardClick(status){
   const sel=document.getElementById('q-stat');
   if(!sel) return;
   if(sel.value===status) sel.value='';
   else sel.value=status;
-  renderStats();
+  renderDashboard();
   renderList();
 }
 function renderList(){
@@ -2145,7 +2176,7 @@ function renderClosedArchive(){
 }
 
 function render(){
-  if(viewMode==='platform'){renderStats();renderDashboard();renderList();}
+  if(viewMode==='platform'){renderDashboard();renderList();}
   else renderProjectView();
 }
 
@@ -2182,13 +2213,15 @@ function renderDashboard(){
   const closed=base.filter(r=>recordStatus(r)==='closed');
   const cds=closed.map(closeDaysOf).filter(v=>v!=null);
   const avgClose=cds.length?Math.round(cds.reduce((a,b)=>a+b,0)/cds.length):null;
+  const soonExpiring=closed.filter(r=>{const c=r.closedAt||r.updated||r.created;return Math.max(0,CLOSED_RETENTION_DAYS-daysSince(c))<=7;}).length;
+  const curStat=(document.getElementById('q-stat')||{}).value||'';
   const byPlatform=PLAT_NAMES.map(p=>({label:PLATFORMS[p].label,count:records.filter(r=>r.platform===p).length})).filter(i=>i.count>0);
   const byType=TYPES_AUDIO.map(t=>({label:t.lbl,count:base.filter(r=>r.type===t.v).length})).filter(i=>i.count>0);
   el.innerHTML=`<div class="db-panel">
     <div class="db-cards">
-      <div class="db-card"><div class="db-n">${total}</div><div class="db-cl">Total</div></div>
-      <div class="db-card"><div class="db-n" style="color:#60a5fa">${active}</div><div class="db-cl">In Progress</div></div>
-      <div class="db-card"><div class="db-n" style="color:#34d399">${closed.length}</div><div class="db-cl">Closed</div></div>
+      <div class="db-card clickable${curStat===''?' active-filter':''}" onclick="onStatCardClick('')" title="Show all"><div class="db-n">${total}</div><div class="db-cl">Total</div></div>
+      <div class="db-card clickable${curStat==='in-progress'?' active-filter':''}" onclick="onStatCardClick('in-progress')" title="Filter: In Progress"><div class="db-n" style="color:#60a5fa">${active}</div><div class="db-cl">In Progress</div></div>
+      <div class="db-card clickable${curStat==='closed'?' active-filter':''}" onclick="onStatCardClick('closed')" title="Filter: Closed"><div class="db-n" style="color:#34d399">${closed.length}</div><div class="db-cl">Closed${soonExpiring>0?` · <span style="color:#f87171;font-size:11px">${soonExpiring} expiring</span>`:''}</div></div>
       <div class="db-card"><div class="db-n" style="color:#fbbf24">${avgClose==null?'—':avgClose}</div><div class="db-cl">Avg days to close</div></div>
     </div>
     <div class="db-charts">
