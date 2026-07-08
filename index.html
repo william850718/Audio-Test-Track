@@ -228,8 +228,11 @@
         .archive-section { margin-top: 1.5rem; }
         .archive-hint { font-size: 15px; color: var(--text-secondary); margin-bottom: 8px; }
 
-        .rec-top { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
-        .rec-title { font-size: 16px; font-weight: 600; flex: 1; min-width: 150px; line-height: 1.4; color: var(--text-primary); }
+        .rec-top { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 8px; }
+        .rec-title { font-size: 16px; font-weight: 600; flex: 1; min-width: 0; line-height: 1.4; color: var(--text-primary); overflow-wrap: anywhere; }
+        .rec-status { flex-shrink: 0; margin-left: auto; align-self: flex-start; }
+        .rec-badges { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 10px; }
+        .rec-badges:empty { display: none; }
         
         /* Badges */
         .badge { font-size: 12px; padding: 2px 8px; border-radius: 4px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.3px; }
@@ -528,6 +531,22 @@
         .ts-del { border: none; background: none; color: #f87171; cursor: pointer; font-size: 14px; display: flex; padding: 4px; border-radius: 4px; }
         .ts-del:hover { background: rgba(239,68,68,.14); }
         [data-theme="light"] .ts-del { color: #dc2626; }
+
+        /* Batch selection */
+        .rec-select { width: 16px; height: 16px; accent-color: #6366f1; cursor: pointer; flex-shrink: 0; margin-right: 2px; }
+        .record.selected { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(99,102,241,.25); }
+        .batch-bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; background: var(--bg-panel); border: 1px solid var(--accent); border-radius: 10px; padding: 10px 14px; margin-bottom: 12px; box-shadow: var(--accent-glow); }
+        .batch-bar .batch-n { font-weight: 600; color: var(--text-primary); display: inline-flex; align-items: center; gap: 6px; margin-right: auto; }
+        /* Skeleton loading */
+        .skel-wrap { display: flex; flex-direction: column; gap: 10px; }
+        .skel-card { background: var(--bg-panel); border: 1px solid var(--border-color); border-radius: 10px; padding: 16px; }
+        .skel-line { height: 12px; border-radius: 6px; margin-bottom: 10px; background: linear-gradient(90deg, var(--bg-input) 25%, rgba(148,163,184,.18) 37%, var(--bg-input) 63%); background-size: 400% 100%; animation: skel 1.4s ease infinite; }
+        .skel-line:last-child { margin-bottom: 0; }
+        .skel-line.w30 { width: 30%; } .skel-line.w70 { width: 70%; } .skel-line.w90 { width: 90%; }
+        @keyframes skel { 0% { background-position: 100% 0; } 100% { background-position: 0 0; } }
+        /* Keyboard shortcuts help */
+        .kbd-row { display: flex; align-items: center; gap: 12px; padding: 6px 0; font-size: 14px; color: var(--text-primary); }
+        .kbd { min-width: 42px; text-align: center; padding: 3px 8px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-input); font-family: monospace; font-size: 13px; color: var(--text-primary); }
         .btn.danger-solid { background: #ef4444; border-color: #ef4444; color: #fff; }
         .btn.danger-solid:hover { background: #dc2626; border-color: #dc2626; }
 
@@ -647,7 +666,7 @@
       <div class="tb-primary">
         <div class="tb-search-wrap">
           <i class="ti ti-search tb-search-icon" aria-hidden="true"></i>
-          <input type="text" id="q-s" placeholder="Search keyword / ID..." oninput="renderList()">
+          <input type="text" id="q-s" placeholder="Search keyword / ID..." oninput="onSearchInput()">
         </div>
         <div class="tb-actions">
           <button class="btn" id="dash-toggle" onclick="toggleDashboard()" title="Show / hide dashboard"><i class="ti ti-chart-bar" style="font-size:13px" aria-hidden="true"></i> Dashboard</button>
@@ -701,6 +720,7 @@
       </div>
     </div>
 
+    <div id="batch-bar" class="batch-bar" hidden></div>
     <div id="form-area"></div>
     <div id="list-area"></div>
     <div id="closed-archive" class="archive-section" hidden>
@@ -713,7 +733,7 @@
     <div id="view-project" hidden>
       <div class="toolbar" id="proj-toolbar">
         <div id="proj-tb-list" class="proj-tb-row">
-          <input type="text" id="pq-s" placeholder="Search project name / product / customer..." oninput="onProjSearch()">
+          <input type="text" id="pq-s" placeholder="Search project name / product / customer..." oninput="onProjSearchInput()">
           <div class="tb-spacer"></div>
           <button type="button" class="btn primary" onclick="showProjectForm()"><i class="ti ti-folder-plus" aria-hidden="true"></i> New Project</button>
         </div>
@@ -1155,12 +1175,13 @@ function renderImageUploader(){
   </div>
   <div class="img-hint">Up to ${MAX_IMG_COUNT} images · ${fmtMB(currentImgBytes())} / ${fmtMB(TOTAL_IMG_BYTES)} total used</div>`;
 }
-function onPickImages(input){
+async function onPickImages(input){
   const files=Array.from(input.files||[]);
   input.value='';
-  for(const f of files){
+  for(let f of files){
     if(imgState.list.length>=MAX_IMG_COUNT){ toast('You can attach at most '+MAX_IMG_COUNT+' images.','warn'); break; }
     if(!/^image\//.test(f.type)){ toast('"'+f.name+'" is not an image file.','warn'); continue; }
+    f=await compressImage(f);   // shrink large images (keeps them legible)
     if(currentImgBytes()+f.size>TOTAL_IMG_BYTES){
       toast('"'+f.name+'" ('+fmtMB(f.size)+') would exceed the '+fmtMB(TOTAL_IMG_BYTES)+' total limit. Used: '+fmtMB(currentImgBytes())+' / '+fmtMB(TOTAL_IMG_BYTES)+'.','warn',4200);
       continue;
@@ -1406,15 +1427,18 @@ function recordCardHtml(r,opts={}){
     const daysLeft=st==='closed'?Math.max(0,CLOSED_RETENTION_DAYS-daysSince(closedAt)):null;
   const archiveMeta=(opts.archive&&st==='closed')
     ?`<span class="meta"><i class="ti ti-archive" aria-hidden="true"></i>Closed ${esc(closedAt)} · auto-delete in ${daysLeft} days</span>`:'';
-  return`<div class="record">
+  return`<div class="record${selectedIds.has(r.id)?' selected':''}">
     <div class="rec-top">
+      <input type="checkbox" class="rec-select" ${selectedIds.has(r.id)?'checked':''} title="Select record" onclick="event.stopPropagation();toggleSelect('${r.id}',this.checked)">
       <div class="rec-title">${esc(r.title||'(Untitled)')}</div>
+      <span class="badge ${so.cls} rec-status">${so.lbl}</span>
+    </div>
+    <div class="rec-badges">
       <span class="badge b-${pc}">${esc(PLATFORMS[r.platform]?.label||r.platform)}</span>
       ${catBadge}
       <span class="badge ${to.cls}">${esc(to.lbl)}</span>
       ${recordSampleLabels(r).map(l=>`<span class="badge b-cat">${esc(l)}</span>`).join('')}
       ${recordSoftwareLabel(r)?`<span class="badge b-cat"><i class="ti ti-device-desktop-analytics" style="font-size:11px" aria-hidden="true"></i> ${esc(recordSoftwareLabel(r))}</span>`:''}
-      <span class="badge ${so.cls}">${so.lbl}</span>
       ${certBadge}
     </div>
     <div class="meta-row">
@@ -1430,6 +1454,7 @@ function recordCardHtml(r,opts={}){
     ${imagesDisplayHtml(r.images)}
     <div class="rec-actions">
       <button class="ra" onclick="editRecord('${r.id}')"><i class="ti ti-edit" aria-hidden="true"></i> Edit</button>
+      <button class="ra" onclick="duplicateRecord('${r.id}')" title="Duplicate as a new record"><i class="ti ti-copy" aria-hidden="true"></i> Duplicate</button>
       <button class="ra" onclick="cycleStatus('${r.id}')" title="Toggle status"><i class="ti ti-refresh" aria-hidden="true"></i> ${STATUS_NEXT_LBL[st]||''}</button>
       <button class="ra danger" onclick="delRecord('${r.id}')"><i class="ti ti-trash" aria-hidden="true"></i> Delete</button>
     </div>
@@ -1662,27 +1687,66 @@ async function cloudLoad(){
 }
 
 // Wrap an in-memory mutation's cloud write: local backup always, cloud best-effort
-async function afterMutation(writeFn){
+/* ---- Offline write queue: retry writes that failed with no network ---- */
+let writeQueue=[];
+try{ writeQueue=JSON.parse(localStorage.getItem('aclab_write_queue')||'[]')||[]; }catch(e){ writeQueue=[]; }
+function persistQueue(){ try{ localStorage.setItem('aclab_write_queue',JSON.stringify(writeQueue)); }catch(e){} }
+function enqueueWrite(op){ if(op){ writeQueue.push(op); persistQueue(); } }
+function stripLogs(p){ const {logs,...pd}=p; return pd; }
+let _flushing=false;
+async function flushQueue(){
+  if(_flushing||!writeQueue.length) return;
+  if(!(sb&&(await sb.auth.getSession()).data.session)) return;
+  _flushing=true;
+  try{
+    while(writeQueue.length){
+      const op=writeQueue[0], uid=getCurrentUser();
+      let error=null;
+      if(op.k==='saveRecord'){ ({error}=await sb.from('records').upsert({id:op.data.id,data:op.data,updated_at:nowISO(),updated_by:op.data.updatedBy||uid})); }
+      else if(op.k==='removeRecord'){ ({error}=await sb.from('records').delete().eq('id',op.id)); }
+      else if(op.k==='saveProject'){ ({error}=await sb.from('projects').upsert({id:op.data.id,data:op.data,updated_at:nowISO(),updated_by:op.data.updatedBy||uid})); }
+      else if(op.k==='removeProject'){ await sb.from('logs').delete().eq('project_id',op.id); ({error}=await sb.from('projects').delete().eq('id',op.id)); }
+      else if(op.k==='saveLog'){ ({error}=await sb.from('logs').upsert({project_id:op.projId,id:op.data.id,data:op.data,updated_at:nowISO(),updated_by:op.data.updatedBy||uid})); }
+      else if(op.k==='removeLog'){ ({error}=await sb.from('logs').delete().eq('project_id',op.projId).eq('id',op.id)); }
+      if(error){ console.warn('Queue flush paused; will retry',error); break; }
+      writeQueue.shift(); persistQueue();
+    }
+  }catch(e){ console.warn('Queue flush error',e); }
+  _flushing=false;
+  if(!writeQueue.length) setSyncStatus('ok');
+}
+async function afterMutation(writeFn,op){
   localBackup();
   try{
     setSyncStatus('saving');
-    if(sb&&(await sb.auth.getSession()).data.session){ await writeFn(); }
-    localBackup();
-    setSyncStatus('ok');
+    if(sb&&(await sb.auth.getSession()).data.session){
+      await writeFn();
+      await flushQueue();
+      localBackup();
+      setSyncStatus(writeQueue.length?'offline':'ok', writeQueue.length?('Syncing '+writeQueue.length+' pending…'):undefined);
+    }else{
+      enqueueWrite(op);
+      localBackup();
+      setSyncStatus('offline', op?('Offline — '+writeQueue.length+' change(s) will sync when online'):'Local backup only');
+    }
   }catch(e){
     console.error(e);
-    setSyncStatus('err','Saved locally, cloud failed');
+    enqueueWrite(op);
+    setSyncStatus('err', op?('Offline — '+writeQueue.length+' change(s) will sync when online'):'Saved locally, cloud failed');
   }
 }
+window.addEventListener('online',()=>{ flushQueue(); });
 
 async function load(){
   try{
     setSyncStatus('loading');
+    const la=document.getElementById('list-area'); if(la&&!records.length) la.innerHTML=skeletonCards(4);
     await cloudLoad();
     const expired=purgeExpiredClosedRecords();
     if(expired.length){ try{ for(const r of expired){ await removeRecordRow(r.id); await deleteStoredImages(r.images); } }catch(e){ console.warn(e); } }
     setSyncStatus('ok');
     startRealtime();
+    flushQueue();
   }catch(e){
     console.error(e);
     const local=localStorage.getItem(STORAGE_KEY);
@@ -2231,6 +2295,7 @@ function renderList(){
     el.innerHTML=d.map(r=>recordCardHtml(r)).join('');
   }
   renderClosedArchive();
+  renderBatchBar();
 }
 function renderClosedArchive(){
   const wrap=document.getElementById('closed-archive');
@@ -2308,6 +2373,125 @@ function renderDashboard(){
     </div>
   </div>`;
 }
+
+/* ===== Debounced search ===== */
+let _searchTimer=null, _projSearchTimer=null;
+function onSearchInput(){ clearTimeout(_searchTimer); _searchTimer=setTimeout(renderList,250); }
+function onProjSearchInput(){ clearTimeout(_projSearchTimer); _projSearchTimer=setTimeout(renderProjectListContent,250); }
+
+/* ===== Duplicate a record as a new one ===== */
+function duplicateRecord(id){
+  const r=records.find(x=>x.id===id); if(!r) return;
+  editId=null;
+  renderForm({
+    platform:r.platform, category:r.category, subCategory:r.subCategory,
+    type:r.type, updateSubtype:r.updateSubtype,
+    sampleTypes:recordSampleValues(r), testSoftware:r.testSoftware, testSoftwareOther:r.testSoftwareOther,
+    assignee:r.assignee, fwVersion:r.fwVersion,
+    title:'', deadline:todayISO()
+    // note: images, status, id intentionally NOT copied
+  });
+  document.getElementById('form-area').scrollIntoView({behavior:'smooth',block:'nearest'});
+  toast('Duplicated — edit the title and save as a new record','info');
+}
+
+/* ===== Batch selection & actions ===== */
+let selectedIds=new Set();
+function toggleSelect(id,on){ if(on) selectedIds.add(id); else selectedIds.delete(id); const c=document.querySelector(`.record .rec-select[onclick*="'${id}'"]`); if(c) c.closest('.record').classList.toggle('selected',on); renderBatchBar(); }
+function clearSelection(){ selectedIds.clear(); render(); }
+function renderBatchBar(){
+  const bar=document.getElementById('batch-bar'); if(!bar) return;
+  const n=selectedIds.size;
+  if(!n){ bar.hidden=true; bar.innerHTML=''; return; }
+  bar.hidden=false;
+  bar.innerHTML=`<span class="batch-n"><i class="ti ti-checkbox" aria-hidden="true"></i> ${n} selected</span>
+    <button class="btn" onclick="batchClose()"><i class="ti ti-lock" aria-hidden="true"></i> Close</button>
+    <button class="btn btn-danger-text" onclick="batchDelete()"><i class="ti ti-trash" aria-hidden="true"></i> Delete</button>
+    <button class="btn" onclick="clearSelection()">Clear</button>`;
+}
+async function batchClose(){
+  const ids=[...selectedIds];
+  const targets=records.filter(r=>ids.includes(r.id)&&recordStatus(r)!=='closed');
+  if(!targets.length){ toast('Selected records are already closed.','info'); return; }
+  targets.forEach(r=>applyStatusOnRecord(r,'closed'));
+  await afterMutation(async()=>{ for(const r of targets) await saveRecordRow(r,false); });
+  selectedIds.clear(); render(); toast(targets.length+' record(s) closed','success');
+}
+async function batchDelete(){
+  const ids=[...selectedIds];
+  if(!ids.length) return;
+  if(!(await confirmModal(ids.length+' record(s) and their screenshots will be permanently deleted.',{title:'Delete '+ids.length+' records?',okText:'Delete',danger:true}))) return;
+  const targets=records.filter(r=>ids.includes(r.id));
+  records=records.filter(r=>!ids.includes(r.id));
+  await afterMutation(async()=>{ for(const r of targets){ await removeRecordRow(r.id); await deleteStoredImages(r.images); } });
+  selectedIds.clear(); render(); toast(targets.length+' record(s) deleted','success');
+}
+
+/* ===== Client-side image compression (keeps images legible) ===== */
+function loadImageEl(file){ return new Promise((res,rej)=>{ const img=new Image(); img.onload=()=>{URL.revokeObjectURL(img.src);res(img);}; img.onerror=rej; img.src=URL.createObjectURL(file); }); }
+async function compressImage(file){
+  if(!/^image\/(jpeg|png|webp)$/.test(file.type)) return file;   // skip gif/svg/unknown
+  if(file.size < 400*1024) return file;                          // already small
+  try{
+    const img=await loadImageEl(file);
+    const maxDim=1600, scale=Math.min(1, maxDim/Math.max(img.width,img.height));
+    if(scale===1 && file.size < 1.2*1024*1024) return file;      // fine as-is
+    const w=Math.round(img.width*scale), h=Math.round(img.height*scale);
+    const cv=document.createElement('canvas'); cv.width=w; cv.height=h;
+    cv.getContext('2d').drawImage(img,0,0,w,h);
+    const blob=await new Promise(r=>cv.toBlob(r,'image/jpeg',0.82));
+    if(!blob||blob.size>=file.size) return file;                 // no real gain
+    return new File([blob], file.name.replace(/\.(png|webp|jpeg)$/i,'.jpg'), {type:'image/jpeg'});
+  }catch(e){ return file; }
+}
+
+/* ===== Skeleton loading placeholders ===== */
+function skeletonCards(n){
+  return '<div class="skel-wrap">'+Array.from({length:n||4}).map(()=>
+    `<div class="skel-card"><div class="skel-line w70"></div><div class="skel-line w30"></div><div class="skel-line w90"></div></div>`
+  ).join('')+'</div>';
+}
+
+/* ===== Keyboard shortcuts ===== */
+function isTyping(el){ return el && (el.tagName==='INPUT'||el.tagName==='TEXTAREA'||el.tagName==='SELECT'||el.isContentEditable); }
+function focusSearch(){ const el=viewMode==='project'?document.getElementById('pq-s'):document.getElementById('q-s'); if(el&&el.offsetParent!==null){ el.focus(); if(el.select) el.select(); } }
+function newForContext(){ if(viewMode==='project'){ if(curProjectId) showLogForm(); else showProjectForm(); } else showForm(); }
+function showShortcuts(){
+  if(document.getElementById('shortcuts-modal')) return;
+  const ov=document.createElement('div'); ov.className='modal-overlay'; ov.id='shortcuts-modal';
+  const row=(k,d)=>`<div class="kbd-row"><span class="kbd">${k}</span><span>${d}</span></div>`;
+  ov.innerHTML=`<div class="modal-card" role="dialog" aria-modal="true" style="max-width:420px">
+    <div class="modal-title">Keyboard shortcuts</div>
+    <div style="margin:6px 0 18px">
+      ${row('/','Focus search')}
+      ${row('n','New record / log')}
+      ${row('Esc','Close form or dialog')}
+      ${row('?','Show this help')}
+    </div>
+    <div class="modal-actions"><button type="button" class="btn" id="kbd-done">Done</button></div>
+  </div>`;
+  document.body.appendChild(ov);
+  const close=()=>{ ov.classList.remove('show'); setTimeout(()=>ov.remove(),200); };
+  ov.addEventListener('click',e=>{ if(e.target===ov) close(); });
+  ov.querySelector('#kbd-done').onclick=close;
+  requestAnimationFrame(()=>ov.classList.add('show'));
+}
+document.addEventListener('keydown',e=>{
+  if(e.ctrlKey||e.metaKey||e.altKey) return;
+  const appMain=document.getElementById('app-main');
+  if(!appMain||appMain.hidden) return;                         // only inside the app
+  if(e.key==='Escape'){
+    const sm=document.getElementById('shortcuts-modal'); if(sm){ sm.remove(); return; }
+    if(document.querySelector('.dropdown.open')){ document.querySelectorAll('.dropdown.open').forEach(d=>d.classList.remove('open')); return; }
+    const fa=document.getElementById('form-area'); if(fa&&fa.innerHTML.trim()){ cancelForm(); return; }
+    const pfa=document.getElementById('proj-form-area'); if(pfa&&pfa.innerHTML.trim()){ cancelProjForm(); return; }
+    return;
+  }
+  if(isTyping(document.activeElement)) return;
+  if(e.key==='/'){ e.preventDefault(); focusSearch(); }
+  else if(e.key==='n'){ e.preventDefault(); newForContext(); }
+  else if(e.key==='?'){ e.preventDefault(); showShortcuts(); }
+});
 
 function showForm(){
   editId=null;
@@ -2562,10 +2746,11 @@ async function submitForm(){
     target=nr;
   }
 
-  if(target) await afterMutation(()=>saveRecordRow(target,isNew));
+  if(target) await afterMutation(()=>saveRecordRow(target,isNew),{k:'saveRecord',data:target});
   editId=null;
   document.getElementById('form-area').innerHTML='';
   render();
+  toast(isNew?'Record added':'Record updated','success');
 }
 
 function cancelForm(){document.getElementById('form-area').innerHTML='';editId=null;}
@@ -2575,14 +2760,16 @@ async function cycleStatus(id){
   if(!r) return;
   const st=recordStatus(r);
   applyStatusOnRecord(r, STATUS_NEXT[st]||'in-progress');
-  await afterMutation(()=>saveRecordRow(r,false)); render();
+  await afterMutation(()=>saveRecordRow(r,false),{k:'saveRecord',data:r}); render();
 }
 async function delRecord(id){
   if(!(await confirmModal('This record and its screenshots will be permanently deleted.',{title:'Delete record?',okText:'Delete',danger:true}))) return;
   const rec=records.find(r=>r.id===id);
   records=records.filter(r=>r.id!==id);
-  await afterMutation(async()=>{ await removeRecordRow(id); await deleteStoredImages(rec&&rec.images); });
+  selectedIds.delete(id);
+  await afterMutation(async()=>{ await removeRecordRow(id); await deleteStoredImages(rec&&rec.images); },{k:'removeRecord',id});
   render();
+  toast('Record deleted','success');
 }
 
 function genProjectId(){
@@ -2626,7 +2813,7 @@ async function reopenProject(id){
   p.status='active';
   delete p.closedAt;
   delete p.deleteAfter;
-  await afterMutation(()=>saveProjectRow(p,false));
+  await afterMutation(()=>saveProjectRow(p,false),{k:'saveProject',data:stripLogs(p)});
   if(curProjectId===id) renderProjectDetail(); else renderProjectListContent();
 }
 function showProjectCloseModal(p){
@@ -2655,7 +2842,7 @@ function showProjectCloseModal(p){
       if(months>0){const d=new Date();d.setMonth(d.getMonth()+months);p.deleteAfter=d.toISOString().slice(0,10);}
       else delete p.deleteAfter;
       document.body.removeChild(modal);
-      afterMutation(()=>saveProjectRow(p,false)).then(()=>renderProjectListContent());
+      afterMutation(()=>saveProjectRow(p,false),{k:'saveProject',data:stripLogs(p)}).then(()=>renderProjectListContent());
     };
   });
 }
@@ -2881,9 +3068,10 @@ async function submitProject(){
   }
   editProjId=null;
   document.getElementById('proj-form-area').innerHTML='';
-  if(target) await afterMutation(()=>saveProjectRow(target,isNew));
+  if(target) await afterMutation(()=>saveProjectRow(target,isNew),{k:'saveProject',data:stripLogs(target)});
   if(isNew&&target) curProjectId=target.id;
   renderProjectView();
+  toast(isNew?'Project created':'Project updated','success');
 }
 
 function showLogForm(logId){
@@ -2981,8 +3169,9 @@ async function submitLog(){
   p.updated=todayISO();
   editLogId=null;
   document.getElementById('proj-form-area').innerHTML='';
-  if(target) await afterMutation(()=>saveLogRow(p.id,target,isNew));
+  if(target) await afterMutation(()=>saveLogRow(p.id,target,isNew),{k:'saveLog',projId:p.id,data:target});
   renderProjectDetail();
+  toast(isNew?'Log added':'Log updated','success');
 }
 
 function cancelProjForm(){
@@ -2996,8 +3185,9 @@ async function delLog(logId){
   if(!p) return;
   const logObj=(p.logs||[]).find(l=>l.id===logId);
   p.logs=(p.logs||[]).filter(l=>l.id!==logId);
-  await afterMutation(async()=>{ await removeLogRow(p.id,logId); await deleteStoredImages(logObj&&logObj.images); });
+  await afterMutation(async()=>{ await removeLogRow(p.id,logId); await deleteStoredImages(logObj&&logObj.images); },{k:'removeLog',projId:p.id,id:logId});
   renderProjectDetail();
+  toast('Log deleted','success');
 }
 
 async function delProject(id){
@@ -3009,8 +3199,9 @@ async function delProject(id){
   projects=projects.filter(p=>p.id!==pid);
   curProjectId=null;
   document.getElementById('proj-form-area').innerHTML='';
-  await afterMutation(async()=>{ await removeProjectRow(pid); await deleteStoredImages(imgs); });
+  await afterMutation(async()=>{ await removeProjectRow(pid); await deleteStoredImages(imgs); },{k:'removeProject',id:pid});
   renderProjectList();
+  toast('Project deleted','success');
 }
 
 initApp();
