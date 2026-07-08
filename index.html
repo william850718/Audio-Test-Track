@@ -1402,13 +1402,15 @@ function sortRecords(list){
   const s=curSort||'created-desc';
   const arr=[...list];
   const t=v=>new Date(v||0).getTime()||0;
+  const ck=r=>t(r.createdTs||r.created);                                   // creation key (full ts if available, else date)
+  const idn=(a,b)=>String(a.id||'').localeCompare(String(b.id||''),undefined,{numeric:true}); // TM-006 > TM-005
   switch(s){
-    case 'created-asc': arr.sort((a,b)=>t(a.created)-t(b.created)); break;
-    case 'updated-desc': arr.sort((a,b)=>t(b.updated||b.created)-t(a.updated||a.created)); break;
-    case 'due-asc': arr.sort((a,b)=>{const x=a.deadline||'9999-12-31',y=b.deadline||'9999-12-31';return x<y?-1:x>y?1:0;}); break;
-    case 'title-asc': arr.sort((a,b)=>(a.title||'').localeCompare(b.title||'')); break;
-    case 'platform': arr.sort((a,b)=>(a.platform||'').localeCompare(b.platform||'')||t(b.created)-t(a.created)); break;
-    default: arr.sort((a,b)=>t(b.created)-t(a.created)); // created-desc
+    case 'created-asc': arr.sort((a,b)=>ck(a)-ck(b)||idn(a,b)); break;
+    case 'updated-desc': arr.sort((a,b)=>t(b.updated||b.created)-t(a.updated||a.created)||idn(b,a)); break;
+    case 'due-asc': arr.sort((a,b)=>{const x=a.deadline||'9999-12-31',y=b.deadline||'9999-12-31';return (x<y?-1:x>y?1:0)||idn(a,b);}); break;
+    case 'title-asc': arr.sort((a,b)=>(a.title||'').localeCompare(b.title||'')||idn(a,b)); break;
+    case 'platform': arr.sort((a,b)=>(a.platform||'').localeCompare(b.platform||'')||ck(b)-ck(a)||idn(b,a)); break;
+    default: arr.sort((a,b)=>ck(b)-ck(a)||idn(b,a)); // created-desc (newest first)
   }
   return arr;
 }
@@ -2740,7 +2742,7 @@ async function submitForm(){
       target=records[i];
     }
   } else {
-    const nr={...obj,id:recId,created:now};
+    const nr={...obj,id:recId,created:now,createdTs:new Date().toISOString()};
     applyStatusOnRecord(nr, nr.status);
     records.push(nr);
     target=nr;
