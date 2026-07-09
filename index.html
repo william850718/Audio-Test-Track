@@ -233,6 +233,16 @@
         .rec-status { flex-shrink: 0; margin-left: auto; align-self: flex-start; }
         .rec-badges { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 10px; }
         .rec-badges:empty { display: none; }
+        .rec-hover-actions { position: absolute; top: 10px; right: 12px; display: flex; align-items: center; gap: 1px; opacity: 0; transition: opacity .15s; background: var(--bg-panel); border: 0.5px solid var(--border-color); border-radius: 8px; padding: 2px; z-index: 2; }
+        .record:hover .rec-hover-actions, .record:focus-within .rec-hover-actions { opacity: 1; }
+        .iconbtn { border: none; background: none; cursor: pointer; color: var(--text-secondary); font-size: 16px; padding: 5px 7px; border-radius: 6px; line-height: 1; display: inline-flex; }
+        .iconbtn:hover { background: var(--bg-input); color: var(--text-primary); }
+        .iconbtn.dgr:hover { color: #f87171; background: rgba(239,68,68,.14); }
+        [data-theme="light"] .iconbtn.dgr:hover { color: #dc2626; }
+        @media (hover: none) {
+          .rec-hover-actions { opacity: 1; position: static; margin-top: 10px; justify-content: flex-end; background: none; border: none; padding: 0; border-top: 1px solid rgba(255,255,255,0.03); padding-top: 8px; }
+          .iconbtn { font-size: 18px; padding: 6px 10px; }
+        }
         
         /* Badges */
         .badge { font-size: 12px; padding: 2px 8px; border-radius: 4px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.3px; }
@@ -706,6 +716,9 @@
           <option value="in-progress">In Progress</option>
           <option value="closed">Closed</option>
         </select>
+        <select id="q-sample" onchange="renderList()" title="Filter by sample type">
+          <option value="">All Sample Types</option>
+        </select>
         <div class="dropdown">
           <button class="btn icon-btn" onclick="toggleDropdown(event,this)" title="Sort records" aria-label="Sort records"><i class="ti ti-arrows-sort" aria-hidden="true"></i></button>
           <div class="dropdown-menu" id="sort-menu">
@@ -916,6 +929,13 @@ function fillTypeFilter(){
   allTypes.forEach(t=>{opts+=`<option value="${t.v}">${t.lbl}</option>`;});
   sel.innerHTML=opts;
   if([...sel.options].some(o=>o.value===prev)) sel.value=prev; else sel.value='';
+}
+function fillSampleFilter(){
+  const sel=document.getElementById('q-sample');
+  if(!sel) return;
+  const prev=sel.value;
+  sel.innerHTML='<option value="">All Sample Types</option>'+NOTE_SAMPLE_TYPES.map(t=>`<option value="${t.v}">${esc(t.l)}</option>`).join('');
+  if([...sel.options].some(o=>o.value===prev)) sel.value=prev;
 }
 function catHasChildren(plat,cat){
   return !!PLATFORMS[plat]?.categories?.find(x=>x.v===cat)?.children?.length;
@@ -1390,6 +1410,8 @@ function applyRecordFilters(list){
     d=d.filter(r=>r.category===qcat);
     if(qsub&&catHasChildren(curP,qcat)) d=d.filter(r=>r.subCategory===qsub);
   }
+  const qsample=(document.getElementById('q-sample')||{}).value||'';
+  if(qsample) d=d.filter(r=>recordSampleValues(r).includes(qsample));
   return sortRecords(d);
 }
 let curSort='created-desc';
@@ -1431,9 +1453,7 @@ function recordCardHtml(r,opts={}){
     ?`<span class="meta"><i class="ti ti-archive" aria-hidden="true"></i>Closed ${esc(closedAt)} · auto-delete in ${daysLeft} days</span>`:'';
   return`<div class="record${selectedIds.has(r.id)?' selected':''}">
     <div class="rec-top">
-      <input type="checkbox" class="rec-select" ${selectedIds.has(r.id)?'checked':''} title="Select record" onclick="event.stopPropagation();toggleSelect('${r.id}',this.checked)">
       <div class="rec-title">${esc(r.title||'(Untitled)')}</div>
-      <span class="badge ${so.cls} rec-status">${so.lbl}</span>
     </div>
     <div class="rec-badges">
       <span class="badge b-${pc}">${esc(PLATFORMS[r.platform]?.label||r.platform)}</span>
@@ -1441,6 +1461,7 @@ function recordCardHtml(r,opts={}){
       <span class="badge ${to.cls}">${esc(to.lbl)}</span>
       ${recordSampleLabels(r).map(l=>`<span class="badge b-cat">${esc(l)}</span>`).join('')}
       ${recordSoftwareLabel(r)?`<span class="badge b-cat"><i class="ti ti-device-desktop-analytics" style="font-size:11px" aria-hidden="true"></i> ${esc(recordSoftwareLabel(r))}</span>`:''}
+      <span class="badge ${so.cls}">${so.lbl}</span>
       ${certBadge}
     </div>
     <div class="meta-row">
@@ -1454,11 +1475,11 @@ function recordCardHtml(r,opts={}){
     </div>
     ${r.desc?`<div class="desc">${esc(r.desc)}</div>`:''}
     ${imagesDisplayHtml(r.images)}
-    <div class="rec-actions">
-      <button class="ra" onclick="editRecord('${r.id}')"><i class="ti ti-edit" aria-hidden="true"></i> Edit</button>
-      <button class="ra" onclick="duplicateRecord('${r.id}')" title="Duplicate as a new record"><i class="ti ti-copy" aria-hidden="true"></i> Duplicate</button>
-      <button class="ra" onclick="cycleStatus('${r.id}')" title="Toggle status"><i class="ti ti-refresh" aria-hidden="true"></i> ${STATUS_NEXT_LBL[st]||''}</button>
-      <button class="ra danger" onclick="delRecord('${r.id}')"><i class="ti ti-trash" aria-hidden="true"></i> Delete</button>
+    <div class="rec-hover-actions">
+      <button class="iconbtn" onclick="editRecord('${r.id}')" title="Edit" aria-label="Edit"><i class="ti ti-edit" aria-hidden="true"></i></button>
+      <button class="iconbtn" onclick="duplicateRecord('${r.id}')" title="Duplicate as a new record" aria-label="Duplicate"><i class="ti ti-copy" aria-hidden="true"></i></button>
+      <button class="iconbtn" onclick="cycleStatus('${r.id}')" title="${st==='closed'?'Reopen':'Close'}" aria-label="${st==='closed'?'Reopen':'Close'}"><i class="ti ti-${st==='closed'?'lock-open':'lock'}" aria-hidden="true"></i></button>
+      <button class="iconbtn dgr" onclick="delRecord('${r.id}')" title="Delete" aria-label="Delete"><i class="ti ti-trash" aria-hidden="true"></i></button>
     </div>
   </div>`;
 }
@@ -1764,6 +1785,7 @@ async function load(){
   }
   fillCatFilter();
   fillTypeFilter();
+  fillSampleFilter();
   render();
 }
 
@@ -1776,7 +1798,7 @@ function startRealtime(){
     _rtTimer=setTimeout(async()=>{
       try{
         await cloudLoad();
-        if(viewMode==='project') renderProjectView(); else { fillCatFilter(); fillTypeFilter(); render(); }
+        if(viewMode==='project') renderProjectView(); else { fillCatFilter(); fillTypeFilter(); fillSampleFilter(); render(); }
         setSyncStatus('ok');
       }catch(e){ console.error(e); }
     },600);
@@ -2398,18 +2420,25 @@ function duplicateRecord(id){
 }
 
 /* ===== Batch selection & actions ===== */
-let selectedIds=new Set();
+let selectedIds=new Set(), selectionMode=false;
+function toggleSelectionMode(){
+  selectionMode=!selectionMode;
+  if(!selectionMode) selectedIds.clear();
+  const btn=document.getElementById('select-toggle'); if(btn) btn.classList.toggle('active',selectionMode);
+  render();
+}
+function exitSelectionMode(){ selectionMode=false; selectedIds.clear(); const btn=document.getElementById('select-toggle'); if(btn) btn.classList.remove('active'); render(); }
 function toggleSelect(id,on){ if(on) selectedIds.add(id); else selectedIds.delete(id); const c=document.querySelector(`.record .rec-select[onclick*="'${id}'"]`); if(c) c.closest('.record').classList.toggle('selected',on); renderBatchBar(); }
 function clearSelection(){ selectedIds.clear(); render(); }
 function renderBatchBar(){
   const bar=document.getElementById('batch-bar'); if(!bar) return;
-  const n=selectedIds.size;
-  if(!n){ bar.hidden=true; bar.innerHTML=''; return; }
+  if(!selectionMode){ bar.hidden=true; bar.innerHTML=''; return; }
   bar.hidden=false;
-  bar.innerHTML=`<span class="batch-n"><i class="ti ti-checkbox" aria-hidden="true"></i> ${n} selected</span>
-    <button class="btn" onclick="batchClose()"><i class="ti ti-lock" aria-hidden="true"></i> Close</button>
-    <button class="btn btn-danger-text" onclick="batchDelete()"><i class="ti ti-trash" aria-hidden="true"></i> Delete</button>
-    <button class="btn" onclick="clearSelection()">Clear</button>`;
+  const n=selectedIds.size;
+  bar.innerHTML=`<span class="batch-n"><i class="ti ti-checkbox" aria-hidden="true"></i> ${n?n+' selected':'Select records to close or delete'}</span>
+    ${n?`<button class="btn" onclick="batchClose()"><i class="ti ti-lock" aria-hidden="true"></i> Close</button>
+    <button class="btn btn-danger-text" onclick="batchDelete()"><i class="ti ti-trash" aria-hidden="true"></i> Delete</button>`:''}
+    <button class="btn" onclick="exitSelectionMode()"><i class="ti ti-x" aria-hidden="true"></i> Done</button>`;
 }
 async function batchClose(){
   const ids=[...selectedIds];
