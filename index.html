@@ -647,6 +647,7 @@
       <div class="topbar-actions">
         <span id="sync-lbl">—</span>
         <span style="font-size:12px;color:var(--text-secondary);font-family:monospace;" id="date-lbl"></span>
+        <button type="button" class="btn" id="notify-toggle" onclick="enableNotifications()" title="Enable notifications" aria-label="Enable notifications"><i class="ti ti-bell" aria-hidden="true"></i></button>
         <button type="button" class="btn" id="theme-toggle" onclick="toggleTheme()" title="Toggle light / dark"><i class="ti ti-moon" aria-hidden="true"></i></button>
         <button type="button" class="btn" onclick="exportBackup()" title="Download JSON backup"><i class="ti ti-download" aria-hidden="true"></i> Export</button>
         <button type="button" class="btn" onclick="document.getElementById('import-file').click()" title="Restore or merge from JSON"><i class="ti ti-upload" aria-hidden="true"></i> Import</button>
@@ -890,6 +891,55 @@ function toggleTheme(){
   applyTheme(next);
 }
 applyTheme(localStorage.getItem('aclab_theme')==='light'?'light':'dark');
+
+/* ===== Web Push notifications ===== */
+const VAPID_PUBLIC_KEY=''; // <-- paste your VAPID PUBLIC key here after running: npx web-push generate-vapid-keys
+function pushSupported(){ return ('serviceWorker' in navigator)&&('PushManager' in window)&&('Notification' in window); }
+function urlB64ToUint8Array(b64){
+  const pad='='.repeat((4-b64.length%4)%4);
+  const base64=(b64+pad).replace(/-/g,'+').replace(/_/g,'/');
+  const raw=atob(base64), arr=new Uint8Array(raw.length);
+  for(let i=0;i<raw.length;i++) arr[i]=raw.charCodeAt(i);
+  return arr;
+}
+async function registerSW(){
+  if(!('serviceWorker' in navigator)) return null;
+  try{ return await navigator.serviceWorker.register('./sw.js'); }catch(e){ console.warn('SW register failed',e); return null; }
+}
+async function enableNotifications(){
+  if(!pushSupported()){ toast('This browser does not support notifications.','warn'); return; }
+  if(!VAPID_PUBLIC_KEY){ toast('Push is not configured yet (VAPID key missing).','warn',4200); return; }
+  const reg=await registerSW();
+  if(!reg){ toast('Could not start the notification service.','error'); return; }
+  const perm=await Notification.requestPermission();
+  if(perm!=='granted'){ toast('Notifications are blocked. Allow them in your browser settings.','warn',4200); return; }
+  try{
+    let sub=await reg.pushManager.getSubscription();
+    if(!sub) sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:urlB64ToUint8Array(VAPID_PUBLIC_KEY)});
+    await savePushSubscription(sub);
+    updateNotifyBtn(true);
+    toast('Notifications enabled on this device','success');
+  }catch(e){ console.error(e); toast('Could not enable notifications: '+(e.message||e),'error',4200); }
+}
+async function savePushSubscription(sub){
+  const j=sub.toJSON();
+  if(!(sb&&(await sb.auth.getSession()).data.session)) return;
+  const {error}=await sb.from('push_subscriptions').upsert({
+    endpoint:j.endpoint, p256dh:j.keys.p256dh, auth:j.keys.auth,
+    user_email:currentLoginEmail||getCurrentUser(), updated_at:new Date().toISOString()
+  },{onConflict:'endpoint'});
+  if(error) console.warn('save subscription failed',error);
+}
+async function updateNotifyBtn(known){
+  const btn=document.getElementById('notify-toggle'); if(!btn) return;
+  let on=known;
+  if(known===undefined){
+    try{ const reg=await navigator.serviceWorker.getRegistration(); const sub=reg&&await reg.pushManager.getSubscription(); on=!!sub&&Notification.permission==='granted'; }catch(e){ on=false; }
+  }
+  btn.classList.toggle('active',!!on);
+  btn.title=on?'Notifications on for this device':'Enable notifications';
+}
+if(pushSupported()) registerSW();
 function fmtDateShort(iso){
   if(!iso) return '';
   const p=iso.split('-');
@@ -2005,6 +2055,7 @@ function showLogin(){
 function showApp(){
   document.getElementById('login-screen').hidden=true;
   document.getElementById('app-main').hidden=false;
+  if(pushSupported()) updateNotifyBtn();
 }
 async function doLogin(){
   if(loginBusy) return;
