@@ -511,8 +511,12 @@
         .sample-checks { display: flex; flex-wrap: wrap; gap: 8px 16px; padding: 10px 12px; background: var(--bg-input); border: 1px solid var(--border-color); border-radius: 8px; }
         .sample-chk { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text-primary); cursor: pointer; white-space: nowrap; }
         .sample-chk input { width: 15px; height: 15px; accent-color: #6366f1; cursor: pointer; }
-        .rec-images { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 8px; }
-        .rec-images img { max-width: 100%; max-height: 360px; width: auto; height: auto; object-fit: contain; border-radius: 8px; border: 1px solid var(--border-color); background: #0b0f19; cursor: zoom-in; transition: border-color .12s; }
+        .rec-images { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 8px; align-items: flex-start; }
+        .rec-images img { max-width: 100%; width: auto; height: auto; object-fit: contain; border-radius: 8px; border: 1px solid var(--border-color); background: #0b0f19; cursor: zoom-in; transition: border-color .12s; }
+        .rec-images img.sz-sm { max-height: 90px; }
+        .rec-images img.sz-md { max-height: 180px; }
+        .rec-images img.sz-lg { max-height: 340px; }
+        .img-size { position: absolute; bottom: 3px; left: 3px; width: 46px; height: 20px; padding: 0 3px; font-size: 11px; line-height: 1; border: none; border-radius: 4px; background: rgba(0,0,0,.68); color: #fff; cursor: pointer; }
         .rec-images img:hover { border-color: #6366f1; }
         .img-lightbox { position: fixed; inset: 0; z-index: 10000; background: rgba(0,0,0,.85); display: flex; align-items: center; justify-content: center; padding: 24px; cursor: zoom-out; }
         .img-lightbox img { max-width: 95%; max-height: 95%; border-radius: 8px; box-shadow: 0 10px 40px rgba(0,0,0,.6); }
@@ -1225,7 +1229,7 @@ function fmtMB(b){ return (b/1048576).toFixed(2)+'MB'; }
 let imgState={list:[],original:[]};
 function initImageUploader(existing){
   const arr=Array.isArray(existing)?existing:[];
-  imgState={list:arr.map(im=>({kind:'existing',path:im.path,name:im.name||'image',size:im.size||0})),original:arr.slice()};
+  imgState={list:arr.map(im=>({kind:'existing',path:im.path,name:im.name||'image',size:im.size||0,disp:im.disp||'md'})),original:arr.slice()};
   renderImageUploader();
 }
 function renderImageUploader(){
@@ -1233,9 +1237,15 @@ function renderImageUploader(){
   if(!wrap) return;
   const thumbs=imgState.list.map((im,i)=>{
     const url=im.kind==='new'?im.url:imgPublicUrl(im.path);
+    const d=im.disp||'md';
     return `<div class="img-thumb">
       <img src="${url}" alt="${esc(im.name)}" onclick="openImageLightbox('${url.replace(/'/g,"\\'")}')">
       <button type="button" class="rm" title="Remove" onclick="removeUploadImage(${i})"><i class="ti ti-x" aria-hidden="true"></i></button>
+      <select class="img-size" title="Display size on the card" onchange="setImgDisp(${i},this.value)">
+        <option value="sm" ${d==='sm'?'selected':''}>S</option>
+        <option value="md" ${d==='md'?'selected':''}>M</option>
+        <option value="lg" ${d==='lg'?'selected':''}>L</option>
+      </select>
     </div>`;
   }).join('');
   const canAdd=imgState.list.length<MAX_IMG_COUNT;
@@ -1256,10 +1266,11 @@ async function onPickImages(input){
       toast('"'+f.name+'" ('+fmtMB(f.size)+') would exceed the '+fmtMB(TOTAL_IMG_BYTES)+' total limit. Used: '+fmtMB(currentImgBytes())+' / '+fmtMB(TOTAL_IMG_BYTES)+'.','warn',4200);
       continue;
     }
-    imgState.list.push({kind:'new',file:f,name:f.name,size:f.size,url:URL.createObjectURL(f)});
+    imgState.list.push({kind:'new',file:f,name:f.name,size:f.size,disp:'md',url:URL.createObjectURL(f)});
   }
   renderImageUploader();
 }
+function setImgDisp(i,v){ if(imgState.list[i]) imgState.list[i].disp=v; }
 function removeUploadImage(i){
   const im=imgState.list[i];
   if(im&&im.kind==='new'&&im.url) URL.revokeObjectURL(im.url);
@@ -1271,11 +1282,11 @@ function sanitizeImgName(n){ return String(n||'image').replace(/[^a-zA-Z0-9._-]/
 async function commitImages(scope){
   const finalList=[];
   for(const im of imgState.list){
-    if(im.kind==='existing'){ finalList.push({path:im.path,name:im.name,size:im.size||0}); continue; }
+    if(im.kind==='existing'){ finalList.push({path:im.path,name:im.name,size:im.size||0,disp:im.disp||'md'}); continue; }
     const path=`${scope}/${Date.now()}-${Math.random().toString(36).slice(2,8)}-${sanitizeImgName(im.name)}`;
     const {error}=await sb.storage.from(ATTACH_BUCKET).upload(path,im.file,{contentType:im.file.type,upsert:false});
     if(error) throw new Error('Image upload failed: '+(error.message||error));
-    finalList.push({path,name:im.name,size:im.file.size});
+    finalList.push({path,name:im.name,size:im.file.size,disp:im.disp||'md'});
   }
   const kept=new Set(finalList.map(f=>f.path));
   const removed=(imgState.original||[]).filter(im=>!kept.has(im.path)).map(im=>im.path);
@@ -1286,7 +1297,7 @@ function imagesDisplayHtml(images){
   if(!Array.isArray(images)||!images.length) return '';
   return '<div class="rec-images">'+images.map(im=>{
     const url=imgPublicUrl(im.path);
-    return `<img src="${url}" alt="${esc(im.name||'')}" loading="lazy" onclick="openImageLightbox('${url.replace(/'/g,"\\'")}')">`;
+    return `<img class="sz-${im.disp||'md'}" src="${url}" alt="${esc(im.name||'')}" loading="lazy" onclick="openImageLightbox('${url.replace(/'/g,"\\'")}')">`;
   }).join('')+'</div>';
 }
 function openImageLightbox(url){
