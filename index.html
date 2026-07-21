@@ -893,7 +893,7 @@ function toggleTheme(){
 applyTheme(localStorage.getItem('aclab_theme')==='light'?'light':'dark');
 
 /* ===== Web Push notifications ===== */
-const VAPID_PUBLIC_KEY=''; // <-- paste your VAPID PUBLIC key here after running: npx web-push generate-vapid-keys
+const VAPID_PUBLIC_KEY='BNKyIJE2ed7ZmDD2s5aNdmw56400S6rz-NoN0-HKPbVL9dis1gxXkPJY-ES0FapIb4PUpztXmL_j6PoD-phV8J0';
 function pushSupported(){ return ('serviceWorker' in navigator)&&('PushManager' in window)&&('Notification' in window); }
 function urlB64ToUint8Array(b64){
   const pad='='.repeat((4-b64.length%4)%4);
