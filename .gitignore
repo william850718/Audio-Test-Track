@@ -1,4 +1,13 @@
-﻿vapid-keys.txt
+# === Sensitive — NEVER commit ===
+vapid-keys.txt
+SupaBase.txt
+*.key
+*.pem
+.env
+.env.*
+
+# === Local-only, not needed in the public repo ===
+memory/
 Old/
 .claude/
-memory/
+網頁圖標.png
