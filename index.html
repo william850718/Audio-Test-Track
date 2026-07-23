@@ -30,7 +30,8 @@
             --color-zoom: #f59e0b;
             --color-intel: #0ea5e9;
             --color-google: #10b981;
-            
+            --color-lenovo: #e11d48;
+
             --color-issue: #ef4444;
             --color-update: #3b82f6;
             --color-status: #6b7280;
@@ -66,6 +67,7 @@
         [data-theme="light"] .b-zoom { background: #fef3c7; color: #b45309; }
         [data-theme="light"] .b-intel { background: #e0f2fe; color: #0369a1; }
         [data-theme="light"] .b-google { background: #d1fae5; color: #047857; }
+        [data-theme="light"] .b-lenovo { background: #ffe4e6; color: #be123c; }
         [data-theme="light"] .b-issue { background: #fee2e2; color: #b91c1c; border-color: #fecaca; }
         [data-theme="light"] .b-acqua-fw { background: #dbeafe; color: #1d4ed8; border-color: #bfdbfe; }
         [data-theme="light"] .b-test-seq { background: #ede9fe; color: #6d28d9; border-color: #ddd6fe; }
@@ -84,6 +86,7 @@
         [data-theme="light"] .ptab.p-zoom { background: #fef3c7; color: #b45309; border-color: #fcd34d; }
         [data-theme="light"] .ptab.p-intel { background: #e0f2fe; color: #0369a1; border-color: #7dd3fc; }
         [data-theme="light"] .ptab.p-google { background: #d1fae5; color: #047857; border-color: #6ee7b7; }
+        [data-theme="light"] .ptab.p-lenovo { background: #ffe4e6; color: #be123c; border-color: #fda4af; }
         [data-theme="light"] .img-thumb, [data-theme="light"] .rec-images img, [data-theme="light"] .img-add-btn { background: #f1f5f9; }
         [data-theme="light"] .meta-row, [data-theme="light"] .rec-actions { border-top-color: rgba(15,23,42,0.06); }
         [data-theme="light"] .record:hover { box-shadow: 0 6px 16px rgba(15,23,42,.12); }
@@ -149,6 +152,7 @@
         .ptab.p-zoom { background: rgba(245, 158, 11, 0.15); color: #fde68a; border-color: var(--color-zoom); }
         .ptab.p-intel { background: rgba(14, 165, 233, 0.15); color: #7dd3fc; border-color: var(--color-intel); }
         .ptab.p-google { background: rgba(16, 185, 129, 0.15); color: #a7f3d0; border-color: var(--color-google); }
+        .ptab.p-lenovo { background: rgba(225, 29, 72, 0.15); color: #fecdd3; border-color: var(--color-lenovo); }
 
         /* Toolbar */
         .toolbar {
@@ -251,6 +255,7 @@
         .b-zoom { background: rgba(245, 158, 11, 0.2); color: #fbbf24; }
         .b-intel { background: rgba(14, 165, 233, 0.2); color: #38bdf8; }
         .b-google { background: rgba(16, 185, 129, 0.2); color: #34d399; }
+        .b-lenovo { background: rgba(225, 29, 72, 0.2); color: #fb7185; }
         .b-cat { background: #1f2937; color: #d1d5db; border: 0.5px solid #4b5563; }
         
         .b-issue { background: #451a1a; color: #f87171; border: 0.5px solid #7f1d1d; }
@@ -675,6 +680,7 @@
       <button class="ptab" data-p="Zoom" onclick="switchP(this)">Zoom</button>
       <button class="ptab" data-p="Intel" onclick="switchP(this)">Intel</button>
       <button class="ptab" data-p="Google" onclick="switchP(this)">Google</button>
+      <button class="ptab" data-p="Lenovo" onclick="switchP(this)">Lenovo</button>
     </div>
 
     <div class="toolbar">
@@ -775,9 +781,23 @@
 </div>
 
 <script>
+/* samples: 該平台/分類可選的 Sample Type。
+   - 放在平台層 = 該平台所有分類共用
+   - 放在分類層 = 只有該分類適用（優先於平台層）
+   - 兩層都沒有 = 該組合不需要 Sample Type，表單不顯示這一段 */
 const PLATFORMS={
   Teams:{
     color:'teams',pfx:'TM',label:'Teams',
+    samples:[
+      {v:'personal-hs-usb',l:'Personal - Headset (USB)'},
+      {v:'personal-hs-dongle',l:'Personal - Headset (Dongle)'},
+      {v:'personal-hs-nbt-classic',l:'Personal - Headset (NBT-Classic)'},
+      {v:'personal-hs-nbt-lea',l:'Personal - Headset (NBT-LE Audio)'},
+      {v:'personal-speakerphone',l:'Personal - Speakerphone'},
+      {v:'personal-deskphone',l:'Personal - Deskphone'},
+      {v:'personal-laptop',l:'Personal - Laptop'},
+      {v:'shared-speakerphone',l:'Shared - Speakerphone'}
+    ],
     categories:[
       {v:'Audio',l:'Audio'},
       {v:'Function',l:'Function',children:[
@@ -795,22 +815,37 @@ const PLATFORMS={
       {v:'Cortana',l:'Cortana',children:[
         {v:'HWKWS',l:'HWKWS'},
         {v:'SWKWS',l:'SWKWS'}
+      ],samples:[
+        {v:'hde-headset',l:'Headset'},
+        {v:'hde-laptop',l:'Laptop'},
+        {v:'hde-center-of-room',l:'Center of room'},
+        {v:'hde-edge-of-room',l:'Edge of room'}
       ]},
+      // Talk Analysis Suite 只有筆電，不需要 Sample Type
       {v:'Talk Analysis Suite',l:'Talk Analysis Suite'}
     ]
   },
   Zoom:{
     color:'zoom',pfx:'ZM',label:'Zoom',
     categories:[
-      {v:'Zoom meeting',l:'Zoom meeting'},
-      {v:'Zoom Room',l:'Zoom Room'},
-      {v:'Zoom FW Test',l:'Zoom FW Test'}
+      {v:'Audio',l:'Audio',samples:[
+        {v:'zoom-meeting',l:'Zoom Meeting'},
+        {v:'zoom-rooms',l:'Zoom Rooms'}
+      ]},
+      {v:'AIO',l:'AIO (Function)',samples:[
+        {v:'zoom-zrc',l:'ZRC'},
+        {v:'zoom-zrp',l:'ZRP'},
+        {v:'zoom-fw-aio',l:'FW&AIO'}
+      ]}
     ]
   },
   Intel:{
     color:'intel',pfx:'IN',label:'Intel',
     categories:[
-      {v:'SPET',l:'SPET'},
+      {v:'SPET',l:'SPET',samples:[
+        {v:'intel-lnl',l:'LNL'},
+        {v:'intel-ptl',l:'PTL'}
+      ]},
       {v:'BT Audio',l:'BT Audio'}
     ]
   },
@@ -822,7 +857,21 @@ const PLATFORMS={
       {v:'BART',l:'BART (BGRT)'},
       {v:'SASS',l:'SASS'},
       {v:'FindMyDevices',l:'FindMyDevices'},
-      {v:'Chrome Audio',l:'Chrome Audio'}
+      {v:'Chrome Audio',l:'Chrome Audio',samples:[
+        {v:'google-chromebox',l:'Chromebox'},
+        {v:'google-chromebook-system',l:'Chromebook system'},
+        {v:'google-alos-system',l:'ALOS system'},
+        {v:'google-soundcheck-v20',l:'Soundcheck v.20'},
+        {v:'google-soundcheck-v21',l:'Soundcheck v.21'}
+      ]}
+    ]
+  },
+  // Lenovo 只有筆電，不需要 Sample Type
+  Lenovo:{
+    color:'lenovo',pfx:'LN',label:'Lenovo',
+    categories:[
+      {v:'LNV',l:'LNV'},
+      {v:'HWF',l:'HWF'}
     ]
   }
 };
@@ -988,8 +1037,22 @@ function fillSampleFilter(){
   const sel=document.getElementById('q-sample');
   if(!sel) return;
   const prev=sel.value;
-  sel.innerHTML='<option value="">All Sample Types</option>'+NOTE_SAMPLE_TYPES.map(t=>`<option value="${t.v}">${esc(t.l)}</option>`).join('');
-  if([...sel.options].some(o=>o.value===prev)) sel.value=prev;
+  const qcat=(document.getElementById('q-cat')||{}).value||'';
+  const m=new Map();
+  const add=t=>{if(!m.has(t.v)) m.set(t.v,t);};
+  const addAllOf=p=>{
+    const cfg=PLATFORMS[p]||{};
+    (cfg.samples||[]).forEach(add);
+    (cfg.categories||[]).forEach(c=>(c.samples||[]).forEach(add));
+  };
+  if(curP==='all') PLAT_NAMES.forEach(addAllOf);
+  else if(qcat) sampleOptsFor(curP,qcat).forEach(add);
+  else addAllOf(curP);
+  const list=[...m.values()];
+  // 該平台/分類沒有樣品類型時（如 Lenovo）整個篩選器隱藏
+  sel.style.display=list.length?'':'none';
+  sel.innerHTML='<option value="">All Sample Types</option>'+list.map(t=>`<option value="${t.v}">${esc(t.l)}</option>`).join('');
+  if(list.length&&[...sel.options].some(o=>o.value===prev)) sel.value=prev; else sel.value='';
 }
 function catHasChildren(plat,cat){
   return !!PLATFORMS[plat]?.categories?.find(x=>x.v===cat)?.children?.length;
@@ -1025,6 +1088,7 @@ function fillSubcatFilter(){
 function onCatFilterChange(){
   fillSubcatFilter();
   fillTypeFilter();
+  fillSampleFilter();
   renderList();
 }
 function onTypeFilterChange(){
@@ -1116,21 +1180,42 @@ function distanceOpts(sel){
 }
 function fmtDist(d){return d?(String(d).endsWith('m')?d:d+'m'):'';}
 
-/* ===== Note Sample Type (Platform Tracking) ===== */
-const NOTE_SAMPLE_TYPES=[
-  {v:'personal-hs-usb',l:'Personal - Headset (USB)'},
-  {v:'personal-hs-dongle',l:'Personal - Headset (Dongle)'},
-  {v:'personal-hs-nbt-classic',l:'Personal - Headset (NBT-Classic)'},
-  {v:'personal-hs-nbt-lea',l:'Personal - Headset (NBT-LE Audio)'},
-  {v:'personal-speakerphone',l:'Personal - Speakerphone'},
-  {v:'shared-speakerphone',l:'Shared - Speakerphone'},
+/* ===== Note Sample Type (Platform Tracking) =====
+   清單由「平台 + 平台分類」決定，定義在 PLATFORMS 的 samples 欄位 */
+// 已停用、但可能存在於舊記錄的選項：只用於顯示名稱，不會再出現在表單
+const LEGACY_SAMPLE_TYPES=[
   {v:'shared-deskphone',l:'Shared - Deskphone'}
 ];
-const NOTE_SAMPLE_TYPE_MAP=Object.fromEntries(NOTE_SAMPLE_TYPES.map(t=>[t.v,t]));
-function noteSampleChecks(selected){
+// 所有出現過的 value -> label（徽章 / CSV / PDF 顯示舊記錄時查得到）
+const NOTE_SAMPLE_TYPE_MAP=(()=>{
+  const m={};
+  LEGACY_SAMPLE_TYPES.forEach(t=>{m[t.v]=t;});
+  PLAT_NAMES.forEach(p=>{
+    const cfg=PLATFORMS[p];
+    (cfg.samples||[]).forEach(t=>{m[t.v]=t;});
+    (cfg.categories||[]).forEach(c=>(c.samples||[]).forEach(t=>{m[t.v]=t;}));
+  });
+  return m;
+})();
+// 該「平台+分類」可選的清單：分類層優先，其次平台層；都沒有 = 不需要 Sample Type
+function sampleOptsFor(plat,cat){
+  const cfg=PLATFORMS[plat];
+  if(!cfg) return [];
+  const c=cfg.categories?.find(x=>x.v===cat);
+  if(c&&Array.isArray(c.samples)) return c.samples;
+  return Array.isArray(cfg.samples)?cfg.samples:[];
+}
+// 表單用：可選清單 + 已勾選但不在清單內的舊值（避免編輯舊記錄時遺失資料）
+function sampleTypesFor(plat,cat,selected){
+  const opts=sampleOptsFor(plat,cat);
+  const known=new Set(opts.map(t=>t.v));
+  const extra=(selected||[]).filter(v=>!known.has(v)).map(v=>NOTE_SAMPLE_TYPE_MAP[v]||{v,l:v});
+  return opts.concat(extra);
+}
+function noteSampleChecks(selected,plat,cat){
   const sel=new Set(selected||[]);
-  return NOTE_SAMPLE_TYPES.map(t=>
-    `<label class="sample-chk"><input type="checkbox" class="f-sample-cb" value="${t.v}" ${sel.has(t.v)?'checked':''}><span>${t.l}</span></label>`
+  return sampleTypesFor(plat,cat,selected).map(t=>
+    `<label class="sample-chk"><input type="checkbox" class="f-sample-cb" value="${t.v}" ${sel.has(t.v)?'checked':''}><span>${esc(t.l)}</span></label>`
   ).join('');
 }
 // Backward-compatible: new records use sampleTypes[] , old records used sampleType (string)
@@ -2341,6 +2426,7 @@ function switchP(el){
   el.classList.add(p=='all'?'p-all':'p-'+PLAT_COLOR[p]);
   curP=p;
   fillCatFilter();
+  fillSampleFilter();
   render();
 }
 
@@ -2613,7 +2699,9 @@ function subcatOptsHtml(plat,cat,selSub){
   return c.children.map(ch=>`<option value="${ch.v}" ${(selSub||'')===ch.v?'selected':''}>${ch.l}</option>`).join('');
 }
 
-function onPlatChange(){
+// userChanged=true 代表是使用者自己動了平台/分類（而非 renderForm 初始化），
+// 這時才把不屬於新平台/分類的舊勾選清掉
+function onPlatChange(userChanged){
   const plat=document.getElementById('f-plat')?.value||'Teams';
   const catSel=document.getElementById('f-cat');
   const catLblEl=document.getElementById('f-cat-lbl');
@@ -2623,9 +2711,27 @@ function onPlatChange(){
     catSel.innerHTML=catOptsHtml(plat,'','');
     catSel.disabled=noCat;
   }
-  onCatChange();
+  onCatChange(userChanged);
 }
-function onCatChange(){
+// 依目前表單的 平台 / 分類 / 記錄類型 重建 Sample Type 區塊
+function refreshSampleChecks(dropStale){
+  const wrap=document.getElementById('f-sample-wrap');
+  const box=wrap&&wrap.querySelector('.sample-checks');
+  if(!wrap||!box) return;
+  const plat=document.getElementById('f-plat')?.value||'Teams';
+  const cat=document.getElementById('f-cat')?.value||'';
+  const type=(document.getElementById('f-type')||{}).value||'';
+  let cur=Array.from(document.querySelectorAll('.f-sample-cb:checked')).map(c=>c.value);
+  if(dropStale){
+    const known=new Set(sampleOptsFor(plat,cat).map(t=>t.v));
+    cur=cur.filter(v=>known.has(v));
+  }
+  const list=sampleTypesFor(plat,cat,cur);
+  box.innerHTML=noteSampleChecks(cur,plat,cat);
+  // 該平台/分類沒有樣品類型時（如 Lenovo、Talk Analysis Suite）整段隱藏
+  wrap.style.display=(type==='note'&&list.length)?'block':'none';
+}
+function onCatChange(userChanged){
   const plat=document.getElementById('f-plat')?.value||'Teams';
   const cat=document.getElementById('f-cat')?.value||'';
   const typeSel=document.getElementById('f-type');
@@ -2644,10 +2750,15 @@ function onCatChange(){
     if(show) sel.innerHTML='<option value="">— Select subcategory —</option>'+subcatOptsHtml(plat,cat,'');
     else sel.value='';
   }
+  refreshSampleChecks(userChanged);
 }
 
 function renderForm(r){
   const plat=r.platform||'Teams';
+  // Sample Type 由 平台+分類 決定；沒有可選項時整段不顯示
+  const formCat=r.category||catDef(plat);
+  const selSamples=recordSampleValues(r);
+  const showSample=(r.type||'')==='note'&&sampleTypesFor(plat,formCat,selSamples).length>0;
   const platOpts=PLAT_NAMES.map(p=>`<option value="${p}" ${plat===p?'selected':''}>${PLATFORMS[p].label}</option>`).join('');
   const statOpts=STATUSES.map(s=>`<option value="${s.v}" ${(r.status||'in-progress')===s.v?'selected':''}>${s.lbl}</option>`).join('');
 
@@ -2658,12 +2769,12 @@ function renderForm(r){
       <div class="fg2">
         <div>
           <label for="f-plat">Test Platform *</label>
-          <select id="f-plat" onchange="onPlatChange()">${platOpts}</select>
+          <select id="f-plat" onchange="onPlatChange(true)">${platOpts}</select>
         </div>
         <div class="cat-group">
           <div>
             <label for="f-cat" id="f-cat-lbl">Platform Category *</label>
-            <select id="f-cat" onchange="onCatChange()">${catOptsHtml(plat,r.category||'',r.subCategory||'')}</select>
+            <select id="f-cat" onchange="onCatChange(true)">${catOptsHtml(plat,r.category||'',r.subCategory||'')}</select>
           </div>
           <div id="f-subcat-wrap" class="subcat-nested" style="display:none">
             <label for="f-subcat">Function Subcategory *</label>
@@ -2695,9 +2806,9 @@ function renderForm(r){
           <label for="f-software-other">Software name</label>
           <input type="text" id="f-software-other" placeholder="Enter software name" value="${esc(r.testSoftwareOther||'')}">
         </div>
-        <div id="f-sample-wrap" style="display:${(r.type||'')==='note'?'block':'none'}">
+        <div id="f-sample-wrap" style="display:${showSample?'block':'none'}">
           <label>Sample Type <span style="color:var(--text-secondary);font-weight:400">(select one or more)</span></label>
-          <div class="sample-checks">${noteSampleChecks(recordSampleValues(r))}</div>
+          <div class="sample-checks">${noteSampleChecks(selSamples,plat,formCat)}</div>
         </div>
 
         <div class="ff">
@@ -2748,7 +2859,16 @@ function renderForm(r){
   onPlatChange();
   if(r.category){
     const catSel=document.getElementById('f-cat');
-    if(catSel) catSel.value=r.category;
+    if(catSel){
+      // 舊記錄用的分類若已從清單移除（如 Zoom 的 Zoom meeting），補回一個選項，
+      // 否則編輯存檔後該筆的分類會被清空
+      if(!Array.from(catSel.options).some(o=>o.value===r.category)){
+        const o=document.createElement('option');
+        o.value=r.category; o.textContent=r.category+'（舊分類）';
+        catSel.appendChild(o);
+      }
+      catSel.value=r.category;
+    }
   }
   onCatChange();
   if(r.subCategory){
@@ -2765,8 +2885,7 @@ function onTypeChange(){
   if(fw) fw.style.display=(t==='issue'||t==='acqua-fw')?'block':'none';
   const sw=document.getElementById('f-subtype-wrap');
   if(sw) sw.style.display=(t==='update')?'block':'none';
-  const ss=document.getElementById('f-sample-wrap');
-  if(ss) ss.style.display=(t==='note')?'block':'none';
+  refreshSampleChecks();
   onSubtypeChange();
 }
 function onSubtypeChange(){
