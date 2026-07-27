@@ -495,6 +495,25 @@
         .img-add-btn:hover { border-color: #6366f1; color: #a5b4fc; }
         .img-add-btn i { font-size: 20px; }
         .img-hint { font-size: 12px; color: var(--text-secondary); margin-top: 8px; }
+        /* ===== File attachments ===== */
+        .file-list { display: flex; flex-direction: column; gap: 6px; }
+        .file-list:empty { display: none; }
+        .file-chip { display: flex; align-items: center; gap: 8px; padding: 6px 10px; background: var(--bg-input); border: 1px solid var(--border-color); border-radius: 8px; font-size: 13px; }
+        .file-chip > i { font-size: 18px; flex-shrink: 0; }
+        .file-chip .file-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-primary); }
+        .file-chip .file-size { color: var(--text-secondary); font-size: 12px; flex-shrink: 0; font-variant-numeric: tabular-nums; }
+        .file-chip .file-rm { flex-shrink: 0; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; border: none; border-radius: 50%; background: transparent; color: var(--text-secondary); cursor: pointer; padding: 0; }
+        .file-chip .file-rm:hover { background: #ef4444; color: #fff; }
+        .file-add-btn { display: inline-flex; align-items: center; gap: 6px; margin-top: 8px; padding: 7px 12px; border: 1px dashed var(--border-color); border-radius: 8px; color: var(--text-secondary); cursor: pointer; font-size: 13px; transition: all .15s; }
+        .file-add-btn:hover { border-color: #6366f1; color: #a5b4fc; }
+        .file-add-btn i { font-size: 17px; }
+        .rec-files { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+        .file-dl { display: inline-flex; align-items: center; gap: 7px; max-width: 280px; padding: 5px 10px; background: var(--bg-input); border: 1px solid var(--border-color); border-radius: 8px; text-decoration: none; color: var(--text-primary); font-size: 13px; transition: border-color .12s; }
+        .file-dl:hover { border-color: #6366f1; }
+        .file-dl > i { font-size: 17px; flex-shrink: 0; }
+        .file-dl .file-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .file-dl .file-size { color: var(--text-secondary); font-size: 12px; flex-shrink: 0; }
+        .file-dl .dl-ic { font-size: 15px; color: var(--text-secondary); }
         .db-panel { background: var(--bg-panel); border: 1px solid var(--border-color); border-radius: 12px; padding: 16px; margin-bottom: 14px; }
         .db-cards { display: grid; grid-template-columns: repeat(4,1fr); gap: 10px; margin-bottom: 16px; }
         .db-card { background: var(--bg-input); border: 1px solid var(--border-color); border-radius: 8px; padding: 12px; text-align: center; transition: transform .15s, border-color .15s, box-shadow .15s; }
@@ -1345,7 +1364,7 @@ function renderImageUploader(){
     ${canAdd?`<label class="img-add-btn"><i class="ti ti-camera-plus" aria-hidden="true"></i><span>Add image</span>
       <input type="file" accept="image/*" multiple hidden onchange="onPickImages(this)"></label>`:''}
   </div>
-  <div class="img-hint">Up to ${MAX_IMG_COUNT} images · ${fmtMB(currentImgBytes())} / ${fmtMB(TOTAL_IMG_BYTES)} total used</div>`;
+  <div class="img-hint"><i class="ti ti-info-circle" aria-hidden="true"></i> Large photos are auto-compressed — but please avoid very large files. Up to ${MAX_IMG_COUNT} images · ${fmtMB(currentImgBytes())} / ${fmtMB(TOTAL_IMG_BYTES)} total used</div>`;
 }
 async function onPickImages(input){
   const files=Array.from(input.files||[]);
@@ -1353,7 +1372,12 @@ async function onPickImages(input){
   for(let f of files){
     if(imgState.list.length>=MAX_IMG_COUNT){ toast('You can attach at most '+MAX_IMG_COUNT+' images.','warn'); break; }
     if(!/^image\//.test(f.type)){ toast('"'+f.name+'" is not an image file.','warn'); continue; }
+    const origSize=f.size;
     f=await compressImage(f);   // shrink large images (keeps them legible)
+    // Remind the user when a large photo was picked (it is auto-compressed, but flag it)
+    if(origSize>=3*1024*1024){
+      toast('"'+f.name+'" was large ('+fmtMB(origSize)+') — auto-compressed to '+fmtMB(f.size)+'. Please keep uploads reasonably small.','info',4200);
+    }
     if(currentImgBytes()+f.size>TOTAL_IMG_BYTES){
       toast('"'+f.name+'" ('+fmtMB(f.size)+') would exceed the '+fmtMB(TOTAL_IMG_BYTES)+' total limit. Used: '+fmtMB(currentImgBytes())+' / '+fmtMB(TOTAL_IMG_BYTES)+'.','warn',4200);
       continue;
@@ -1400,6 +1424,93 @@ function openImageLightbox(url){
   ov.innerHTML=`<img src="${url}" alt=""><button type="button" class="lb-close" title="Close"><i class="ti ti-x" aria-hidden="true"></i></button>`;
   document.body.appendChild(ov);
 }
+
+/* ===== File attachments (Excel / PDF / Word … — Supabase Storage) ===== */
+const MAX_FILE_BYTES=10*1024*1024;    // 10MB per file
+const TOTAL_FILE_BYTES=25*1024*1024;  // 25MB total across all files in one record / log
+const MAX_FILE_COUNT=10;
+const ALLOWED_FILE_EXTS=['pdf','xlsx','xls','docx','doc','pptx','ppt','csv','txt','zip'];
+function fileExt(name){ const m=String(name||'').toLowerCase().match(/\.([a-z0-9]+)$/); return m?m[1]:''; }
+function fileIcon(ext){
+  return ({pdf:'ti-file-type-pdf',xlsx:'ti-file-type-xls',xls:'ti-file-type-xls',csv:'ti-file-type-csv',
+    docx:'ti-file-type-doc',doc:'ti-file-type-doc',pptx:'ti-file-type-ppt',ppt:'ti-file-type-ppt',
+    txt:'ti-file-type-txt',zip:'ti-file-type-zip'})[ext]||'ti-file';
+}
+function fileIconColor(ext){
+  return ({pdf:'#f87171',xlsx:'#34d399',xls:'#34d399',csv:'#34d399',docx:'#60a5fa',doc:'#60a5fa',
+    pptx:'#fb923c',ppt:'#fb923c',txt:'#9ca3af',zip:'#c4b5fd'})[ext]||'#9ca3af';
+}
+// fileState.list items: {kind:'existing',path,name,size,ext} | {kind:'new',file,name,size,ext}
+let fileState={list:[],original:[]};
+function initFileUploader(existing){
+  const arr=Array.isArray(existing)?existing:[];
+  fileState={list:arr.map(f=>({kind:'existing',path:f.path,name:f.name||'file',size:f.size||0,ext:f.ext||fileExt(f.name)})),original:arr.slice()};
+  renderFileUploader();
+}
+function fileItemBytes(f){ return f.kind==='new'?(f.file?.size||0):(f.size||0); }
+function currentFileBytes(){ return fileState.list.reduce((s,f)=>s+fileItemBytes(f),0); }
+function renderFileUploader(){
+  const wrap=document.getElementById('file-uploader');
+  if(!wrap) return;
+  const rows=fileState.list.map((f,i)=>{
+    const ext=f.ext||fileExt(f.name);
+    return `<div class="file-chip">
+      <i class="ti ${fileIcon(ext)}" style="color:${fileIconColor(ext)}" aria-hidden="true"></i>
+      <span class="file-name" title="${esc(f.name)}">${esc(f.name)}</span>
+      <span class="file-size">${fmtMB(fileItemBytes(f))}</span>
+      <button type="button" class="file-rm" title="Remove" onclick="removeUploadFile(${i})"><i class="ti ti-x" aria-hidden="true"></i></button>
+    </div>`;
+  }).join('');
+  const canAdd=fileState.list.length<MAX_FILE_COUNT;
+  wrap.innerHTML=`<div class="file-list">${rows}</div>
+    ${canAdd?`<label class="file-add-btn"><i class="ti ti-paperclip" aria-hidden="true"></i><span>Add file</span>
+      <input type="file" accept="${ALLOWED_FILE_EXTS.map(e=>'.'+e).join(',')}" multiple hidden onchange="onPickFiles(this)"></label>`:''}
+    <div class="img-hint">Up to ${MAX_FILE_COUNT} files · max ${fmtMB(MAX_FILE_BYTES)} each · ${fmtMB(currentFileBytes())} / ${fmtMB(TOTAL_FILE_BYTES)} total used · allowed: ${ALLOWED_FILE_EXTS.join(', ')}</div>`;
+}
+function onPickFiles(input){
+  const files=Array.from(input.files||[]);
+  input.value='';
+  for(const f of files){
+    if(fileState.list.length>=MAX_FILE_COUNT){ toast('You can attach at most '+MAX_FILE_COUNT+' files.','warn'); break; }
+    const ext=fileExt(f.name);
+    if(!ALLOWED_FILE_EXTS.includes(ext)){ toast('"'+f.name+'": file type not allowed. Allowed: '+ALLOWED_FILE_EXTS.join(', '),'warn',4600); continue; }
+    if(f.size>MAX_FILE_BYTES){ toast('"'+f.name+'" ('+fmtMB(f.size)+') exceeds the '+fmtMB(MAX_FILE_BYTES)+' per-file limit. Please attach a smaller file.','warn',4600); continue; }
+    if(currentFileBytes()+f.size>TOTAL_FILE_BYTES){ toast('"'+f.name+'" ('+fmtMB(f.size)+') would exceed the '+fmtMB(TOTAL_FILE_BYTES)+' total. Used: '+fmtMB(currentFileBytes())+'.','warn',4600); continue; }
+    fileState.list.push({kind:'new',file:f,name:f.name,size:f.size,ext});
+  }
+  renderFileUploader();
+}
+function removeUploadFile(i){ fileState.list.splice(i,1); renderFileUploader(); }
+// Uploads new files, deletes removed existing ones, returns final files array [{path,name,size,ext}]
+async function commitFiles(scope){
+  const finalList=[];
+  for(const f of fileState.list){
+    if(f.kind==='existing'){ finalList.push({path:f.path,name:f.name,size:f.size||0,ext:f.ext||fileExt(f.name)}); continue; }
+    const path=`${scope}/files/${Date.now()}-${Math.random().toString(36).slice(2,8)}-${sanitizeImgName(f.name)}`;
+    const {error}=await sb.storage.from(ATTACH_BUCKET).upload(path,f.file,{contentType:f.file.type||'application/octet-stream',upsert:false});
+    if(error) throw new Error('File upload failed: '+(error.message||error));
+    finalList.push({path,name:f.name,size:f.file.size,ext:f.ext||fileExt(f.name)});
+  }
+  const kept=new Set(finalList.map(f=>f.path));
+  const removed=(fileState.original||[]).filter(f=>!kept.has(f.path)).map(f=>f.path);
+  if(removed.length){ try{ await sb.storage.from(ATTACH_BUCKET).remove(removed); }catch(e){ console.warn('File cleanup failed',e); } }
+  return finalList;
+}
+function filesDisplayHtml(files){
+  if(!Array.isArray(files)||!files.length) return '';
+  return '<div class="rec-files">'+files.map(f=>{
+    const ext=f.ext||fileExt(f.name);
+    const url=imgPublicUrl(f.path);
+    return `<a class="file-dl" href="${url}" target="_blank" rel="noopener" title="${esc(f.name)} (${fmtMB(f.size||0)})">
+      <i class="ti ${fileIcon(ext)}" style="color:${fileIconColor(ext)}" aria-hidden="true"></i>
+      <span class="file-name">${esc(f.name)}</span>
+      <span class="file-size">${fmtMB(f.size||0)}</span>
+      <i class="ti ti-download dl-ic" aria-hidden="true"></i>
+    </a>`;
+  }).join('')+'</div>';
+}
+// Combined image + file asset paths for a record/log (used when deleting to clean Storage)
+function recordAssets(o){ return [...((o&&o.images)||[]),...((o&&o.files)||[])]; }
 
 function productTypeSummary(p){
   if(!p) return '';
@@ -1628,6 +1739,7 @@ function recordCardHtml(r,opts={}){
     </div>
     ${r.desc?`<div class="desc">${esc(r.desc)}</div>`:''}
     ${imagesDisplayHtml(r.images)}
+    ${filesDisplayHtml(r.files)}
     <div class="rec-hover-actions">
       <button class="iconbtn" onclick="editRecord('${r.id}')" title="Edit" aria-label="Edit"><i class="ti ti-edit" aria-hidden="true"></i></button>
       <button class="iconbtn" onclick="duplicateRecord('${r.id}')" title="Duplicate as a new record" aria-label="Duplicate"><i class="ti ti-copy" aria-hidden="true"></i></button>
@@ -1919,7 +2031,7 @@ async function load(){
     const la=document.getElementById('list-area'); if(la&&!records.length) la.innerHTML=skeletonCards(4);
     await cloudLoad();
     const expired=purgeExpiredClosedRecords();
-    if(expired.length){ try{ for(const r of expired){ await removeRecordRow(r.id); await deleteStoredImages(r.images); } }catch(e){ console.warn(e); } }
+    if(expired.length){ try{ for(const r of expired){ await removeRecordRow(r.id); await deleteStoredImages(recordAssets(r)); } }catch(e){ console.warn(e); } }
     setSyncStatus('ok');
     startRealtime();
     flushQueue();
@@ -2609,7 +2721,7 @@ async function batchDelete(){
   if(!(await confirmModal(ids.length+' record(s) and their screenshots will be permanently deleted.',{title:'Delete '+ids.length+' records?',okText:'Delete',danger:true}))) return;
   const targets=records.filter(r=>ids.includes(r.id));
   records=records.filter(r=>!ids.includes(r.id));
-  await afterMutation(async()=>{ for(const r of targets){ await removeRecordRow(r.id); await deleteStoredImages(r.images); } });
+  await afterMutation(async()=>{ for(const r of targets){ await removeRecordRow(r.id); await deleteStoredImages(recordAssets(r)); } });
   selectedIds.clear(); render(); toast(targets.length+' record(s) deleted','success');
 }
 
@@ -2857,6 +2969,9 @@ function renderForm(r){
       <div class="sec-div"><hr><span>Screenshots</span><hr></div>
       <div id="img-uploader"></div>
 
+      <div class="sec-div"><hr><span>Attachments</span><hr></div>
+      <div id="file-uploader"></div>
+
       <div class="form-actions">
         <button class="btn" onclick="cancelForm()">Cancel</button>
         <button class="btn primary" onclick="submitForm()">${editId?'Save Changes':'Add Record'}</button>
@@ -2883,6 +2998,7 @@ function renderForm(r){
   }
   onTypeChange();
   initImageUploader(r.images);
+  initFileUploader(r.files);
 }
 
 function onTypeChange(){
@@ -2925,8 +3041,8 @@ async function submitForm(){
   const type=document.getElementById('f-type').value;
 
   const recId = editId || genId(plat);
-  let images;
-  try{ images = await commitImages('records/'+recId); }
+  let images, files;
+  try{ images = await commitImages('records/'+recId); files = await commitFiles('records/'+recId); }
   catch(e){ toast(e.message||e,'error',5000); return; }
 
   const obj={
@@ -2946,6 +3062,7 @@ async function submitForm(){
     deadline:document.getElementById('f-due').value,
     status:document.getElementById('f-stat').value,
     images,
+    files,
     updated:now
   };
 
@@ -2986,7 +3103,7 @@ async function delRecord(id){
   const rec=records.find(r=>r.id===id);
   records=records.filter(r=>r.id!==id);
   selectedIds.delete(id);
-  await afterMutation(async()=>{ await removeRecordRow(id); await deleteStoredImages(rec&&rec.images); },{k:'removeRecord',id});
+  await afterMutation(async()=>{ await removeRecordRow(id); await deleteStoredImages(recordAssets(rec)); },{k:'removeRecord',id});
   render();
   toast('Record deleted','success');
 }
@@ -3086,7 +3203,7 @@ function checkProjectDeleteReminders(){
   document.body.appendChild(modal);
   modal.querySelector('#pdr-keep').onclick=async()=>{due.forEach(p=>{delete p.deleteAfter;});document.body.removeChild(modal);await afterMutation(async()=>{for(const p of due) await saveProjectRow(p,false);});};
   modal.querySelector('#pdr-extend').onclick=async()=>{due.forEach(p=>{const d=new Date();d.setMonth(d.getMonth()+6);p.deleteAfter=d.toISOString().slice(0,10);});document.body.removeChild(modal);await afterMutation(async()=>{for(const p of due) await saveProjectRow(p,false);});renderProjectListContent();};
-  modal.querySelector('#pdr-delete').onclick=async()=>{const ids=new Set(due.map(p=>p.id));const imgs=due.flatMap(p=>(p.logs||[]).flatMap(l=>l.images||[]));projects=projects.filter(p=>!ids.has(p.id));document.body.removeChild(modal);await afterMutation(async()=>{for(const id of ids) await removeProjectRow(id); await deleteStoredImages(imgs);});renderProjectView();};
+  modal.querySelector('#pdr-delete').onclick=async()=>{const ids=new Set(due.map(p=>p.id));const imgs=due.flatMap(p=>(p.logs||[]).flatMap(l=>recordAssets(l)));projects=projects.filter(p=>!ids.has(p.id));document.body.removeChild(modal);await afterMutation(async()=>{for(const id of ids) await removeProjectRow(id); await deleteStoredImages(imgs);});renderProjectView();};
 }
 function backToProjectList(){
   curProjectId=null;
@@ -3200,6 +3317,7 @@ function renderProjectDetail(){
         </div>
         ${l.summary?`<div class="log-summary">${esc(l.summary)}</div>`:''}
         ${imagesDisplayHtml(l.images)}
+        ${filesDisplayHtml(l.files)}
         <div class="rec-actions">
           <button class="ra" onclick="event.stopPropagation();showLogForm('${l.id}')"><i class="ti ti-edit" aria-hidden="true"></i> Edit</button>
           <button class="ra danger" onclick="event.stopPropagation();delLog('${l.id}')"><i class="ti ti-trash" aria-hidden="true"></i> Delete</button>
@@ -3339,12 +3457,15 @@ function showLogForm(logId){
       </div>
       <div class="sec-div"><hr><span>Screenshots</span><hr></div>
       <div id="img-uploader"></div>
+      <div class="sec-div"><hr><span>Attachments</span><hr></div>
+      <div id="file-uploader"></div>
       <div class="form-actions">
         <button class="btn" onclick="cancelProjForm()">Cancel</button>
         <button class="btn primary" onclick="submitLog()">${editLogId?'Save Log':'Add Log'}</button>
       </div>
     </div>`;
   initImageUploader(l.images);
+  initFileUploader(l.files);
   document.getElementById('proj-form-area').scrollIntoView({behavior:'smooth',block:'nearest'});
 }
 
@@ -3361,8 +3482,8 @@ async function submitLog(){
   if(!fw.trim()){toast('Please enter the FW version (required for certification traceability).','warn',4200);return;}
   if(!summary.trim()){toast('Please enter today\'s work summary.','warn');return;}
   const logId = editLogId || genLogId(p);
-  let images;
-  try{ images = await commitImages('logs/'+p.id+'/'+logId); }
+  let images, files;
+  try{ images = await commitImages('logs/'+p.id+'/'+logId); files = await commitFiles('logs/'+p.id+'/'+logId); }
   catch(e){ toast(e.message||e,'error',5000); return; }
   const obj={
     date,
@@ -3373,6 +3494,7 @@ async function submitLog(){
     reporter:((document.getElementById('lf-who')||{}).value||'').trim()||getCurrentUser(),
     summary:summary.trim(),
     images,
+    files,
     updated:todayISO()
   };
   if(!p.logs) p.logs=[];
@@ -3404,7 +3526,7 @@ async function delLog(logId){
   if(!p) return;
   const logObj=(p.logs||[]).find(l=>l.id===logId);
   p.logs=(p.logs||[]).filter(l=>l.id!==logId);
-  await afterMutation(async()=>{ await removeLogRow(p.id,logId); await deleteStoredImages(logObj&&logObj.images); },{k:'removeLog',projId:p.id,id:logId});
+  await afterMutation(async()=>{ await removeLogRow(p.id,logId); await deleteStoredImages(recordAssets(logObj)); },{k:'removeLog',projId:p.id,id:logId});
   renderProjectDetail();
   toast('Log deleted','success');
 }
@@ -3414,7 +3536,7 @@ async function delProject(id){
   if(!pid) return;
   if(!(await confirmModal('Deleting this project will also permanently delete all its logs and screenshots.',{title:'Delete project?',okText:'Delete',danger:true}))) return;
   const proj=getProject(pid);
-  const imgs=((proj&&proj.logs)||[]).flatMap(l=>l.images||[]);
+  const imgs=((proj&&proj.logs)||[]).flatMap(l=>recordAssets(l));
   projects=projects.filter(p=>p.id!==pid);
   curProjectId=null;
   document.getElementById('proj-form-area').innerHTML='';
