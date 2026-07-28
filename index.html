@@ -531,7 +531,8 @@
         .lab-name { font-size: 16px; font-weight: 600; display: flex; align-items: center; }
         .lab-card-meta { font-size: 13px; color: var(--text-secondary); margin: 8px 0; }
         .lf-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
-        .lf-pill { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; padding: 3px 9px; border-radius: 6px; }
+        .lf-pill { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; padding: 3px 9px; border-radius: 6px; white-space: nowrap; }
+        .lab-by { font-size: 12px; color: var(--text-secondary); white-space: nowrap; }
         .lf-ok.lf-dot, .lf-ok { }
         .lf-dot.lf-ok { background: #34d399; } .lf-pill.lf-ok { background: rgba(52,211,153,.18); color: #34d399; }
         .lf-dot.lf-warn { background: #fbbf24; } .lf-pill.lf-warn { background: rgba(251,191,36,.18); color: #fbbf24; }
@@ -539,7 +540,7 @@
         .lf-dot.lf-none { background: #6b7280; } .lf-pill.lf-none { background: rgba(107,114,128,.2); color: #9ca3af; }
         .lab-detail-head { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 12px; margin-bottom: 14px; }
         .lab-dates { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 6px; }
-        .lab-changed-note { font-size: 12px; color: var(--text-secondary); display: inline-flex; align-items: center; gap: 5px; }
+        .lab-changed-note { font-size: 12px; color: var(--text-secondary); display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
         .lab-paste-sub { font-size: 12px; color: var(--text-secondary); margin-bottom: 8px; }
         .lab-actions { display: flex; gap: 8px; flex-wrap: wrap; }
         .lab-table { border: 1px solid var(--border-color); border-radius: 12px; overflow: hidden; }
@@ -995,10 +996,8 @@ function daysSince(iso){ if(!iso) return Infinity; return Math.floor((Date.now()
 // Freshness bucket for the "last verified" indicator
 function labFreshness(iso){
   const n=daysSince(iso);
-  if(!iso||n===Infinity) return {cls:'lf-none',label:'Never verified'};
-  if(n<=30) return {cls:'lf-ok',label:n+'d ago'};
-  if(n<=90) return {cls:'lf-warn',label:n+'d ago'};
-  return {cls:'lf-old',label:n+'d ago · review'};
+  if(!iso||n===Infinity) return {cls:'lf-none',label:'never'};
+  return {cls:n<=30?'lf-ok':n<=90?'lf-warn':'lf-old',label:n+'d ago'};
 }
 
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
@@ -2703,14 +2702,15 @@ function renderLabDetail(host){
       <div>
         <div class="lab-h1">${esc(meta.id)}${meta.note?`<span class="lab-note">${esc(meta.note)}</span>`:''} <span style="font-size:15px;color:var(--text-secondary);font-weight:400">instruments</span></div>
         <div class="lab-dates">
-          <span class="lf-pill ${f.cls}"><i class="ti ti-checkbox" aria-hidden="true"></i> ${d.verifiedAt?('Last checked '+esc(d.verifiedAt.slice(0,10))+' ('+f.label+')'):'Never checked'}${d.updatedBy?(' · by '+esc(d.updatedBy)):''}</span>
-          <span class="lab-changed-note"><i class="ti ti-history" aria-hidden="true"></i> Last version change: ${chg?esc(chg.slice(0,10)):'—'}</span>
+          <span class="lf-pill ${f.cls}"><i class="ti ti-checkbox" aria-hidden="true"></i> ${d.verifiedAt?('Checked '+esc(d.verifiedAt.slice(0,10))+' · '+f.label):'Never checked'}</span>
+          ${d.updatedBy?`<span class="lab-by">by ${esc(d.updatedBy)}</span>`:''}
+          <span class="lab-changed-note"><i class="ti ti-history" aria-hidden="true"></i> Last change: ${chg?esc(chg.slice(0,10)):'—'}</span>
         </div>
       </div>
       <div class="lab-actions"><button class="btn" onclick="labVerify()" title="Confirm the list is still correct — records today as the last-checked date without changing any data"${_labEdit?' disabled':''}><i class="ti ti-checkbox" aria-hidden="true"></i> Mark checked</button></div>
     </div>
     <div class="lab-table">
-      <div class="lab-tr lab-thead"><span>Instrument / item</span><span>Value</span><span class="lab-ver-col">Version · last change</span><span></span></div>
+      <div class="lab-tr lab-thead"><span>Instrument / item</span><span>Value</span><span class="lab-ver-col">Version</span><span></span></div>
       ${rows}
       ${!_labEdit?`<button class="btn lab-addrow" onclick="labAddInstrument()"><i class="ti ti-plus" aria-hidden="true"></i> Add instrument</button>`:''}
     </div>
