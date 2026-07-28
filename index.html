@@ -543,8 +543,9 @@
         .lab-paste-sub { font-size: 12px; color: var(--text-secondary); margin-bottom: 8px; }
         .lab-actions { display: flex; gap: 8px; flex-wrap: wrap; }
         .lab-table { border: 1px solid var(--border-color); border-radius: 12px; overflow: hidden; }
-        .lab-tr { display: grid; grid-template-columns: 1.1fr 1.4fr 150px; gap: 12px; align-items: center; padding: 10px 14px; border-top: 0.5px solid var(--border-color); }
+        .lab-tr { display: grid; grid-template-columns: 1.1fr 1.4fr 130px 60px; gap: 12px; align-items: center; padding: 10px 14px; border-top: 0.5px solid var(--border-color); }
         .lab-tr:first-child { border-top: none; }
+        .lab-tr-edit { background: var(--bg-input); }
         .lab-thead { background: var(--bg-input); font-size: 12px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: .04em; }
         .lab-name-cell { font-size: 14px; color: var(--text-primary); }
         .lab-val-cell { font-size: 13px; color: var(--text-secondary); font-family: ui-monospace, Menlo, Consolas, monospace; word-break: break-word; }
@@ -555,9 +556,12 @@
         .lab-in { height: 32px; border: 0.5px solid var(--border-color); background: var(--bg-input); border-radius: 6px; color: var(--text-primary); padding: 0 8px; font-size: 13px; width: 100%; }
         .lab-in:focus { outline: none; border-color: #6366f1; }
         .lab-val-in { font-family: ui-monospace, Menlo, Consolas, monospace; }
-        .lab-tr:has(.lab-in) { grid-template-columns: 1.1fr 1.4fr 90px 28px; }
-        .lab-rowrm { width: 26px; height: 26px; display: flex; align-items: center; justify-content: center; border: none; border-radius: 50%; background: transparent; color: var(--text-secondary); cursor: pointer; padding: 0; }
-        .lab-rowrm:hover { background: #ef4444; color: #fff; }
+        .lab-row-actions { display: flex; gap: 4px; justify-content: flex-end; align-items: center; }
+        .lab-iconbtn { width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center; border: 0.5px solid var(--border-color); border-radius: 6px; background: transparent; color: var(--text-secondary); cursor: pointer; padding: 0; font-size: 15px; }
+        .lab-iconbtn:hover { color: var(--text-primary); border-color: var(--text-secondary); }
+        .lab-iconbtn.ok:hover { background: #059669; color: #fff; border-color: #059669; }
+        .lab-iconbtn.danger:hover { background: #ef4444; color: #fff; border-color: #ef4444; }
+        .lab-iconbtn:disabled { opacity: .3; cursor: default; }
         .lab-addrow { margin: 10px 14px; }
         .lab-paste { margin-top: 18px; padding: 14px 16px; border: 0.5px dashed var(--border-color); border-radius: 12px; }
         .lab-paste-h { font-size: 14px; font-weight: 500; color: var(--text-primary); margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
@@ -569,7 +573,12 @@
         .lab-parse-ver { font-size: 13px; font-family: ui-monospace, Menlo, Consolas, monospace; text-align: right; }
         .lab-badge { font-size: 11px; padding: 2px 7px; border-radius: 6px; text-align: center; }
         .lab-chg-old { color: var(--text-secondary); } .lab-chg-new { color: #34d399; }
-        @media (max-width: 600px){ .lab-tr { grid-template-columns: 1fr 1fr; } .lab-ver-col { grid-column: 1 / -1; align-items: flex-start; text-align: left; flex-direction: row; gap: 8px; } }
+        @media (max-width: 600px){
+          .lab-tr { grid-template-columns: 1fr 60px; row-gap: 4px; }
+          .lab-name-cell, .lab-val-cell, .lab-ver-col, .lab-in { grid-column: 1; }
+          .lab-ver-col { align-items: flex-start; text-align: left; flex-direction: row; gap: 8px; }
+          .lab-row-actions { grid-column: 2; grid-row: 1 / span 3; align-self: center; flex-direction: column; }
+        }
         .db-panel { background: var(--bg-panel); border: 1px solid var(--border-color); border-radius: 12px; padding: 16px; margin-bottom: 14px; }
         .db-cards { display: grid; grid-template-columns: repeat(4,1fr); gap: 10px; margin-bottom: 16px; }
         .db-card { background: var(--bg-input); border: 1px solid var(--border-color); border-radius: 8px; padding: 12px; text-align: center; transition: transform .15s, border-color .15s, box-shadow .15s; }
@@ -1837,7 +1846,7 @@ function recordCardHtml(r,opts={}){
 
 let records=[], projects=[], curP='all', editId=null;
 let viewMode='platform', curProjectId=null, editProjId=null, editLogId=null;
-let labInstruments={}, curLab=null, labEditing=false; // Lab Instruments state (keyed by lab id)
+let labInstruments={}, curLab=null; // Lab Instruments state (keyed by lab id)
 let sb=null, currentLoginEmail='';
 
 const SUPABASE_URL='https://ygoywjqgatkwboepxaaz.supabase.co';
@@ -2648,7 +2657,7 @@ function switchMode(m){
 }
 
 /* ===== Lab Instruments view ===== */
-let _labDraft=null, _labParsed=null;
+let _labEdit=null, _labParsed=null;   // _labEdit = {index, isNew} — the single row currently being edited
 function labData(id){ return labInstruments[id]||{items:[],verifiedAt:null}; }
 // Last time any instrument version actually changed (max of item changedAt) — informational, never drives the light
 function labLastChanged(d){ const ds=(d.items||[]).map(i=>i.changedAt).filter(Boolean).sort(); return ds.length?ds[ds.length-1]:null; }
@@ -2658,8 +2667,8 @@ function renderLabView(){
   if(curLab && LABS.some(l=>l.id===curLab)) renderLabDetail(host);
   else { curLab=null; renderLabList(host); }
 }
-function openLab(id){ curLab=id; labEditing=false; _labDraft=null; _labParsed=null; renderLabView(); }
-function labBack(){ curLab=null; labEditing=false; _labDraft=null; _labParsed=null; renderLabView(); }
+function openLab(id){ curLab=id; _labEdit=null; _labParsed=null; renderLabView(); }
+function labBack(){ curLab=null; _labEdit=null; _labParsed=null; renderLabView(); }
 function renderLabList(host){
   const cards=LABS.map(l=>{
     const d=labData(l.id), f=labFreshness(d.verifiedAt), n=(d.items||[]).length, chg=labLastChanged(d);
@@ -2682,15 +2691,12 @@ function renderLabList(host){
 function renderLabDetail(host){
   const meta=LABS.find(l=>l.id===curLab)||{id:curLab,note:''};
   const d=labData(curLab), f=labFreshness(d.verifiedAt), chg=labLastChanged(d);
-  const items=labEditing?_labDraft:(d.items||[]);
-  const isEmpty=!(d.items||[]).length;
-  const rows=(items||[]).map((it,i)=>labRowHtml(it,i)).join('')
-    || (labEditing?'':'<div class="lab-empty">No instruments recorded yet. Click Update to add them one by one, or use first-time setup below to paste your whole list.</div>');
-  const actions=labEditing
-    ? `<button class="btn" onclick="labCancelEdit()">Cancel</button>
-       <button class="btn primary" onclick="labSave()"><i class="ti ti-check" aria-hidden="true"></i> Save &amp; timestamp</button>`
-    : `<button class="btn" onclick="labVerify()" title="Confirm the list is still correct — records today as the last-checked date without changing any data"><i class="ti ti-checkbox" aria-hidden="true"></i> Mark checked</button>
-       <button class="btn primary" onclick="labStartEdit()"><i class="ti ti-edit" aria-hidden="true"></i> Update</button>`;
+  const items=d.items||[];
+  const isEmpty=!items.length;
+  const editingNew=!!(_labEdit&&_labEdit.isNew);
+  let rows=items.map((it,i)=>labRowHtml(it,i)).join('');
+  if(editingNew) rows+=labEditRowHtml({name:'',value:''});
+  if(!rows) rows='<div class="lab-empty">No instruments yet. Add them one at a time with "Add instrument", or paste your whole list in first-time setup below.</div>';
   host.innerHTML=`
     <button class="btn" onclick="labBack()" style="margin-bottom:14px"><i class="ti ti-arrow-left" aria-hidden="true"></i> All labs</button>
     <div class="lab-detail-head">
@@ -2701,67 +2707,79 @@ function renderLabDetail(host){
           <span class="lab-changed-note"><i class="ti ti-history" aria-hidden="true"></i> Last version change: ${chg?esc(chg.slice(0,10)):'—'}</span>
         </div>
       </div>
-      <div class="lab-actions">${actions}</div>
+      <div class="lab-actions"><button class="btn" onclick="labVerify()" title="Confirm the list is still correct — records today as the last-checked date without changing any data"${_labEdit?' disabled':''}><i class="ti ti-checkbox" aria-hidden="true"></i> Mark checked</button></div>
     </div>
     <div class="lab-table">
-      <div class="lab-tr lab-thead"><span>Instrument / item</span><span>Value</span><span class="lab-ver-col">Version · last change</span>${labEditing?'<span></span>':''}</div>
+      <div class="lab-tr lab-thead"><span>Instrument / item</span><span>Value</span><span class="lab-ver-col">Version · last change</span><span></span></div>
       ${rows}
-      ${labEditing?`<button class="btn lab-addrow" onclick="labAddRow()"><i class="ti ti-plus" aria-hidden="true"></i> Add instrument</button>`:''}
+      ${!_labEdit?`<button class="btn lab-addrow" onclick="labAddInstrument()"><i class="ti ti-plus" aria-hidden="true"></i> Add instrument</button>`:''}
     </div>
-    ${(!labEditing&&isEmpty)?labPasteHtml():''}`;
+    ${(!_labEdit&&isEmpty)?labPasteHtml():''}`;
+  if(_labEdit){
+    const el=document.getElementById(_labEdit.isNew?'lab-edit-name':'lab-edit-value');
+    if(el){ el.focus(); if(el.setSelectionRange) el.setSelectionRange(el.value.length,el.value.length); }
+  }
 }
 function labRowHtml(it,i){
+  if(_labEdit && !_labEdit.isNew && _labEdit.index===i) return labEditRowHtml(it);
   const ver=it.version||extractVersion(it.value);
-  if(labEditing){
-    return `<div class="lab-tr">
-      <input class="lab-in lab-name-in" data-i="${i}" data-k="name" value="${esc(it.name||'')}" placeholder="e.g. ACQUA Version">
-      <input class="lab-in lab-val-in" data-i="${i}" data-k="value" value="${esc(it.value||'')}" placeholder="e.g. 6.2.210" oninput="labVerPreview(${i})">
-      <span class="lab-ver-col"><span class="lab-ver" id="lab-ver-${i}">${esc(ver||'—')}</span></span>
-      <button class="lab-rowrm" onclick="labRemoveRow(${i})" title="Remove" aria-label="Remove"><i class="ti ti-x" aria-hidden="true"></i></button>
-    </div>`;
-  }
+  const dis=_labEdit?' disabled':'';
   return `<div class="lab-tr">
     <span class="lab-name-cell">${esc(it.name||'')}</span>
     <span class="lab-val-cell">${esc(it.value||'')}</span>
     <span class="lab-ver-col"><span class="lab-ver">${esc(ver||'—')}</span><span class="lab-chg">${it.changedAt?esc(it.changedAt.slice(0,10)):''}</span></span>
+    <span class="lab-row-actions">
+      <button class="lab-iconbtn" onclick="labEditRow(${i})" title="Edit this item" aria-label="Edit"${dis}><i class="ti ti-edit" aria-hidden="true"></i></button>
+      <button class="lab-iconbtn danger" onclick="labDeleteRow(${i})" title="Delete this item" aria-label="Delete"${dis}><i class="ti ti-trash" aria-hidden="true"></i></button>
+    </span>
   </div>`;
 }
-function labVerPreview(i){
-  const inp=document.querySelector(`.lab-val-in[data-i="${i}"]`);
-  const out=document.getElementById('lab-ver-'+i);
-  if(inp&&out) out.textContent=extractVersion(inp.value)||'—';
+function labEditRowHtml(it){
+  const ver=extractVersion(it.value||'');
+  return `<div class="lab-tr lab-tr-edit">
+    <input id="lab-edit-name" class="lab-in" value="${esc(it.name||'')}" placeholder="e.g. ACQUA Version">
+    <input id="lab-edit-value" class="lab-in lab-val-in" value="${esc(it.value||'')}" placeholder="e.g. 6.2.210" oninput="labVerPreview()" onkeydown="if(event.key==='Enter'){event.preventDefault();labRowSave();}else if(event.key==='Escape'){labRowCancel();}">
+    <span class="lab-ver-col"><span class="lab-ver" id="lab-edit-ver">${esc(ver||'—')}</span></span>
+    <span class="lab-row-actions">
+      <button class="lab-iconbtn ok" onclick="labRowSave()" title="Save" aria-label="Save"><i class="ti ti-check" aria-hidden="true"></i></button>
+      <button class="lab-iconbtn" onclick="labRowCancel()" title="Cancel" aria-label="Cancel"><i class="ti ti-x" aria-hidden="true"></i></button>
+    </span>
+  </div>`;
 }
-function labSyncInputs(){
-  if(!_labDraft) return;
-  document.querySelectorAll('.lab-in').forEach(inp=>{
-    const i=+inp.dataset.i, k=inp.dataset.k;
-    if(_labDraft[i]) _labDraft[i][k]=inp.value;
-  });
-}
-function labStartEdit(){
-  _labDraft=(labData(curLab).items||[]).map(it=>({...it}));
-  if(!_labDraft.length) _labDraft.push({name:'',value:'',version:'',changedAt:todayISO()});
-  labEditing=true; _labParsed=null; renderLabView();
-}
-function labCancelEdit(){ labEditing=false; _labDraft=null; renderLabView(); }
-function labAddRow(){ labSyncInputs(); _labDraft.push({name:'',value:'',version:'',changedAt:todayISO()}); renderLabView(); }
-function labRemoveRow(i){ labSyncInputs(); _labDraft.splice(i,1); renderLabView(); }
-async function labSave(){
-  labSyncInputs();
-  const orig=labData(curLab);
-  const origByName={}; (orig.items||[]).forEach(it=>{ origByName[(it.name||'').trim().toLowerCase()]=it; });
-  const items=_labDraft.map(it=>{
-    const name=(it.name||'').trim(), value=(it.value||'').trim();
-    if(!name&&!value) return null;
-    const prev=origByName[name.toLowerCase()];
-    const changed=!prev||(prev.value||'').trim()!==value;
-    return {name,value,version:extractVersion(value),changedAt:changed?todayISO():(prev.changedAt||todayISO())};
-  }).filter(Boolean);
+function labVerPreview(){ const inp=document.getElementById('lab-edit-value'), out=document.getElementById('lab-edit-ver'); if(inp&&out) out.textContent=extractVersion(inp.value)||'—'; }
+function labEditRow(i){ if(_labEdit) return; _labEdit={index:i,isNew:false}; renderLabView(); }
+function labAddInstrument(){ if(_labEdit) return; _labEdit={index:(labData(curLab).items||[]).length,isNew:true}; renderLabView(); }
+function labRowCancel(){ _labEdit=null; renderLabView(); }
+async function labRowSave(){
+  const nameEl=document.getElementById('lab-edit-name'), valEl=document.getElementById('lab-edit-value');
+  if(!nameEl||!valEl) return;
+  const name=(nameEl.value||'').trim(), value=(valEl.value||'').trim();
+  const isNew=!!(_labEdit&&_labEdit.isNew);
+  if(!name){ if(isNew&&!value){ labRowCancel(); return; } toast('Please enter an instrument name.','warn'); return; }
+  const items=(labData(curLab).items||[]).map(it=>({...it}));
+  if(isNew){
+    items.push({name,value,version:extractVersion(value),changedAt:todayISO()});
+  }else{
+    const prev=items[_labEdit.index]||{};
+    const changed=(prev.value||'').trim()!==value;
+    items[_labEdit.index]={name,value,version:extractVersion(value),changedAt:changed?todayISO():(prev.changedAt||todayISO())};
+  }
   const obj={items,verifiedAt:todayISO()};
   labInstruments[curLab]={...obj,updatedBy:getCurrentUser()};
-  labEditing=false; _labDraft=null; renderLabView();
+  _labEdit=null; renderLabView();
   await afterMutation(()=>saveLabRow(curLab,obj),{k:'saveLab',labId:curLab,data:obj});
-  toast('Lab instruments saved','success');
+  toast(isNew?'Instrument added':'Instrument updated','success');
+}
+async function labDeleteRow(i){
+  const it=(labData(curLab).items||[])[i]; if(!it) return;
+  const ok=await confirmModal('Delete "'+(it.name||'this item')+'" from '+curLab+'?',{danger:true,okText:'Delete',title:'Delete instrument'});
+  if(!ok) return;
+  const items=(labData(curLab).items||[]).filter((_,idx)=>idx!==i);
+  const obj={items,verifiedAt:todayISO()};
+  labInstruments[curLab]={...obj,updatedBy:getCurrentUser()};
+  renderLabView();
+  await afterMutation(()=>saveLabRow(curLab,obj),{k:'saveLab',labId:curLab,data:obj});
+  toast('Instrument deleted','success');
 }
 async function labVerify(){
   const ok=await confirmModal('Confirm '+curLab+' is still correct with no changes? This records today as the last-checked date.',{title:'Mark as checked',okText:'Yes, still current'});
@@ -2776,7 +2794,7 @@ async function labVerify(){
 function labPasteHtml(){
   return `<div class="lab-paste">
     <div class="lab-paste-h"><i class="ti ti-clipboard-text" aria-hidden="true"></i> First-time setup — paste your instrument list</div>
-    <div class="lab-paste-sub">Only shown while this lab is empty. Paste a "name: value" list once to fill the table; after that, edit values inline with Update.</div>
+    <div class="lab-paste-sub">Only shown while this lab is empty. Paste a "name: value" list once to fill the table; after that, edit each item with its edit icon.</div>
     <textarea id="lab-paste-txt" class="lab-paste-txt" placeholder="ACQUA Version: 6.2.210&#10;Labcore Version: 3.12.10&#10;3Pass Version: 2.2.300.21853"></textarea>
     <button class="btn" onclick="labParsePreview()" style="margin-top:8px"><i class="ti ti-wand" aria-hidden="true"></i> Preview</button>
     <div id="lab-parse-out">${_labParsed?labParsedHtml():''}</div>
@@ -2838,7 +2856,7 @@ async function labApplyParsed(){
   });
   const obj={items:cur,verifiedAt:todayISO()};
   labInstruments[curLab]={...obj,updatedBy:getCurrentUser()};
-  _labParsed=null; labEditing=false; _labDraft=null; renderLabView();
+  _labParsed=null; _labEdit=null; renderLabView();
   await afterMutation(()=>saveLabRow(curLab,obj),{k:'saveLab',labId:curLab,data:obj});
   toast('Applied report to lab instruments','success');
 }
