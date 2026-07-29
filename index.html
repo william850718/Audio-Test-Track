@@ -552,7 +552,7 @@
         .lab-val-cell { font-size: 13px; color: var(--text-secondary); font-family: ui-monospace, Menlo, Consolas, monospace; word-break: break-word; }
         .lab-ver-col { display: flex; flex-direction: column; align-items: flex-end; text-align: right; }
         .lab-ver { font-size: 13px; font-family: ui-monospace, Menlo, Consolas, monospace; color: var(--text-primary); }
-        .lab-chg { font-size: 11px; color: var(--text-secondary); margin-top: 2px; }
+        .lab-chg { font-size: 13px; color: var(--text-secondary); font-family: ui-monospace, Menlo, Consolas, monospace; }
         .lab-empty { padding: 22px 14px; text-align: center; color: var(--text-secondary); font-size: 13px; }
         .lab-in { height: 32px; border: 0.5px solid var(--border-color); background: var(--bg-input); border-radius: 6px; color: var(--text-primary); padding: 0 8px; font-size: 13px; width: 100%; }
         .lab-in:focus { outline: none; border-color: #6366f1; }
@@ -2710,7 +2710,7 @@ function renderLabDetail(host){
       <div class="lab-actions"><button class="btn" onclick="labVerify()" title="Confirm the list is still correct — records today as the last-checked date without changing any data"${_labEdit?' disabled':''}><i class="ti ti-checkbox" aria-hidden="true"></i> Mark checked</button></div>
     </div>
     <div class="lab-table">
-      <div class="lab-tr lab-thead"><span>Instrument / item</span><span>Value</span><span class="lab-ver-col">Version</span><span></span></div>
+      <div class="lab-tr lab-thead"><span>Instrument / item</span><span>Version</span><span class="lab-ver-col">Latest update</span><span></span></div>
       ${rows}
       ${!_labEdit?`<button class="btn lab-addrow" onclick="labAddInstrument()"><i class="ti ti-plus" aria-hidden="true"></i> Add instrument</button>`:''}
     </div>
@@ -2722,12 +2722,11 @@ function renderLabDetail(host){
 }
 function labRowHtml(it,i){
   if(_labEdit && !_labEdit.isNew && _labEdit.index===i) return labEditRowHtml(it);
-  const ver=it.version||extractVersion(it.value);
   const dis=_labEdit?' disabled':'';
   return `<div class="lab-tr">
     <span class="lab-name-cell">${esc(it.name||'')}</span>
     <span class="lab-val-cell">${esc(it.value||'')}</span>
-    <span class="lab-ver-col"><span class="lab-ver">${esc(ver||'—')}</span><span class="lab-chg">${it.changedAt?esc(it.changedAt.slice(0,10)):''}</span></span>
+    <span class="lab-ver-col"><span class="lab-chg">${it.changedAt?esc(it.changedAt.slice(0,10)):'—'}</span></span>
     <span class="lab-row-actions">
       <button class="lab-iconbtn" onclick="labEditRow(${i})" title="Edit this item" aria-label="Edit"${dis}><i class="ti ti-edit" aria-hidden="true"></i></button>
       <button class="lab-iconbtn danger" onclick="labDeleteRow(${i})" title="Delete this item" aria-label="Delete"${dis}><i class="ti ti-trash" aria-hidden="true"></i></button>
@@ -2735,18 +2734,16 @@ function labRowHtml(it,i){
   </div>`;
 }
 function labEditRowHtml(it){
-  const ver=extractVersion(it.value||'');
   return `<div class="lab-tr lab-tr-edit">
     <input id="lab-edit-name" class="lab-in" value="${esc(it.name||'')}" placeholder="e.g. ACQUA Version">
-    <input id="lab-edit-value" class="lab-in lab-val-in" value="${esc(it.value||'')}" placeholder="e.g. 6.2.210" oninput="labVerPreview()" onkeydown="if(event.key==='Enter'){event.preventDefault();labRowSave();}else if(event.key==='Escape'){labRowCancel();}">
-    <span class="lab-ver-col"><span class="lab-ver" id="lab-edit-ver">${esc(ver||'—')}</span></span>
+    <input id="lab-edit-value" class="lab-in lab-val-in" value="${esc(it.value||'')}" placeholder="e.g. 6.2.210" onkeydown="if(event.key==='Enter'){event.preventDefault();labRowSave();}else if(event.key==='Escape'){labRowCancel();}">
+    <span class="lab-ver-col"><span class="lab-chg">${it.changedAt?esc(it.changedAt.slice(0,10)):'—'}</span></span>
     <span class="lab-row-actions">
       <button class="lab-iconbtn ok" onclick="labRowSave()" title="Save" aria-label="Save"><i class="ti ti-check" aria-hidden="true"></i></button>
       <button class="lab-iconbtn" onclick="labRowCancel()" title="Cancel" aria-label="Cancel"><i class="ti ti-x" aria-hidden="true"></i></button>
     </span>
   </div>`;
 }
-function labVerPreview(){ const inp=document.getElementById('lab-edit-value'), out=document.getElementById('lab-edit-ver'); if(inp&&out) out.textContent=extractVersion(inp.value)||'—'; }
 function labEditRow(i){ if(_labEdit) return; _labEdit={index:i,isNew:false}; renderLabView(); }
 function labAddInstrument(){ if(_labEdit) return; _labEdit={index:(labData(curLab).items||[]).length,isNew:true}; renderLabView(); }
 function labRowCancel(){ _labEdit=null; renderLabView(); }
