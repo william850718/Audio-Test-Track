@@ -519,6 +519,26 @@
         .file-dl .file-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .file-dl .file-size { color: var(--text-secondary); font-size: 12px; flex-shrink: 0; }
         .file-dl .dl-ic { font-size: 15px; color: var(--text-secondary); }
+        /* ===== Version history ===== */
+        .badge.b-ver { background: rgba(139, 92, 246, 0.2); color: #c4b5fd; }
+        .ver-banner { display: flex; align-items: flex-start; gap: 8px; font-size: 13px; line-height: 1.5; color: #c4b5fd; background: rgba(139, 92, 246, 0.12); border-left: 2px solid #8b5cf6; border-radius: 0; padding: 9px 12px; margin-bottom: 14px; }
+        .ver-banner i { font-size: 17px; flex-shrink: 0; margin-top: 1px; }
+        .ver-history { margin-bottom: 8px; border: 0.5px solid var(--border-color); border-radius: 8px; background: var(--bg-input); }
+        .ver-history summary { cursor: pointer; padding: 7px 12px; font-size: 13px; color: var(--text-secondary); display: flex; align-items: center; gap: 6px; list-style: none; user-select: none; }
+        .ver-history summary::-webkit-details-marker { display: none; }
+        .ver-history summary:hover { color: var(--text-primary); }
+        .ver-history summary::after { content: '▸'; margin-left: auto; transition: transform .15s; }
+        .ver-history[open] summary::after { transform: rotate(90deg); }
+        .ver-list { padding: 0 12px 10px; }
+        .ver-item { padding: 10px 0; border-top: 0.5px solid var(--border-color); }
+        .ver-item-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 5px; }
+        .ver-tag { font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 6px; background: rgba(139, 92, 246, 0.2); color: #c4b5fd; }
+        .ver-when, .ver-by { font-size: 12px; color: var(--text-secondary); display: inline-flex; align-items: center; gap: 4px; }
+        .ver-title { font-size: 14px; color: var(--text-primary); margin-bottom: 4px; }
+        .desc.ver-desc { font-size: 13px; margin-bottom: 6px; }
+        [data-theme="light"] .badge.b-ver { background: #ede9fe; color: #6d28d9; }
+        [data-theme="light"] .ver-tag { background: #ede9fe; color: #6d28d9; }
+        [data-theme="light"] .ver-banner { background: #f5f3ff; color: #6d28d9; }
         /* ===== Lab Instruments ===== */
         .lab-head { margin-bottom: 16px; }
         .lab-h1 { font-size: 20px; font-weight: 600; color: var(--text-primary); display: flex; align-items: center; gap: 8px; }
@@ -1489,7 +1509,7 @@ function removeUploadImage(i){
 }
 function sanitizeImgName(n){ return String(n||'image').replace(/[^a-zA-Z0-9._-]/g,'_').slice(-60); }
 // Uploads new files, deletes removed existing ones, returns final images array [{path,name}]
-async function commitImages(scope){
+async function commitImages(scope,keepPaths){
   const finalList=[];
   for(const im of imgState.list){
     if(im.kind==='existing'){ finalList.push({path:im.path,name:im.name,size:im.size||0,disp:im.disp||'md'}); continue; }
@@ -1499,7 +1519,7 @@ async function commitImages(scope){
     finalList.push({path,name:im.name,size:im.file.size,disp:im.disp||'md'});
   }
   const kept=new Set(finalList.map(f=>f.path));
-  const removed=(imgState.original||[]).filter(im=>!kept.has(im.path)).map(im=>im.path);
+  const removed=(imgState.original||[]).filter(im=>!kept.has(im.path)&&!(keepPaths&&keepPaths.has(im.path))).map(im=>im.path);
   if(removed.length){ try{ await sb.storage.from(ATTACH_BUCKET).remove(removed); }catch(e){ console.warn('Image cleanup failed',e); } }
   return finalList;
 }
@@ -1576,7 +1596,7 @@ function onPickFiles(input){
 }
 function removeUploadFile(i){ fileState.list.splice(i,1); renderFileUploader(); }
 // Uploads new files, deletes removed existing ones, returns final files array [{path,name,size,ext}]
-async function commitFiles(scope){
+async function commitFiles(scope,keepPaths){
   const finalList=[];
   for(const f of fileState.list){
     if(f.kind==='existing'){ finalList.push({path:f.path,name:f.name,size:f.size||0,ext:f.ext||fileExt(f.name)}); continue; }
@@ -1586,7 +1606,7 @@ async function commitFiles(scope){
     finalList.push({path,name:f.name,size:f.file.size,ext:f.ext||fileExt(f.name)});
   }
   const kept=new Set(finalList.map(f=>f.path));
-  const removed=(fileState.original||[]).filter(f=>!kept.has(f.path)).map(f=>f.path);
+  const removed=(fileState.original||[]).filter(f=>!kept.has(f.path)&&!(keepPaths&&keepPaths.has(f.path))).map(f=>f.path);
   if(removed.length){ try{ await sb.storage.from(ATTACH_BUCKET).remove(removed); }catch(e){ console.warn('File cleanup failed',e); } }
   return finalList;
 }
@@ -1604,7 +1624,20 @@ function filesDisplayHtml(files){
   }).join('')+'</div>';
 }
 // Combined image + file asset paths for a record/log (used when deleting to clean Storage)
-function recordAssets(o){ return [...((o&&o.images)||[]),...((o&&o.files)||[])]; }
+function recordAssets(o){
+  const a=[...((o&&o.images)||[]),...((o&&o.files)||[])];
+  // version snapshots keep their own copies of the attachments they were saved with
+  ((o&&o.versions)||[]).forEach(v=>{ a.push(...(v.images||[]),...(v.files||[])); });
+  return a;
+}
+// Storage paths still referenced by a record's version history — these must never be
+// cleaned up when the current attachment list changes, or old versions lose their files.
+function versionKeepPaths(r,alsoCurrent){
+  const s=new Set();
+  ((r&&r.versions)||[]).forEach(v=>{ (v.images||[]).forEach(x=>s.add(x.path)); (v.files||[]).forEach(x=>s.add(x.path)); });
+  if(alsoCurrent&&r){ (r.images||[]).forEach(x=>s.add(x.path)); (r.files||[]).forEach(x=>s.add(x.path)); }
+  return s;
+}
 
 function productTypeSummary(p){
   if(!p) return '';
@@ -1798,6 +1831,26 @@ function legacyTypeLabel(type){
   const map={update:'ACQUA FW Update',teststatus:'Test SEQ Update'};
   return map[type]||type;
 }
+// Previous versions kept on a record (newest first); versions[0] is v1
+function versionHistoryHtml(r){
+  const vs=r.versions||[];
+  if(!vs.length) return '';
+  const rows=vs.map((v,i)=>`<div class="ver-item">
+    <div class="ver-item-head">
+      <span class="ver-tag">v${i+1}</span>
+      <span class="ver-when">${esc(v.savedAt||'')}</span>
+      ${v.savedBy?`<span class="ver-by"><i class="ti ti-user" aria-hidden="true"></i>${esc(v.savedBy)}</span>`:''}
+    </div>
+    ${v.title?`<div class="ver-title">${esc(v.title)}</div>`:''}
+    ${v.desc?`<div class="desc ver-desc">${esc(v.desc)}</div>`:''}
+    ${imagesDisplayHtml(v.images)}
+    ${filesDisplayHtml(v.files)}
+  </div>`).reverse().join('');
+  return `<details class="ver-history">
+    <summary><i class="ti ti-history" aria-hidden="true"></i> Version history (${vs.length})</summary>
+    <div class="ver-list">${rows}</div>
+  </details>`;
+}
 function recordCardHtml(r,opts={}){
   const pc=PLAT_COLOR[r.platform]||'other';
   const st=recordStatus(r);
@@ -1821,6 +1874,7 @@ function recordCardHtml(r,opts={}){
       ${recordSoftwareLabel(r)?`<span class="badge b-cat"><i class="ti ti-device-desktop-analytics" style="font-size:11px" aria-hidden="true"></i> ${esc(recordSoftwareLabel(r))}</span>`:''}
       <span class="badge ${so.cls}">${so.lbl}</span>
       ${certBadge}
+      ${(r.versions||[]).length?`<span class="badge b-ver" title="${(r.versions||[]).length} previous version(s) kept">v${(r.versions||[]).length+1}</span>`:''}
     </div>
     <div class="meta-row">
       <span class="meta"><i class="ti ti-hash" aria-hidden="true"></i>${esc(r.id)}</span>
@@ -1834,8 +1888,10 @@ function recordCardHtml(r,opts={}){
     ${r.desc?`<div class="desc">${esc(r.desc)}</div>`:''}
     ${imagesDisplayHtml(r.images)}
     ${filesDisplayHtml(r.files)}
+    ${versionHistoryHtml(r)}
     <div class="rec-hover-actions">
       <button class="iconbtn" onclick="editRecord('${r.id}')" title="Edit" aria-label="Edit"><i class="ti ti-edit" aria-hidden="true"></i></button>
+      <button class="iconbtn" onclick="saveAsNewVersion('${r.id}')" title="Save as new version (keeps the current content as history)" aria-label="Save as new version"><i class="ti ti-versions" aria-hidden="true"></i></button>
       <button class="iconbtn" onclick="duplicateRecord('${r.id}')" title="Duplicate as a new record" aria-label="Duplicate"><i class="ti ti-copy" aria-hidden="true"></i></button>
       <button class="iconbtn" onclick="cycleStatus('${r.id}')" title="${st==='closed'?'Reopen':'Close'}" aria-label="${st==='closed'?'Reopen':'Close'}"><i class="ti ti-${st==='closed'?'lock-open':'lock'}" aria-hidden="true"></i></button>
       <button class="iconbtn dgr" onclick="delRecord('${r.id}')" title="Delete" aria-label="Delete"><i class="ti ti-trash" aria-hidden="true"></i></button>
@@ -1843,7 +1899,7 @@ function recordCardHtml(r,opts={}){
   </div>`;
 }
 
-let records=[], projects=[], curP='all', editId=null;
+let records=[], projects=[], curP='all', editId=null, newVersionMode=false;
 let viewMode='platform', curProjectId=null, editProjId=null, editLogId=null;
 let labInstruments={}, curLab=null; // Lab Instruments state (keyed by lab id)
 let sb=null, currentLoginEmail='';
@@ -2227,7 +2283,7 @@ function recordsForExport(){
 function exportRecordsCSV(){
   const list=recordsForExport();
   if(!list.length){ toast('No records to export in the current view.','warn'); return; }
-  const head=['ID','Platform','Category','Record Type','Sample Type','Test Software','Title','Details','Assignee','FW Version','Due Date','Status','Created','Updated','Last Edited By','Images'];
+  const head=['ID','Platform','Category','Record Type','Sample Type','Test Software','Title','Details','Assignee','FW Version','Due Date','Status','Created','Updated','Last Edited By','Images','Version'];
   const lines=[csvRow(head)];
   list.forEach(r=>{
     lines.push(csvRow([
@@ -2246,7 +2302,8 @@ function exportRecordsCSV(){
       r.created||'',
       r.updated||'',
       r.updatedBy||'',
-      (r.images||[]).length
+      (r.images||[]).length,
+      'v'+((r.versions||[]).length+1)
     ]));
   });
   const scope=curP==='all'?'all':curP.replace(/\s+/g,'-');
@@ -3117,10 +3174,18 @@ function showForm(){
   renderForm({deadline:today});
 }
 function editRecord(id){
-  editId=id;
+  editId=id; newVersionMode=false;
   const r=records.find(x=>x.id===id);
   renderForm(r||{});
   document.getElementById('form-area').scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+// Edit as a new version: the content as it stands now is kept as history on save
+function saveAsNewVersion(id){
+  const r=records.find(x=>x.id===id); if(!r) return;
+  editId=id; newVersionMode=true;
+  renderForm(r);
+  document.getElementById('form-area').scrollIntoView({behavior:'smooth',block:'nearest'});
+  toast('New version — the current content will be kept as v'+((r.versions||[]).length+1),'info',4200);
 }
 
 function catOptsHtml(plat,selCat,selSub){
@@ -3202,7 +3267,8 @@ function renderForm(r){
 
   document.getElementById('form-area').innerHTML=`
     <div class="form-panel">
-      <div class="fp-title"><i class="ti ti-edit-box" style="color:#3b82f6" aria-hidden="true"></i> ${editId?'Edit Record':'New Record'}</div>
+      <div class="fp-title"><i class="ti ti-edit-box" style="color:#3b82f6" aria-hidden="true"></i> ${newVersionMode?'New Version':(editId?'Edit Record':'New Record')}</div>
+      ${newVersionMode?`<div class="ver-banner"><i class="ti ti-versions" aria-hidden="true"></i> <span>Saving will keep the current content (title, details and attachments) as <b>v${((records.find(x=>x.id===editId)||{}).versions||[]).length+1}</b> in this record's history, then apply your changes as the new version.</span></div>`:''}
 
       <div class="fg2">
         <div>
@@ -3294,7 +3360,7 @@ function renderForm(r){
 
       <div class="form-actions">
         <button class="btn" onclick="cancelForm()">Cancel</button>
-        <button class="btn primary" onclick="submitForm()">${editId?'Save Changes':'Add Record'}</button>
+        <button class="btn primary" onclick="submitForm()">${newVersionMode?'Save as new version':(editId?'Save Changes':'Add Record')}</button>
       </div>
     </div>`;
   onPlatChange();
@@ -3361,8 +3427,12 @@ async function submitForm(){
   const type=document.getElementById('f-type').value;
 
   const recId = editId || genId(plat);
+  const existing = editId ? records.find(x=>x.id===editId) : null;
+  // Attachments referenced by kept versions must survive this save (and, when saving a
+  // new version, so must the current ones — the snapshot is about to reference them).
+  const keepPaths = versionKeepPaths(existing, newVersionMode);
   let images, files;
-  try{ images = await commitImages('records/'+recId); files = await commitFiles('records/'+recId); }
+  try{ images = await commitImages('records/'+recId,keepPaths); files = await commitFiles('records/'+recId,keepPaths); }
   catch(e){ toast(e.message||e,'error',5000); return; }
 
   const obj={
@@ -3387,6 +3457,19 @@ async function submitForm(){
   };
 
   const isNew=!editId;
+  const savedVersion=newVersionMode&&existing;
+  if(savedVersion){
+    // Freeze the content as it stands now, then let the edits below become the new version
+    obj.versions=[...(existing.versions||[]),{
+      title:existing.title||'',
+      desc:existing.desc||'',
+      fwVersion:existing.fwVersion||'',
+      images:(existing.images||[]).slice(),
+      files:(existing.files||[]).slice(),
+      savedAt:now,
+      savedBy:getCurrentUser()
+    }];
+  }
   let target;
   if(editId){
     const i=records.findIndex(x=>x.id===editId);
@@ -3403,13 +3486,14 @@ async function submitForm(){
   }
 
   if(target) await afterMutation(()=>saveRecordRow(target,isNew),{k:'saveRecord',data:target});
-  editId=null;
+  const newVerNo=savedVersion?(obj.versions.length+1):0;
+  editId=null; newVersionMode=false;
   document.getElementById('form-area').innerHTML='';
   render();
-  toast(isNew?'Record added':'Record updated','success');
+  toast(savedVersion?('Saved as v'+newVerNo+' — previous version kept in history'):(isNew?'Record added':'Record updated'),'success',savedVersion?4200:3200);
 }
 
-function cancelForm(){document.getElementById('form-area').innerHTML='';editId=null;}
+function cancelForm(){document.getElementById('form-area').innerHTML='';editId=null;newVersionMode=false;}
 
 async function cycleStatus(id){
   const r=records.find(x=>x.id===id);
