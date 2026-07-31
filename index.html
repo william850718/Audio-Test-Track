@@ -596,6 +596,17 @@
         .lab-iconbtn.danger:hover { background: #ef4444; color: #fff; border-color: #ef4444; }
         .lab-iconbtn:disabled { opacity: .3; cursor: default; }
         .lab-addrow { margin: 10px 14px; }
+        /* Reorder mode */
+        .lab-reorder-hint { display: flex; align-items: center; gap: 7px; font-size: 12px; color: #c4b5fd; background: rgba(139, 92, 246, 0.12); border-left: 2px solid #8b5cf6; padding: 8px 12px; margin-bottom: 10px; }
+        .lab-table.reordering { border-color: #8b5cf6; }
+        .lab-tr-reorder { grid-template-columns: 24px 1.1fr 1.4fr 110px 56px; }
+        .lab-grip { display: flex; align-items: center; justify-content: center; color: var(--text-secondary); cursor: grab; font-size: 16px; }
+        .lab-grip:active { cursor: grabbing; }
+        .lab-thead .lab-grip { cursor: default; }
+        .lab-tr-reorder[draggable="true"] { background: var(--bg-input); }
+        .lab-tr-reorder.drop-above { box-shadow: inset 0 2px 0 #8b5cf6; }
+        .lab-tr-reorder.drop-below { box-shadow: inset 0 -2px 0 #8b5cf6; }
+        [data-theme="light"] .lab-reorder-hint { background: #f5f3ff; color: #6d28d9; }
         .lab-paste { margin-top: 18px; padding: 14px 16px; border: 0.5px dashed var(--border-color); border-radius: 12px; }
         .lab-paste-h { font-size: 14px; font-weight: 500; color: var(--text-primary); margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
         .lab-paste-txt { width: 100%; min-height: 78px; border: 0.5px solid var(--border-color); background: var(--bg-input); border-radius: 8px; color: var(--text-primary); padding: 8px; font-size: 13px; font-family: ui-monospace, Menlo, Consolas, monospace; resize: vertical; }
@@ -611,6 +622,9 @@
           .lab-name-cell, .lab-val-cell, .lab-ver-col, .lab-in { grid-column: 1; }
           .lab-ver-col { align-items: flex-start; text-align: left; flex-direction: row; gap: 8px; }
           .lab-row-actions { grid-column: 2; grid-row: 1 / span 3; align-self: center; flex-direction: column; }
+          /* No native touch drag — the arrows are the reliable path on phones */
+          .lab-tr-reorder { grid-template-columns: 1fr 56px; }
+          .lab-grip { display: none; }
         }
         .db-panel { background: var(--bg-panel); border: 1px solid var(--border-color); border-radius: 12px; padding: 16px; margin-bottom: 14px; }
         .db-cards { display: grid; grid-template-columns: repeat(4,1fr); gap: 10px; margin-bottom: 16px; }
@@ -2712,6 +2726,7 @@ function switchMode(m){
 
 /* ===== Lab Instruments view ===== */
 let _labEdit=null, _labParsed=null;   // _labEdit = {index, isNew} — the single row currently being edited
+let _labReorder=false, _labOrderDraft=null, _labDragFrom=null;   // reorder mode works on a draft until Done
 function labData(id){ return labInstruments[id]||{items:[],verifiedAt:null}; }
 // Last time any instrument version actually changed (max of item changedAt) — informational, never drives the light
 function labLastChanged(d){ const ds=(d.items||[]).map(i=>i.changedAt).filter(Boolean).sort(); return ds.length?ds[ds.length-1]:null; }
@@ -2721,8 +2736,8 @@ function renderLabView(){
   if(curLab && LABS.some(l=>l.id===curLab)) renderLabDetail(host);
   else { curLab=null; renderLabList(host); }
 }
-function openLab(id){ curLab=id; _labEdit=null; _labParsed=null; renderLabView(); }
-function labBack(){ curLab=null; _labEdit=null; _labParsed=null; renderLabView(); }
+function openLab(id){ curLab=id; _labEdit=null; _labParsed=null; _labReorder=false; _labOrderDraft=null; renderLabView(); }
+function labBack(){ curLab=null; _labEdit=null; _labParsed=null; _labReorder=false; _labOrderDraft=null; renderLabView(); }
 function renderLabList(host){
   const cards=LABS.map(l=>{
     const d=labData(l.id), f=labFreshness(d.verifiedAt), n=(d.items||[]).length, chg=labLastChanged(d);
@@ -2745,10 +2760,10 @@ function renderLabList(host){
 function renderLabDetail(host){
   const meta=LABS.find(l=>l.id===curLab)||{id:curLab,note:''};
   const d=labData(curLab), f=labFreshness(d.verifiedAt), chg=labLastChanged(d);
-  const items=d.items||[];
-  const isEmpty=!items.length;
+  const items=_labReorder?_labOrderDraft:(d.items||[]);
+  const isEmpty=!(d.items||[]).length;
   const editingNew=!!(_labEdit&&_labEdit.isNew);
-  let rows=items.map((it,i)=>labRowHtml(it,i)).join('');
+  let rows=items.map((it,i)=>_labReorder?labReorderRowHtml(it,i,items.length):labRowHtml(it,i)).join('');
   if(editingNew) rows+=labEditRowHtml({name:'',value:''});
   if(!rows) rows='<div class="lab-empty">No instruments yet. Add them one at a time with "Add instrument", or paste your whole list in first-time setup below.</div>';
   host.innerHTML=`
@@ -2762,14 +2777,19 @@ function renderLabDetail(host){
           <span class="lab-changed-note"><i class="ti ti-history" aria-hidden="true"></i> Last change: ${chg?esc(chg.slice(0,10)):'—'}</span>
         </div>
       </div>
-      <div class="lab-actions"><button class="btn" onclick="labVerify()" title="Confirm the list is still correct — records today as the last-checked date without changing any data"${_labEdit?' disabled':''}><i class="ti ti-checkbox" aria-hidden="true"></i> Mark checked</button></div>
+      <div class="lab-actions">${_labReorder
+        ? `<button class="btn" onclick="labCancelReorder()">Cancel</button>
+           <button class="btn primary" onclick="labSaveReorder()"><i class="ti ti-check" aria-hidden="true"></i> Done</button>`
+        : `<button class="btn" onclick="labVerify()" title="Confirm the list is still correct — records today as the last-checked date without changing any data"${_labEdit?' disabled':''}><i class="ti ti-checkbox" aria-hidden="true"></i> Mark checked</button>
+           ${(d.items||[]).length>1?`<button class="btn" onclick="labStartReorder()" title="Change the order of the instruments"${_labEdit?' disabled':''}><i class="ti ti-arrows-sort" aria-hidden="true"></i> Reorder</button>`:''}`}</div>
     </div>
-    <div class="lab-table">
-      <div class="lab-tr lab-thead"><span>Instrument / item</span><span>Version</span><span class="lab-ver-col">Latest update</span><span></span></div>
+    ${_labReorder?'<div class="lab-reorder-hint"><i class="ti ti-info-circle" aria-hidden="true"></i> Drag the handle, or use the arrows, to change the order. Nothing is saved until you press Done.</div>':''}
+    <div class="lab-table${_labReorder?' reordering':''}">
+      <div class="lab-tr lab-thead${_labReorder?' lab-tr-reorder':''}">${_labReorder?'<span></span>':''}<span>Instrument / item</span><span>Version</span><span class="lab-ver-col">Latest update</span><span></span></div>
       ${rows}
-      ${!_labEdit?`<button class="btn lab-addrow" onclick="labAddInstrument()"><i class="ti ti-plus" aria-hidden="true"></i> Add instrument</button>`:''}
+      ${(!_labEdit&&!_labReorder)?`<button class="btn lab-addrow" onclick="labAddInstrument()"><i class="ti ti-plus" aria-hidden="true"></i> Add instrument</button>`:''}
     </div>
-    ${(!_labEdit&&isEmpty)?labPasteHtml():''}`;
+    ${(!_labEdit&&!_labReorder&&isEmpty)?labPasteHtml():''}`;
   if(_labEdit){
     const el=document.getElementById(_labEdit.isNew?'lab-edit-name':'lab-edit-value');
     if(el){ el.focus(); if(el.setSelectionRange) el.setSelectionRange(el.value.length,el.value.length); }
@@ -2799,7 +2819,64 @@ function labEditRowHtml(it){
     </span>
   </div>`;
 }
-function labEditRow(i){ if(_labEdit) return; _labEdit={index:i,isNew:false}; renderLabView(); }
+/* ---- Reorder mode: explicit, so nothing can be dragged by accident ---- */
+function labReorderRowHtml(it,i,total){
+  return `<div class="lab-tr lab-tr-reorder" id="labrow-${i}"
+      ondragstart="labDragStart(event,${i})" ondragover="labDragOver(event,${i})"
+      ondrop="labDrop(event,${i})" ondragend="labDragEnd(event,${i})">
+    <span class="lab-grip" title="Drag to reorder" onmousedown="labGripDown(${i})" onmouseup="labGripUp(${i})"><i class="ti ti-grip-vertical" aria-hidden="true"></i></span>
+    <span class="lab-name-cell">${esc(it.name||'')}</span>
+    <span class="lab-val-cell">${esc(it.value||'')}</span>
+    <span class="lab-ver-col"><span class="lab-chg">${it.changedAt?esc(it.changedAt.slice(0,10)):'—'}</span></span>
+    <span class="lab-row-actions">
+      <button class="lab-iconbtn" onclick="labMoveRow(${i},-1)" title="Move up" aria-label="Move up"${i===0?' disabled':''}><i class="ti ti-chevron-up" aria-hidden="true"></i></button>
+      <button class="lab-iconbtn" onclick="labMoveRow(${i},1)" title="Move down" aria-label="Move down"${i===total-1?' disabled':''}><i class="ti ti-chevron-down" aria-hidden="true"></i></button>
+    </span>
+  </div>`;
+}
+function labStartReorder(){ if(_labEdit) return; _labOrderDraft=(labData(curLab).items||[]).map(it=>({...it})); _labReorder=true; renderLabView(); }
+function labCancelReorder(){ _labReorder=false; _labOrderDraft=null; _labDragFrom=null; renderLabView(); }
+function labMoveRow(i,dir){
+  const j=i+dir;
+  if(!_labOrderDraft||j<0||j>=_labOrderDraft.length) return;
+  const t=_labOrderDraft[i]; _labOrderDraft[i]=_labOrderDraft[j]; _labOrderDraft[j]=t;
+  renderLabView();
+}
+// Only the grip arms the row for dragging, so grabbing text never starts a drag
+function labGripDown(i){ const el=document.getElementById('labrow-'+i); if(el) el.draggable=true; }
+function labGripUp(i){ const el=document.getElementById('labrow-'+i); if(el) el.draggable=false; }
+function labDragStart(e,i){ _labDragFrom=i; try{ e.dataTransfer.effectAllowed='move'; e.dataTransfer.setData('text/plain',String(i)); }catch(err){} }
+function labDragOver(e,i){
+  if(_labDragFrom===null||_labDragFrom===undefined) return;
+  e.preventDefault();
+  document.querySelectorAll('.lab-tr-reorder.drop-above,.lab-tr-reorder.drop-below').forEach(el=>el.classList.remove('drop-above','drop-below'));
+  const el=document.getElementById('labrow-'+i);
+  if(el&&i!==_labDragFrom) el.classList.add(i<_labDragFrom?'drop-above':'drop-below');
+}
+function labDrop(e,i){
+  e.preventDefault();
+  const from=_labDragFrom;
+  if(from===null||from===undefined||from===i||!_labOrderDraft) return;
+  const [m]=_labOrderDraft.splice(from,1);
+  _labOrderDraft.splice(i,0,m);
+  _labDragFrom=null;
+  renderLabView();
+}
+function labDragEnd(e,i){ const el=document.getElementById('labrow-'+i); if(el) el.draggable=false; _labDragFrom=null;
+  document.querySelectorAll('.lab-tr-reorder.drop-above,.lab-tr-reorder.drop-below').forEach(el2=>el2.classList.remove('drop-above','drop-below')); }
+async function labSaveReorder(){
+  const d=labData(curLab);
+  const items=(_labOrderDraft||[]).map(it=>({...it}));
+  // Reordering is cosmetic: it must not touch the last-checked or per-item change dates
+  const obj={items,verifiedAt:d.verifiedAt||null};
+  labInstruments[curLab]={...obj,updatedBy:getCurrentUser()};
+  _labReorder=false; _labOrderDraft=null; _labDragFrom=null;
+  renderLabView();
+  await afterMutation(()=>saveLabRow(curLab,obj),{k:'saveLab',labId:curLab,data:obj});
+  toast('Order saved','success');
+}
+
+function labEditRow(i){ if(_labEdit||_labReorder) return; _labEdit={index:i,isNew:false}; renderLabView(); }
 function labAddInstrument(){ if(_labEdit) return; _labEdit={index:(labData(curLab).items||[]).length,isNew:true}; renderLabView(); }
 function labRowCancel(){ _labEdit=null; renderLabView(); }
 async function labRowSave(){
