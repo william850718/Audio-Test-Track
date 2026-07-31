@@ -596,6 +596,18 @@
         .lab-iconbtn.danger:hover { background: #ef4444; color: #fff; border-color: #ef4444; }
         .lab-iconbtn:disabled { opacity: .3; cursor: default; }
         .lab-addrow { margin: 10px 14px; }
+        /* Category sections */
+        .lab-group-head { display: flex; align-items: center; gap: 8px; padding: 8px 14px; background: rgba(99,102,241,.10); border-top: 0.5px solid var(--border-color); font-size: 12px; font-weight: 600; color: #a5b4fc; text-transform: uppercase; letter-spacing: .04em; }
+        .lab-group-head.none { color: var(--text-secondary); background: var(--bg-input); }
+        .lab-group-head:first-child { border-top: none; }
+        .lab-group-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+        .lab-group-n { font-size: 11px; font-weight: 400; color: var(--text-secondary); background: var(--bg-panel); border-radius: 10px; padding: 1px 8px; }
+        .lab-group-head .lab-row-actions { flex-shrink: 0; }
+        .lab-tr-edit { grid-template-columns: 120px 1fr 1.2fr 56px; }
+        .lab-group-in { font-size: 12px; }
+        .lab-paste-cat { display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: 12px; color: var(--text-secondary); }
+        .lab-paste-cat input { flex: 1; max-width: 220px; height: 30px; border: 0.5px solid var(--border-color); background: var(--bg-input); border-radius: 6px; color: var(--text-primary); padding: 0 8px; font-size: 13px; }
+        [data-theme="light"] .lab-group-head { background: #eef2ff; color: #4338ca; }
         /* Reorder mode */
         .lab-reorder-hint { display: flex; align-items: center; gap: 7px; font-size: 12px; color: #c4b5fd; background: rgba(139, 92, 246, 0.12); border-left: 2px solid #8b5cf6; padding: 8px 12px; margin-bottom: 10px; }
         .lab-table.reordering { border-color: #8b5cf6; }
@@ -625,6 +637,7 @@
           /* No native touch drag — the arrows are the reliable path on phones */
           .lab-tr-reorder { grid-template-columns: 1fr 56px; }
           .lab-grip { display: none; }
+          .lab-tr-edit { grid-template-columns: 1fr 56px; }
         }
         .db-panel { background: var(--bg-panel); border: 1px solid var(--border-color); border-radius: 12px; padding: 16px; margin-bottom: 14px; }
         .db-cards { display: grid; grid-template-columns: repeat(4,1fr); gap: 10px; margin-bottom: 16px; }
@@ -2726,7 +2739,24 @@ function switchMode(m){
 
 /* ===== Lab Instruments view ===== */
 let _labEdit=null, _labParsed=null;   // _labEdit = {index, isNew} — the single row currently being edited
-let _labReorder=false, _labOrderDraft=null, _labDragFrom=null;   // reorder mode works on a draft until Done
+let _labReorder=false, _labOrderDraft=null, _labGroupsDraft=null, _labDragFrom=null;   // reorder mode works on a draft until Done
+/* Categories are per lab and free-form: an item's `group` is just a name, and a lab's
+   `groups` array only records the display order. A group exists while something is in it. */
+function labItemGroup(it){ return ((it&&it.group)||'').trim(); }
+function labGroupsOf(items,order){
+  const used=[...new Set((items||[]).map(labItemGroup).filter(Boolean))];
+  const out=(order||[]).filter(g=>used.includes(g));
+  used.forEach(g=>{ if(!out.includes(g)) out.push(g); });
+  return out;
+}
+function labIndexesIn(items,g){ return (items||[]).map((_,i)=>i).filter(i=>labItemGroup(items[i])===g); }
+// Flat items array rebuilt so it is stored grouped, in the display order
+function labNormalizeOrder(items,order){
+  const out=[];
+  labGroupsOf(items,order).forEach(g=>labIndexesIn(items,g).forEach(i=>out.push(items[i])));
+  labIndexesIn(items,'').forEach(i=>out.push(items[i]));
+  return out;
+}
 function labData(id){ return labInstruments[id]||{items:[],verifiedAt:null}; }
 // Last time any instrument version actually changed (max of item changedAt) — informational, never drives the light
 function labLastChanged(d){ const ds=(d.items||[]).map(i=>i.changedAt).filter(Boolean).sort(); return ds.length?ds[ds.length-1]:null; }
@@ -2761,10 +2791,11 @@ function renderLabDetail(host){
   const meta=LABS.find(l=>l.id===curLab)||{id:curLab,note:''};
   const d=labData(curLab), f=labFreshness(d.verifiedAt), chg=labLastChanged(d);
   const items=_labReorder?_labOrderDraft:(d.items||[]);
+  const order=_labReorder?_labGroupsDraft:(d.groups||[]);
   const isEmpty=!(d.items||[]).length;
   const editingNew=!!(_labEdit&&_labEdit.isNew);
-  let rows=items.map((it,i)=>_labReorder?labReorderRowHtml(it,i,items.length):labRowHtml(it,i)).join('');
-  if(editingNew) rows+=labEditRowHtml({name:'',value:''});
+  let rows=labSectionsHtml(items,order);
+  if(editingNew) rows+=labEditRowHtml({name:'',value:'',group:''});
   if(!rows) rows='<div class="lab-empty">No instruments yet. Add them one at a time with "Add instrument", or paste your whole list in first-time setup below.</div>';
   host.innerHTML=`
     <button class="btn" onclick="labBack()" style="margin-bottom:14px"><i class="ti ti-arrow-left" aria-hidden="true"></i> All labs</button>
@@ -2795,6 +2826,36 @@ function renderLabDetail(host){
     if(el){ el.focus(); if(el.setSelectionRange) el.setSelectionRange(el.value.length,el.value.length); }
   }
 }
+// Renders the table body: one section per category, uncategorised items last.
+// Headers are hidden entirely when a lab uses no categories at all.
+function labSectionsHtml(items,order){
+  const named=labGroupsOf(items,order);
+  const showHeads=named.length>0;
+  let html='';
+  const section=(label,idxs,gi)=>{
+    if(!idxs.length) return;
+    if(showHeads) html+=labGroupHeadHtml(label,idxs.length,gi,named.length);
+    idxs.forEach((flat,pos)=>{
+      html+=_labReorder
+        ? labReorderRowHtml(items[flat],flat,pos===0,pos===idxs.length-1)
+        : labRowHtml(items[flat],flat);
+    });
+  };
+  named.forEach((g,gi)=>section(g,labIndexesIn(items,g),gi));
+  section(showHeads?'Uncategorized':'',labIndexesIn(items,''),-1);
+  return html;
+}
+function labGroupHeadHtml(label,n,gi,total){
+  const arrows=(_labReorder&&gi>=0)
+    ? `<span class="lab-row-actions">
+         <button class="lab-iconbtn" onclick="labMoveGroup('${esc(label).replace(/'/g,"\\'")}',-1)" title="Move category up" aria-label="Move category up"${gi===0?' disabled':''}><i class="ti ti-chevron-up" aria-hidden="true"></i></button>
+         <button class="lab-iconbtn" onclick="labMoveGroup('${esc(label).replace(/'/g,"\\'")}',1)" title="Move category down" aria-label="Move category down"${gi===total-1?' disabled':''}><i class="ti ti-chevron-down" aria-hidden="true"></i></button>
+       </span>`:'';
+  return `<div class="lab-group-head${label?'':' none'}">
+    <span class="lab-group-name">${label?esc(label):'Uncategorized'}</span>
+    <span class="lab-group-n">${n}</span>${arrows}
+  </div>`;
+}
 function labRowHtml(it,i){
   if(_labEdit && !_labEdit.isNew && _labEdit.index===i) return labEditRowHtml(it);
   const dis=_labEdit?' disabled':'';
@@ -2809,10 +2870,14 @@ function labRowHtml(it,i){
   </div>`;
 }
 function labEditRowHtml(it){
+  const d=labData(curLab);
+  const opts=labGroupsOf(d.items||[],d.groups||[]).map(g=>`<option value="${esc(g)}"></option>`).join('');
+  const kd=`if(event.key==='Enter'){event.preventDefault();labRowSave();}else if(event.key==='Escape'){labRowCancel();}`;
   return `<div class="lab-tr lab-tr-edit">
-    <input id="lab-edit-name" class="lab-in" value="${esc(it.name||'')}" placeholder="e.g. ACQUA Version">
-    <input id="lab-edit-value" class="lab-in lab-val-in" value="${esc(it.value||'')}" placeholder="e.g. 6.2.210" onkeydown="if(event.key==='Enter'){event.preventDefault();labRowSave();}else if(event.key==='Escape'){labRowCancel();}">
-    <span class="lab-ver-col"><span class="lab-chg">${it.changedAt?esc(it.changedAt.slice(0,10)):'—'}</span></span>
+    <input id="lab-edit-group" class="lab-in lab-group-in" list="lab-group-list" value="${esc(it.group||'')}" placeholder="Category" title="Type a new category or pick an existing one" onkeydown="${kd}">
+    <datalist id="lab-group-list">${opts}</datalist>
+    <input id="lab-edit-name" class="lab-in" value="${esc(it.name||'')}" placeholder="e.g. ACQUA Version" onkeydown="${kd}">
+    <input id="lab-edit-value" class="lab-in lab-val-in" value="${esc(it.value||'')}" placeholder="e.g. 6.2.210" onkeydown="${kd}">
     <span class="lab-row-actions">
       <button class="lab-iconbtn ok" onclick="labRowSave()" title="Save" aria-label="Save"><i class="ti ti-check" aria-hidden="true"></i></button>
       <button class="lab-iconbtn" onclick="labRowCancel()" title="Cancel" aria-label="Cancel"><i class="ti ti-x" aria-hidden="true"></i></button>
@@ -2820,7 +2885,7 @@ function labEditRowHtml(it){
   </div>`;
 }
 /* ---- Reorder mode: explicit, so nothing can be dragged by accident ---- */
-function labReorderRowHtml(it,i,total){
+function labReorderRowHtml(it,i,isFirst,isLast){
   return `<div class="lab-tr lab-tr-reorder" id="labrow-${i}"
       ondragstart="labDragStart(event,${i})" ondragover="labDragOver(event,${i})"
       ondrop="labDrop(event,${i})" ondragend="labDragEnd(event,${i})">
@@ -2829,17 +2894,33 @@ function labReorderRowHtml(it,i,total){
     <span class="lab-val-cell">${esc(it.value||'')}</span>
     <span class="lab-ver-col"><span class="lab-chg">${it.changedAt?esc(it.changedAt.slice(0,10)):'—'}</span></span>
     <span class="lab-row-actions">
-      <button class="lab-iconbtn" onclick="labMoveRow(${i},-1)" title="Move up" aria-label="Move up"${i===0?' disabled':''}><i class="ti ti-chevron-up" aria-hidden="true"></i></button>
-      <button class="lab-iconbtn" onclick="labMoveRow(${i},1)" title="Move down" aria-label="Move down"${i===total-1?' disabled':''}><i class="ti ti-chevron-down" aria-hidden="true"></i></button>
+      <button class="lab-iconbtn" onclick="labMoveRow(${i},-1)" title="Move up" aria-label="Move up"${isFirst?' disabled':''}><i class="ti ti-chevron-up" aria-hidden="true"></i></button>
+      <button class="lab-iconbtn" onclick="labMoveRow(${i},1)" title="Move down" aria-label="Move down"${isLast?' disabled':''}><i class="ti ti-chevron-down" aria-hidden="true"></i></button>
     </span>
   </div>`;
 }
-function labStartReorder(){ if(_labEdit) return; _labOrderDraft=(labData(curLab).items||[]).map(it=>({...it})); _labReorder=true; renderLabView(); }
-function labCancelReorder(){ _labReorder=false; _labOrderDraft=null; _labDragFrom=null; renderLabView(); }
+function labStartReorder(){
+  if(_labEdit) return;
+  const d=labData(curLab);
+  _labOrderDraft=(d.items||[]).map(it=>({...it}));
+  _labGroupsDraft=labGroupsOf(_labOrderDraft,d.groups||[]);
+  _labReorder=true; renderLabView();
+}
+function labCancelReorder(){ _labReorder=false; _labOrderDraft=null; _labGroupsDraft=null; _labDragFrom=null; renderLabView(); }
+// Items only move within their own category — changing category is done by editing the row
 function labMoveRow(i,dir){
-  const j=i+dir;
-  if(!_labOrderDraft||j<0||j>=_labOrderDraft.length) return;
-  const t=_labOrderDraft[i]; _labOrderDraft[i]=_labOrderDraft[j]; _labOrderDraft[j]=t;
+  const arr=_labOrderDraft; if(!arr||!arr[i]) return;
+  const idxs=labIndexesIn(arr,labItemGroup(arr[i]));
+  const target=idxs[idxs.indexOf(i)+dir];
+  if(target===undefined) return;
+  const t=arr[i]; arr[i]=arr[target]; arr[target]=t;
+  renderLabView();
+}
+function labMoveGroup(name,dir){
+  if(!_labGroupsDraft) return;
+  const i=_labGroupsDraft.indexOf(name), j=i+dir;
+  if(i<0||j<0||j>=_labGroupsDraft.length) return;
+  const t=_labGroupsDraft[i]; _labGroupsDraft[i]=_labGroupsDraft[j]; _labGroupsDraft[j]=t;
   renderLabView();
 }
 // Only the grip arms the row for dragging, so grabbing text never starts a drag
@@ -2848,6 +2929,8 @@ function labGripUp(i){ const el=document.getElementById('labrow-'+i); if(el) el.
 function labDragStart(e,i){ _labDragFrom=i; try{ e.dataTransfer.effectAllowed='move'; e.dataTransfer.setData('text/plain',String(i)); }catch(err){} }
 function labDragOver(e,i){
   if(_labDragFrom===null||_labDragFrom===undefined) return;
+  const arr=_labOrderDraft;
+  if(!arr||labItemGroup(arr[i])!==labItemGroup(arr[_labDragFrom])) return;  // no cross-category drops
   e.preventDefault();
   document.querySelectorAll('.lab-tr-reorder.drop-above,.lab-tr-reorder.drop-below').forEach(el=>el.classList.remove('drop-above','drop-below'));
   const el=document.getElementById('labrow-'+i);
@@ -2857,6 +2940,7 @@ function labDrop(e,i){
   e.preventDefault();
   const from=_labDragFrom;
   if(from===null||from===undefined||from===i||!_labOrderDraft) return;
+  if(labItemGroup(_labOrderDraft[i])!==labItemGroup(_labOrderDraft[from])) return;
   const [m]=_labOrderDraft.splice(from,1);
   _labOrderDraft.splice(i,0,m);
   _labDragFrom=null;
@@ -2866,11 +2950,12 @@ function labDragEnd(e,i){ const el=document.getElementById('labrow-'+i); if(el) 
   document.querySelectorAll('.lab-tr-reorder.drop-above,.lab-tr-reorder.drop-below').forEach(el2=>el2.classList.remove('drop-above','drop-below')); }
 async function labSaveReorder(){
   const d=labData(curLab);
-  const items=(_labOrderDraft||[]).map(it=>({...it}));
+  const groups=(_labGroupsDraft||[]).slice();
+  const items=labNormalizeOrder((_labOrderDraft||[]).map(it=>({...it})),groups);
   // Reordering is cosmetic: it must not touch the last-checked or per-item change dates
-  const obj={items,verifiedAt:d.verifiedAt||null};
+  const obj={items,groups,verifiedAt:d.verifiedAt||null};
   labInstruments[curLab]={...obj,updatedBy:getCurrentUser()};
-  _labReorder=false; _labOrderDraft=null; _labDragFrom=null;
+  _labReorder=false; _labOrderDraft=null; _labGroupsDraft=null; _labDragFrom=null;
   renderLabView();
   await afterMutation(()=>saveLabRow(curLab,obj),{k:'saveLab',labId:curLab,data:obj});
   toast('Order saved','success');
@@ -2883,17 +2968,21 @@ async function labRowSave(){
   const nameEl=document.getElementById('lab-edit-name'), valEl=document.getElementById('lab-edit-value');
   if(!nameEl||!valEl) return;
   const name=(nameEl.value||'').trim(), value=(valEl.value||'').trim();
+  const group=((document.getElementById('lab-edit-group')||{}).value||'').trim();
   const isNew=!!(_labEdit&&_labEdit.isNew);
   if(!name){ if(isNew&&!value){ labRowCancel(); return; } toast('Please enter an instrument name.','warn'); return; }
-  const items=(labData(curLab).items||[]).map(it=>({...it}));
+  const d=labData(curLab);
+  let items=(d.items||[]).map(it=>({...it}));
   if(isNew){
-    items.push({name,value,version:extractVersion(value),changedAt:todayISO()});
+    items.push({name,value,group,version:extractVersion(value),changedAt:todayISO()});
   }else{
     const prev=items[_labEdit.index]||{};
     const changed=(prev.value||'').trim()!==value;
-    items[_labEdit.index]={name,value,version:extractVersion(value),changedAt:changed?todayISO():(prev.changedAt||todayISO())};
+    items[_labEdit.index]={name,value,group,version:extractVersion(value),changedAt:changed?todayISO():(prev.changedAt||todayISO())};
   }
-  const obj={items,verifiedAt:todayISO()};
+  const groups=labGroupsOf(items,d.groups||[]);
+  items=labNormalizeOrder(items,groups);
+  const obj={items,groups,verifiedAt:todayISO()};
   labInstruments[curLab]={...obj,updatedBy:getCurrentUser()};
   _labEdit=null; renderLabView();
   await afterMutation(()=>saveLabRow(curLab,obj),{k:'saveLab',labId:curLab,data:obj});
@@ -2904,7 +2993,7 @@ async function labDeleteRow(i){
   const ok=await confirmModal('Delete "'+(it.name||'this item')+'" from '+curLab+'?',{danger:true,okText:'Delete',title:'Delete instrument'});
   if(!ok) return;
   const items=(labData(curLab).items||[]).filter((_,idx)=>idx!==i);
-  const obj={items,verifiedAt:todayISO()};
+  const obj={items,groups:labGroupsOf(items,labData(curLab).groups||[]),verifiedAt:todayISO()};
   labInstruments[curLab]={...obj,updatedBy:getCurrentUser()};
   renderLabView();
   await afterMutation(()=>saveLabRow(curLab,obj),{k:'saveLab',labId:curLab,data:obj});
@@ -2914,7 +3003,7 @@ async function labVerify(){
   const ok=await confirmModal('Confirm '+curLab+' is still correct with no changes? This records today as the last-checked date.',{title:'Mark as checked',okText:'Yes, still current'});
   if(!ok) return;
   const d=labData(curLab);
-  const obj={items:d.items||[],verifiedAt:todayISO()};
+  const obj={items:d.items||[],groups:d.groups||[],verifiedAt:todayISO()};
   labInstruments[curLab]={...obj,updatedBy:getCurrentUser()};
   renderLabView();
   await afterMutation(()=>saveLabRow(curLab,obj),{k:'saveLab',labId:curLab,data:obj});
@@ -2925,6 +3014,8 @@ function labPasteHtml(){
     <div class="lab-paste-h"><i class="ti ti-clipboard-text" aria-hidden="true"></i> First-time setup — paste your instrument list</div>
     <div class="lab-paste-sub">Only shown while this lab is empty. Paste a "name: value" list once to fill the table; after that, edit each item with its edit icon.</div>
     <textarea id="lab-paste-txt" class="lab-paste-txt" placeholder="ACQUA Version: 6.2.210&#10;Labcore Version: 3.12.10&#10;3Pass Version: 2.2.300.21853"></textarea>
+    <div class="lab-paste-cat"><label for="lab-paste-group">Import into category</label>
+      <input type="text" id="lab-paste-group" placeholder="optional — e.g. Teams"></div>
     <button class="btn" onclick="labParsePreview()" style="margin-top:8px"><i class="ti ti-wand" aria-hidden="true"></i> Preview</button>
     <div id="lab-parse-out">${_labParsed?labParsedHtml():''}</div>
   </div>`;
@@ -2972,6 +3063,7 @@ function labParsedHtml(){
 }
 async function labApplyParsed(){
   if(!_labParsed||!_labParsed.length) return;
+  const impGroup=((document.getElementById('lab-paste-group')||{}).value||'').trim();
   const cur=(labData(curLab).items||[]).map(it=>({...it}));
   const byName={}; cur.forEach(it=>{ byName[(it.name||'').toLowerCase()]=it; });
   _labParsed.forEach(p=>{
@@ -2979,11 +3071,12 @@ async function labApplyParsed(){
     if(target){
       if((target.value||'').trim()!==p.value){ target.value=p.value; target.version=p.version; target.changedAt=todayISO(); }
     }else{
-      const it={name:p.name,value:p.value,version:p.version,changedAt:todayISO()};
+      const it={name:p.name,value:p.value,group:impGroup,version:p.version,changedAt:todayISO()};
       cur.push(it); byName[p.name.toLowerCase()]=it;
     }
   });
-  const obj={items:cur,verifiedAt:todayISO()};
+  const groups=labGroupsOf(cur,labData(curLab).groups||[]);
+  const obj={items:labNormalizeOrder(cur,groups),groups,verifiedAt:todayISO()};
   labInstruments[curLab]={...obj,updatedBy:getCurrentUser()};
   _labParsed=null; _labEdit=null; renderLabView();
   await afterMutation(()=>saveLabRow(curLab,obj),{k:'saveLab',labId:curLab,data:obj});
