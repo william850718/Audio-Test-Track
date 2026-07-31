@@ -595,7 +595,7 @@
         .lab-iconbtn.ok:hover { background: #059669; color: #fff; border-color: #059669; }
         .lab-iconbtn.danger:hover { background: #ef4444; color: #fff; border-color: #ef4444; }
         .lab-iconbtn:disabled { opacity: .3; cursor: default; }
-        .lab-addrow { margin: 10px 14px; }
+        .lab-addrow { display: flex; gap: 8px; flex-wrap: wrap; margin: 10px 14px; }
         /* Category sections */
         .lab-group-head { display: flex; align-items: center; gap: 8px; padding: 8px 14px; background: rgba(99,102,241,.10); border-top: 0.5px solid var(--border-color); font-size: 12px; font-weight: 600; color: #a5b4fc; text-transform: uppercase; letter-spacing: .04em; }
         .lab-group-head.none { color: var(--text-secondary); background: var(--bg-input); }
@@ -603,6 +603,9 @@
         .lab-group-name { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
         .lab-group-n { font-size: 11px; font-weight: 400; color: var(--text-secondary); background: var(--bg-panel); border-radius: 10px; padding: 1px 8px; }
         .lab-group-head .lab-row-actions { flex-shrink: 0; }
+        .lab-group-head.editing { padding: 8px 10px; gap: 8px; }
+        .lab-group-head.editing .lab-in { max-width: 260px; text-transform: none; }
+        .lab-group-empty { padding: 10px 14px; font-size: 12px; color: var(--text-secondary); font-style: italic; border-top: 0.5px solid var(--border-color); }
         .lab-tr-edit { grid-template-columns: 120px 1fr 1.2fr 56px; }
         .lab-group-in { font-size: 12px; }
         .lab-paste-cat { display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: 12px; color: var(--text-secondary); }
@@ -2740,13 +2743,20 @@ function switchMode(m){
 /* ===== Lab Instruments view ===== */
 let _labEdit=null, _labParsed=null;   // _labEdit = {index, isNew} — the single row currently being edited
 let _labReorder=false, _labOrderDraft=null, _labGroupsDraft=null, _labDragFrom=null;   // reorder mode works on a draft until Done
-/* Categories are per lab and free-form: an item's `group` is just a name, and a lab's
-   `groups` array only records the display order. A group exists while something is in it. */
+let _labCatEdit=null;   // {mode:'new'} | {mode:'rename', name} — inline category editor
+/* Categories are per lab and free-form. The lab's `groups` array is the authoritative
+   list, so a category can exist while still empty; an item's `group` just names one. */
+const DEFAULT_LAB_GROUPS=['Teams','Chrome Audio'];
 function labItemGroup(it){ return ((it&&it.group)||'').trim(); }
+// Authoritative category list for a lab (defaults apply only when none was ever stored)
+function labGroupList(d){
+  const out=Array.isArray(d&&d.groups)?d.groups.slice():DEFAULT_LAB_GROUPS.slice();
+  ((d&&d.items)||[]).forEach(it=>{ const g=labItemGroup(it); if(g&&!out.includes(g)) out.push(g); });
+  return out;
+}
 function labGroupsOf(items,order){
-  const used=[...new Set((items||[]).map(labItemGroup).filter(Boolean))];
-  const out=(order||[]).filter(g=>used.includes(g));
-  used.forEach(g=>{ if(!out.includes(g)) out.push(g); });
+  const out=(order||[]).slice();
+  (items||[]).forEach(it=>{ const g=labItemGroup(it); if(g&&!out.includes(g)) out.push(g); });
   return out;
 }
 function labIndexesIn(items,g){ return (items||[]).map((_,i)=>i).filter(i=>labItemGroup(items[i])===g); }
@@ -2766,8 +2776,8 @@ function renderLabView(){
   if(curLab && LABS.some(l=>l.id===curLab)) renderLabDetail(host);
   else { curLab=null; renderLabList(host); }
 }
-function openLab(id){ curLab=id; _labEdit=null; _labParsed=null; _labReorder=false; _labOrderDraft=null; renderLabView(); }
-function labBack(){ curLab=null; _labEdit=null; _labParsed=null; _labReorder=false; _labOrderDraft=null; renderLabView(); }
+function openLab(id){ curLab=id; _labEdit=null; _labCatEdit=null; _labParsed=null; _labReorder=false; _labOrderDraft=null; renderLabView(); }
+function labBack(){ curLab=null; _labEdit=null; _labCatEdit=null; _labParsed=null; _labReorder=false; _labOrderDraft=null; renderLabView(); }
 function renderLabList(host){
   const cards=LABS.map(l=>{
     const d=labData(l.id), f=labFreshness(d.verifiedAt), n=(d.items||[]).length, chg=labLastChanged(d);
@@ -2791,12 +2801,12 @@ function renderLabDetail(host){
   const meta=LABS.find(l=>l.id===curLab)||{id:curLab,note:''};
   const d=labData(curLab), f=labFreshness(d.verifiedAt), chg=labLastChanged(d);
   const items=_labReorder?_labOrderDraft:(d.items||[]);
-  const order=_labReorder?_labGroupsDraft:(d.groups||[]);
+  const order=_labReorder?_labGroupsDraft:labGroupList(d);
   const isEmpty=!(d.items||[]).length;
   const editingNew=!!(_labEdit&&_labEdit.isNew);
   let rows=labSectionsHtml(items,order);
-  if(editingNew) rows+=labEditRowHtml({name:'',value:'',group:''});
-  if(!rows) rows='<div class="lab-empty">No instruments yet. Add them one at a time with "Add instrument", or paste your whole list in first-time setup below.</div>';
+  if(editingNew&&!_labEdit.group) rows+=labEditRowHtml({name:'',value:'',group:''});
+  if(_labCatEdit&&_labCatEdit.mode==='new') rows+=labCatEditHtml('');
   host.innerHTML=`
     <button class="btn" onclick="labBack()" style="margin-bottom:14px"><i class="ti ti-arrow-left" aria-hidden="true"></i> All labs</button>
     <div class="lab-detail-head">
@@ -2811,49 +2821,77 @@ function renderLabDetail(host){
       <div class="lab-actions">${_labReorder
         ? `<button class="btn" onclick="labCancelReorder()">Cancel</button>
            <button class="btn primary" onclick="labSaveReorder()"><i class="ti ti-check" aria-hidden="true"></i> Done</button>`
-        : `<button class="btn" onclick="labVerify()" title="Confirm the list is still correct — records today as the last-checked date without changing any data"${_labEdit?' disabled':''}><i class="ti ti-checkbox" aria-hidden="true"></i> Mark checked</button>
-           ${(d.items||[]).length>1?`<button class="btn" onclick="labStartReorder()" title="Change the order of the instruments"${_labEdit?' disabled':''}><i class="ti ti-arrows-sort" aria-hidden="true"></i> Reorder</button>`:''}`}</div>
+        : `<button class="btn" onclick="labVerify()" title="Confirm the list is still correct — records today as the last-checked date without changing any data"${(_labEdit||_labCatEdit)?' disabled':''}><i class="ti ti-checkbox" aria-hidden="true"></i> Mark checked</button>
+           ${((d.items||[]).length>1||labGroupList(d).length>1)?`<button class="btn" onclick="labStartReorder()" title="Change the order of the instruments and categories"${(_labEdit||_labCatEdit)?' disabled':''}><i class="ti ti-arrows-sort" aria-hidden="true"></i> Reorder</button>`:''}`}</div>
     </div>
     ${_labReorder?'<div class="lab-reorder-hint"><i class="ti ti-info-circle" aria-hidden="true"></i> Drag the handle, or use the arrows, to change the order. Nothing is saved until you press Done.</div>':''}
     <div class="lab-table${_labReorder?' reordering':''}">
       <div class="lab-tr lab-thead${_labReorder?' lab-tr-reorder':''}">${_labReorder?'<span></span>':''}<span>Instrument / item</span><span>Version</span><span class="lab-ver-col">Latest update</span><span></span></div>
       ${rows}
-      ${(!_labEdit&&!_labReorder)?`<button class="btn lab-addrow" onclick="labAddInstrument()"><i class="ti ti-plus" aria-hidden="true"></i> Add instrument</button>`:''}
+      ${(!_labEdit&&!_labCatEdit&&!_labReorder)?`<div class="lab-addrow">
+        <button class="btn" onclick="labAddInstrument('')"><i class="ti ti-plus" aria-hidden="true"></i> Add instrument</button>
+        <button class="btn" onclick="labAddCategory()"><i class="ti ti-folder-plus" aria-hidden="true"></i> Add category</button>
+      </div>`:''}
     </div>
     ${(!_labEdit&&!_labReorder&&isEmpty)?labPasteHtml():''}`;
-  if(_labEdit){
-    const el=document.getElementById(_labEdit.isNew?'lab-edit-name':'lab-edit-value');
-    if(el){ el.focus(); if(el.setSelectionRange) el.setSelectionRange(el.value.length,el.value.length); }
-  }
+  const focusEl=_labCatEdit?document.getElementById('lab-cat-input')
+    :(_labEdit?document.getElementById(_labEdit.isNew?'lab-edit-name':'lab-edit-value'):null);
+  if(focusEl){ focusEl.focus(); if(focusEl.setSelectionRange) focusEl.setSelectionRange(focusEl.value.length,focusEl.value.length); }
 }
 // Renders the table body: one section per category, uncategorised items last.
 // Headers are hidden entirely when a lab uses no categories at all.
 function labSectionsHtml(items,order){
-  const named=labGroupsOf(items,order);
-  const showHeads=named.length>0;
+  const named=(order||[]).slice();
   let html='';
   const section=(label,idxs,gi)=>{
-    if(!idxs.length) return;
-    if(showHeads) html+=labGroupHeadHtml(label,idxs.length,gi,named.length);
+    const isReal=gi>=0;
+    if(!isReal&&!idxs.length) return;                       // no "Uncategorized" unless it has items
+    if(_labCatEdit&&_labCatEdit.mode==='rename'&&_labCatEdit.name===label){ html+=labCatEditHtml(label); }
+    else html+=labGroupHeadHtml(label,idxs.length,gi,named.length);
     idxs.forEach((flat,pos)=>{
       html+=_labReorder
         ? labReorderRowHtml(items[flat],flat,pos===0,pos===idxs.length-1)
         : labRowHtml(items[flat],flat);
     });
+    // inline "new instrument" row belonging to this category
+    if(_labEdit&&_labEdit.isNew&&_labEdit.group===label) html+=labEditRowHtml({name:'',value:'',group:label});
+    if(isReal&&!idxs.length&&!(_labEdit&&_labEdit.isNew&&_labEdit.group===label))
+      html+=`<div class="lab-group-empty">No instruments in this category yet.</div>`;
   };
   named.forEach((g,gi)=>section(g,labIndexesIn(items,g),gi));
-  section(showHeads?'Uncategorized':'',labIndexesIn(items,''),-1);
+  section('',labIndexesIn(items,''),-1);
   return html;
 }
 function labGroupHeadHtml(label,n,gi,total){
-  const arrows=(_labReorder&&gi>=0)
-    ? `<span class="lab-row-actions">
-         <button class="lab-iconbtn" onclick="labMoveGroup('${esc(label).replace(/'/g,"\\'")}',-1)" title="Move category up" aria-label="Move category up"${gi===0?' disabled':''}><i class="ti ti-chevron-up" aria-hidden="true"></i></button>
-         <button class="lab-iconbtn" onclick="labMoveGroup('${esc(label).replace(/'/g,"\\'")}',1)" title="Move category down" aria-label="Move category down"${gi===total-1?' disabled':''}><i class="ti ti-chevron-down" aria-hidden="true"></i></button>
-       </span>`:'';
+  const q=String(label).replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+  const busy=!!(_labEdit||_labCatEdit);
+  let actions='';
+  if(_labReorder&&gi>=0){
+    actions=`<span class="lab-row-actions">
+      <button class="lab-iconbtn" onclick="labMoveGroup('${q}',-1)" title="Move category up" aria-label="Move category up"${gi===0?' disabled':''}><i class="ti ti-chevron-up" aria-hidden="true"></i></button>
+      <button class="lab-iconbtn" onclick="labMoveGroup('${q}',1)" title="Move category down" aria-label="Move category down"${gi===total-1?' disabled':''}><i class="ti ti-chevron-down" aria-hidden="true"></i></button>
+    </span>`;
+  }else if(!_labReorder&&gi>=0){
+    actions=`<span class="lab-row-actions">
+      <button class="lab-iconbtn" onclick="labAddInstrument('${q}')" title="Add an instrument to ${esc(label)}" aria-label="Add instrument"${busy?' disabled':''}><i class="ti ti-plus" aria-hidden="true"></i></button>
+      <button class="lab-iconbtn" onclick="labRenameCategory('${q}')" title="Rename category" aria-label="Rename category"${busy?' disabled':''}><i class="ti ti-pencil" aria-hidden="true"></i></button>
+      <button class="lab-iconbtn danger" onclick="labDeleteCategory('${q}')" title="Delete category" aria-label="Delete category"${busy?' disabled':''}><i class="ti ti-trash" aria-hidden="true"></i></button>
+    </span>`;
+  }
   return `<div class="lab-group-head${label?'':' none'}">
     <span class="lab-group-name">${label?esc(label):'Uncategorized'}</span>
-    <span class="lab-group-n">${n}</span>${arrows}
+    <span class="lab-group-n">${n}</span>${actions}
+  </div>`;
+}
+// Inline editor used both for creating and for renaming a category
+function labCatEditHtml(current){
+  return `<div class="lab-group-head editing">
+    <input id="lab-cat-input" class="lab-in" value="${esc(current||'')}" placeholder="Category name, e.g. Teams"
+      onkeydown="if(event.key==='Enter'){event.preventDefault();labCatSave();}else if(event.key==='Escape'){labCatCancel();}">
+    <span class="lab-row-actions">
+      <button class="lab-iconbtn ok" onclick="labCatSave()" title="Save" aria-label="Save"><i class="ti ti-check" aria-hidden="true"></i></button>
+      <button class="lab-iconbtn" onclick="labCatCancel()" title="Cancel" aria-label="Cancel"><i class="ti ti-x" aria-hidden="true"></i></button>
+    </span>
   </div>`;
 }
 function labRowHtml(it,i){
@@ -2961,9 +2999,48 @@ async function labSaveReorder(){
   toast('Order saved','success');
 }
 
-function labEditRow(i){ if(_labEdit||_labReorder) return; _labEdit={index:i,isNew:false}; renderLabView(); }
-function labAddInstrument(){ if(_labEdit) return; _labEdit={index:(labData(curLab).items||[]).length,isNew:true}; renderLabView(); }
+function labEditRow(i){ if(_labEdit||_labCatEdit||_labReorder) return; _labEdit={index:i,isNew:false}; renderLabView(); }
+function labAddInstrument(group){ if(_labEdit||_labCatEdit) return; _labEdit={index:(labData(curLab).items||[]).length,isNew:true,group:group||''}; renderLabView(); }
 function labRowCancel(){ _labEdit=null; renderLabView(); }
+
+/* ---- Categories: created up front, so instruments can be filed into them ---- */
+function labAddCategory(){ if(_labEdit||_labCatEdit) return; _labCatEdit={mode:'new'}; renderLabView(); }
+function labRenameCategory(g){ if(_labEdit||_labCatEdit) return; _labCatEdit={mode:'rename',name:g}; renderLabView(); }
+function labCatCancel(){ _labCatEdit=null; renderLabView(); }
+async function labCatSave(){
+  const inp=document.getElementById('lab-cat-input'); if(!inp||!_labCatEdit) return;
+  const name=(inp.value||'').trim();
+  const mode=_labCatEdit.mode, old=_labCatEdit.name;
+  if(!name){ if(mode==='new'){ labCatCancel(); return; } toast('Please enter a category name.','warn'); return; }
+  const d=labData(curLab);
+  const groups=labGroupList(d);
+  if(name!==old&&groups.some(g=>g.toLowerCase()===name.toLowerCase())){ toast('That category already exists.','warn'); return; }
+  let items=(d.items||[]).map(it=>({...it}));
+  if(mode==='new') groups.push(name);
+  else{
+    const i=groups.indexOf(old); if(i>-1) groups[i]=name;
+    items.forEach(it=>{ if(labItemGroup(it)===old) it.group=name; });   // keep items attached
+  }
+  const obj={items:labNormalizeOrder(items,groups),groups,verifiedAt:d.verifiedAt||null};
+  labInstruments[curLab]={...obj,updatedBy:getCurrentUser()};
+  _labCatEdit=null; renderLabView();
+  await afterMutation(()=>saveLabRow(curLab,obj),{k:'saveLab',labId:curLab,data:obj});
+  toast(mode==='new'?'Category added':'Category renamed','success');
+}
+async function labDeleteCategory(g){
+  const d=labData(curLab);
+  const n=labIndexesIn(d.items||[],g).length;
+  const msg=n?('Delete the category "'+g+'"? Its '+n+' instrument'+(n===1?'':'s')+' will move to Uncategorized — nothing is deleted.')
+             :('Delete the empty category "'+g+'"?');
+  if(!(await confirmModal(msg,{title:'Delete category',okText:'Delete',danger:true}))) return;
+  const groups=labGroupList(d).filter(x=>x!==g);
+  const items=(d.items||[]).map(it=>labItemGroup(it)===g?{...it,group:''}:{...it});
+  const obj={items:labNormalizeOrder(items,groups),groups,verifiedAt:d.verifiedAt||null};
+  labInstruments[curLab]={...obj,updatedBy:getCurrentUser()};
+  renderLabView();
+  await afterMutation(()=>saveLabRow(curLab,obj),{k:'saveLab',labId:curLab,data:obj});
+  toast('Category deleted','success');
+}
 async function labRowSave(){
   const nameEl=document.getElementById('lab-edit-name'), valEl=document.getElementById('lab-edit-value');
   if(!nameEl||!valEl) return;
@@ -2980,7 +3057,8 @@ async function labRowSave(){
     const changed=(prev.value||'').trim()!==value;
     items[_labEdit.index]={name,value,group,version:extractVersion(value),changedAt:changed?todayISO():(prev.changedAt||todayISO())};
   }
-  const groups=labGroupsOf(items,d.groups||[]);
+  const groups=labGroupList(d);
+  if(group&&!groups.includes(group)) groups.push(group);
   items=labNormalizeOrder(items,groups);
   const obj={items,groups,verifiedAt:todayISO()};
   labInstruments[curLab]={...obj,updatedBy:getCurrentUser()};
@@ -2993,7 +3071,7 @@ async function labDeleteRow(i){
   const ok=await confirmModal('Delete "'+(it.name||'this item')+'" from '+curLab+'?',{danger:true,okText:'Delete',title:'Delete instrument'});
   if(!ok) return;
   const items=(labData(curLab).items||[]).filter((_,idx)=>idx!==i);
-  const obj={items,groups:labGroupsOf(items,labData(curLab).groups||[]),verifiedAt:todayISO()};
+  const obj={items,groups:labGroupList(labData(curLab)),verifiedAt:todayISO()};
   labInstruments[curLab]={...obj,updatedBy:getCurrentUser()};
   renderLabView();
   await afterMutation(()=>saveLabRow(curLab,obj),{k:'saveLab',labId:curLab,data:obj});
@@ -3003,7 +3081,7 @@ async function labVerify(){
   const ok=await confirmModal('Confirm '+curLab+' is still correct with no changes? This records today as the last-checked date.',{title:'Mark as checked',okText:'Yes, still current'});
   if(!ok) return;
   const d=labData(curLab);
-  const obj={items:d.items||[],groups:d.groups||[],verifiedAt:todayISO()};
+  const obj={items:d.items||[],groups:labGroupList(d),verifiedAt:todayISO()};
   labInstruments[curLab]={...obj,updatedBy:getCurrentUser()};
   renderLabView();
   await afterMutation(()=>saveLabRow(curLab,obj),{k:'saveLab',labId:curLab,data:obj});
@@ -3075,7 +3153,8 @@ async function labApplyParsed(){
       cur.push(it); byName[p.name.toLowerCase()]=it;
     }
   });
-  const groups=labGroupsOf(cur,labData(curLab).groups||[]);
+  const groups=labGroupList(labData(curLab));
+  if(impGroup&&!groups.includes(impGroup)) groups.push(impGroup);
   const obj={items:labNormalizeOrder(cur,groups),groups,verifiedAt:todayISO()};
   labInstruments[curLab]={...obj,updatedBy:getCurrentUser()};
   _labParsed=null; _labEdit=null; renderLabView();
