@@ -621,6 +621,14 @@
         .lab-tr-reorder[draggable="true"] { background: var(--bg-input); }
         .lab-tr-reorder.drop-above { box-shadow: inset 0 2px 0 #8b5cf6; }
         .lab-tr-reorder.drop-below { box-shadow: inset 0 -2px 0 #8b5cf6; }
+        .lab-table.reordering .lab-group-head { outline-offset: -2px; }
+        .lab-table.reordering .lab-group-head:hover { outline: 2px dashed #8b5cf6; }
+        /* Move-to-category menu */
+        .lab-menu { position: fixed; z-index: 10800; min-width: 178px; max-height: 60vh; overflow-y: auto; background: var(--bg-panel); border: 1px solid var(--border-color); border-radius: 10px; padding: 5px; box-shadow: 0 12px 32px rgba(0,0,0,.45); }
+        .lab-menu-h { font-size: 11px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: .05em; padding: 5px 9px 6px; }
+        .lab-menu button { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; text-align: left; background: transparent; border: none; border-radius: 6px; padding: 7px 9px; font-size: 13px; color: var(--text-primary); cursor: pointer; }
+        .lab-menu button:hover { background: var(--bg-input); }
+        .lab-menu button.sel { color: #a5b4fc; }
         [data-theme="light"] .lab-reorder-hint { background: #f5f3ff; color: #6d28d9; }
         .lab-paste { margin-top: 18px; padding: 14px 16px; border: 0.5px dashed var(--border-color); border-radius: 12px; }
         .lab-paste-h { font-size: 14px; font-weight: 500; color: var(--text-primary); margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
@@ -2824,7 +2832,7 @@ function renderLabDetail(host){
         : `<button class="btn" onclick="labVerify()" title="Confirm the list is still correct — records today as the last-checked date without changing any data"${(_labEdit||_labCatEdit)?' disabled':''}><i class="ti ti-checkbox" aria-hidden="true"></i> Mark checked</button>
            ${((d.items||[]).length>1||labGroupList(d).length>1)?`<button class="btn" onclick="labStartReorder()" title="Change the order of the instruments and categories"${(_labEdit||_labCatEdit)?' disabled':''}><i class="ti ti-arrows-sort" aria-hidden="true"></i> Reorder</button>`:''}`}</div>
     </div>
-    ${_labReorder?'<div class="lab-reorder-hint"><i class="ti ti-info-circle" aria-hidden="true"></i> Drag the handle, or use the arrows, to change the order. Nothing is saved until you press Done.</div>':''}
+    ${_labReorder?'<div class="lab-reorder-hint"><i class="ti ti-info-circle" aria-hidden="true"></i> Drag a handle to reorder — drop it on another section to move it there. Arrows reorder within a category. Nothing is saved until you press Done.</div>':''}
     <div class="lab-table${_labReorder?' reordering':''}">
       <div class="lab-tr lab-thead${_labReorder?' lab-tr-reorder':''}">${_labReorder?'<span></span>':''}<span>Instrument / item</span><span>Version</span><span class="lab-ver-col">Latest update</span><span></span></div>
       ${rows}
@@ -2878,7 +2886,8 @@ function labGroupHeadHtml(label,n,gi,total){
       <button class="lab-iconbtn danger" onclick="labDeleteCategory('${q}')" title="Delete category" aria-label="Delete category"${busy?' disabled':''}><i class="ti ti-trash" aria-hidden="true"></i></button>
     </span>`;
   }
-  return `<div class="lab-group-head${label?'':' none'}">
+  const dz=_labReorder?` ondragover="labDragOver(event,-1)" ondrop="labDropOnGroup(event,'${q}')"`:'';
+  return `<div class="lab-group-head${label?'':' none'}"${dz}>
     <span class="lab-group-name">${label?esc(label):'Uncategorized'}</span>
     <span class="lab-group-n">${n}</span>${actions}
   </div>`;
@@ -2902,6 +2911,7 @@ function labRowHtml(it,i){
     <span class="lab-val-cell">${esc(it.value||'')}</span>
     <span class="lab-ver-col"><span class="lab-chg">${it.changedAt?esc(it.changedAt.slice(0,10)):'—'}</span></span>
     <span class="lab-row-actions">
+      <button class="lab-iconbtn" onclick="labMoveMenu(this,${i})" title="Move to another category" aria-label="Move to category"${dis}><i class="ti ti-folder-symlink" aria-hidden="true"></i></button>
       <button class="lab-iconbtn" onclick="labEditRow(${i})" title="Edit this item" aria-label="Edit"${dis}><i class="ti ti-edit" aria-hidden="true"></i></button>
       <button class="lab-iconbtn danger" onclick="labDeleteRow(${i})" title="Delete this item" aria-label="Delete"${dis}><i class="ti ti-trash" aria-hidden="true"></i></button>
     </span>
@@ -2967,10 +2977,9 @@ function labGripUp(i){ const el=document.getElementById('labrow-'+i); if(el) el.
 function labDragStart(e,i){ _labDragFrom=i; try{ e.dataTransfer.effectAllowed='move'; e.dataTransfer.setData('text/plain',String(i)); }catch(err){} }
 function labDragOver(e,i){
   if(_labDragFrom===null||_labDragFrom===undefined) return;
-  const arr=_labOrderDraft;
-  if(!arr||labItemGroup(arr[i])!==labItemGroup(arr[_labDragFrom])) return;  // no cross-category drops
   e.preventDefault();
-  document.querySelectorAll('.lab-tr-reorder.drop-above,.lab-tr-reorder.drop-below').forEach(el=>el.classList.remove('drop-above','drop-below'));
+  document.querySelectorAll('.drop-above,.drop-below').forEach(el=>el.classList.remove('drop-above','drop-below'));
+  if(i<0) return;   // section header: no line, the whole header highlights via :hover
   const el=document.getElementById('labrow-'+i);
   if(el&&i!==_labDragFrom) el.classList.add(i<_labDragFrom?'drop-above':'drop-below');
 }
@@ -2978,9 +2987,22 @@ function labDrop(e,i){
   e.preventDefault();
   const from=_labDragFrom;
   if(from===null||from===undefined||from===i||!_labOrderDraft) return;
-  if(labItemGroup(_labOrderDraft[i])!==labItemGroup(_labOrderDraft[from])) return;
+  const targetGroup=labItemGroup(_labOrderDraft[i]);
   const [m]=_labOrderDraft.splice(from,1);
+  m.group=targetGroup;                       // dropping into another section refiles the item
   _labOrderDraft.splice(i,0,m);
+  _labDragFrom=null;
+  renderLabView();
+}
+// Dropping onto a section header files the item at the end of that category (works for empty ones)
+function labDropOnGroup(e,g){
+  e.preventDefault();
+  const from=_labDragFrom;
+  if(from===null||from===undefined||!_labOrderDraft) return;
+  const [m]=_labOrderDraft.splice(from,1);
+  m.group=g;
+  const idxs=labIndexesIn(_labOrderDraft,g);
+  _labOrderDraft.splice(idxs.length?idxs[idxs.length-1]+1:_labOrderDraft.length,0,m);
   _labDragFrom=null;
   renderLabView();
 }
@@ -3002,6 +3024,38 @@ async function labSaveReorder(){
 function labEditRow(i){ if(_labEdit||_labCatEdit||_labReorder) return; _labEdit={index:i,isNew:false}; renderLabView(); }
 function labAddInstrument(group){ if(_labEdit||_labCatEdit) return; _labEdit={index:(labData(curLab).items||[]).length,isNew:true,group:group||''}; renderLabView(); }
 function labRowCancel(){ _labEdit=null; renderLabView(); }
+
+/* ---- Move an existing instrument straight into another category ---- */
+function closeLabMenu(){ const m=document.getElementById('lab-move-menu'); if(m) m.remove(); }
+function labMoveMenu(btn,i){
+  closeLabMenu();
+  if(_labEdit||_labCatEdit||_labReorder) return;
+  const d=labData(curLab);
+  const cur=labItemGroup((d.items||[])[i]);
+  const opts=labGroupList(d).map(g=>({v:g,l:g})).concat([{v:'',l:'Uncategorized'}]);
+  const m=document.createElement('div');
+  m.className='lab-menu'; m.id='lab-move-menu';
+  m.innerHTML='<div class="lab-menu-h">Move to</div>'+opts.map(o=>
+    `<button type="button" data-g="${esc(o.v)}"${o.v===cur?' class="sel"':''}>${esc(o.l)}${o.v===cur?' <i class="ti ti-check" aria-hidden="true"></i>':''}</button>`).join('');
+  document.body.appendChild(m);
+  const r=btn.getBoundingClientRect();
+  m.style.left=Math.max(8,Math.min(r.right-m.offsetWidth,window.innerWidth-m.offsetWidth-8))+'px';
+  m.style.top=(r.bottom+window.innerHeight-r.bottom<m.offsetHeight+12?Math.max(8,r.top-m.offsetHeight-4):r.bottom+4)+'px';
+  m.querySelectorAll('button').forEach(b=>b.onclick=e=>{ e.stopPropagation(); closeLabMenu(); if(b.dataset.g!==cur) labMoveToCategory(i,b.dataset.g); });
+  setTimeout(()=>document.addEventListener('click',closeLabMenu,{once:true}),0);
+}
+async function labMoveToCategory(i,group){
+  const d=labData(curLab);
+  const items=(d.items||[]).map((it,idx)=>idx===i?{...it,group:group||''}:{...it});
+  const groups=labGroupList(d);
+  if(group&&!groups.includes(group)) groups.push(group);
+  // Filing an instrument is organisational — it must not count as a re-check or a version change
+  const obj={items:labNormalizeOrder(items,groups),groups,verifiedAt:d.verifiedAt||null};
+  labInstruments[curLab]={...obj,updatedBy:getCurrentUser()};
+  renderLabView();
+  await afterMutation(()=>saveLabRow(curLab,obj),{k:'saveLab',labId:curLab,data:obj});
+  toast('Moved to '+(group||'Uncategorized'),'success');
+}
 
 /* ---- Categories: created up front, so instruments can be filed into them ---- */
 function labAddCategory(){ if(_labEdit||_labCatEdit) return; _labCatEdit={mode:'new'}; renderLabView(); }
