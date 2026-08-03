@@ -601,9 +601,6 @@
         .lab-group-head.none { color: var(--text-secondary); background: var(--bg-input); }
         .lab-group-head:first-child { border-top: none; }
         .lab-group-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        /* Count sits right after the name so it reads as "items in this category",
-           not as a value belonging to the Latest update column */
-        .lab-group-n { font-size: 11px; font-weight: 400; color: var(--text-secondary); background: var(--bg-panel); border-radius: 10px; padding: 1px 8px; flex-shrink: 0; }
         .lab-group-head .lab-row-actions { flex-shrink: 0; margin-left: auto; }
         .lab-group-head.editing { padding: 8px 10px; gap: 8px; }
         .lab-group-head.editing .lab-in { max-width: 260px; text-transform: none; }
@@ -2856,7 +2853,7 @@ function labSectionsHtml(items,order){
     const isReal=gi>=0;
     if(!isReal&&!idxs.length) return;                       // no "Uncategorized" unless it has items
     if(_labCatEdit&&_labCatEdit.mode==='rename'&&_labCatEdit.name===label){ html+=labCatEditHtml(label); }
-    else html+=labGroupHeadHtml(label,idxs.length,gi,named.length);
+    else html+=labGroupHeadHtml(label,gi,named.length);
     idxs.forEach((flat,pos)=>{
       html+=_labReorder
         ? labReorderRowHtml(items[flat],flat,pos===0,pos===idxs.length-1)
@@ -2871,7 +2868,7 @@ function labSectionsHtml(items,order){
   section('',labIndexesIn(items,''),-1);
   return html;
 }
-function labGroupHeadHtml(label,n,gi,total){
+function labGroupHeadHtml(label,gi,total){
   const q=String(label).replace(/\\/g,'\\\\').replace(/'/g,"\\'");
   const busy=!!(_labEdit||_labCatEdit);
   let actions='';
@@ -2889,8 +2886,7 @@ function labGroupHeadHtml(label,n,gi,total){
   }
   const dz=_labReorder?` ondragover="labDragOver(event,-1)" ondrop="labDropOnGroup(event,'${q}')"`:'';
   return `<div class="lab-group-head${label?'':' none'}"${dz}>
-    <span class="lab-group-name">${label?esc(label):'Uncategorized'}</span>
-    <span class="lab-group-n">${n}</span>${actions}
+    <span class="lab-group-name">${label?esc(label):'Uncategorized'}</span>${actions}
   </div>`;
 }
 // Inline editor used both for creating and for renaming a category
