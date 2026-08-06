@@ -687,7 +687,12 @@
         .pending-row:first-child { border-top: none; }
         .pending-row b { color: var(--text-primary); font-weight: 500; word-break: break-all; }
         .pending-badge { background: rgba(251,191,36,.18); color: #fbbf24; border-radius: 6px; padding: 2px 9px; font-size: 12px; }
+        /* Icon-only like its neighbours; the pending count rides as a corner badge
+           so the button never changes size and the glyph stays centred */
+        #admin-users-btn { position: relative; }
         #admin-users-btn.has-pending { border-color: #fbbf24; color: #fbbf24; }
+        .admin-badge { position: absolute; top: -6px; right: -6px; min-width: 17px; height: 17px; padding: 0 4px; border-radius: 9px; background: #fbbf24; color: #1f2937; font-size: 10px; font-weight: 700; line-height: 1; display: flex; align-items: center; justify-content: center; }
+        .admin-badge[hidden] { display: none; }
         .au-list { max-height: 340px; overflow-y: auto; margin-bottom: 14px; }
         .au-sec { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--text-secondary); margin: 12px 0 6px; }
         .au-sec:first-child { margin-top: 0; }
@@ -844,7 +849,7 @@
       <div class="topbar-actions">
         <span id="sync-lbl">—</span>
         <span style="font-size:12px;color:var(--text-secondary);font-family:monospace;" id="date-lbl"></span>
-        <button type="button" class="btn" id="admin-users-btn" onclick="manageUsers()" title="Approve accounts" aria-label="Approve accounts" hidden><i class="ti ti-users-group" aria-hidden="true"></i> <span id="admin-users-n"></span></button>
+        <button type="button" class="btn" id="admin-users-btn" onclick="manageUsers()" title="Approve accounts" aria-label="Approve accounts" hidden><i class="ti ti-users" aria-hidden="true"></i><span class="admin-badge" id="admin-users-n" hidden></span></button>
         <button type="button" class="btn" id="notify-toggle" onclick="enableNotifications()" title="Enable notifications" aria-label="Enable notifications"><i class="ti ti-bell" aria-hidden="true"></i></button>
         <button type="button" class="btn" id="theme-toggle" onclick="toggleTheme()" title="Toggle light / dark"><i class="ti ti-moon" aria-hidden="true"></i></button>
         <button type="button" class="btn" onclick="exportBackup()" title="Download JSON backup"><i class="ti ti-download" aria-hidden="true"></i> Export</button>
@@ -2589,7 +2594,7 @@ async function updateAdminBtn(){
   try{
     const pending=(await fetchAllowedUsers()).filter(u=>!u.approved).length;
     const n=document.getElementById('admin-users-n');
-    if(n) n.textContent=pending?String(pending):'';
+    if(n){ n.textContent=pending?String(pending):''; n.hidden=!pending; }
     btn.classList.toggle('has-pending',pending>0);
     btn.title=pending?(pending+' account(s) waiting for approval'):'Approve accounts';
   }catch(e){}
