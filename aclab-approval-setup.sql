@@ -152,7 +152,18 @@ where u.email is not null
 on conflict (email) do update set approved = true;
 
 -- 6) >>> EDIT THIS EMAIL <<< make yourself an admin --------------------
---     Use the address you sign in to AudioTracker with.
+--     Replace CHANGE-ME below with the address you sign in to AudioTracker
+--     with, then run the file. Skip this and nobody can approve anyone.
+--
+--     This repository is PUBLIC, so the placeholder is left in on purpose:
+--     type your real address in the Supabase SQL Editor when you run it,
+--     not into this file. Re-running with another address simply adds a
+--     second admin — it never removes an existing one.
+--
+--     Adding an admin later? Run just this one statement:
+--       update public.allowed_users
+--          set approved = true, is_admin = true
+--        where email = lower('their.name@pal-labs.com');
 insert into public.allowed_users (email, approved, is_admin, approved_at, approved_by, note)
 values (lower('CHANGE-ME@pal-labs.com'), true, true, now(), 'bootstrap', 'first admin')
 on conflict (email) do update set approved = true, is_admin = true;
