@@ -681,6 +681,27 @@
         .img-lightbox .lb-close { position: fixed; top: 18px; right: 22px; width: 40px; height: 40px; border: none; border-radius: 50%; background: rgba(255,255,255,.12); color: #fff; font-size: 20px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
         .img-lightbox .lb-close:hover { background: rgba(255,255,255,.25); }
 
+        /* ===== Account approval ===== */
+        .pending-box { margin-top: 16px; border: 1px solid var(--border-color); border-radius: 8px; overflow: hidden; }
+        .pending-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 9px 12px; font-size: 13px; color: var(--text-secondary); border-top: 0.5px solid var(--border-color); }
+        .pending-row:first-child { border-top: none; }
+        .pending-row b { color: var(--text-primary); font-weight: 500; word-break: break-all; }
+        .pending-badge { background: rgba(251,191,36,.18); color: #fbbf24; border-radius: 6px; padding: 2px 9px; font-size: 12px; }
+        #admin-users-btn.has-pending { border-color: #fbbf24; color: #fbbf24; }
+        .au-list { max-height: 340px; overflow-y: auto; margin-bottom: 14px; }
+        .au-sec { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--text-secondary); margin: 12px 0 6px; }
+        .au-sec:first-child { margin-top: 0; }
+        .au-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; padding: 9px 10px; border: 0.5px solid var(--border-color); border-radius: 8px; margin-bottom: 6px; background: var(--bg-input); }
+        .au-who { min-width: 0; display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
+        .au-mail { font-size: 13px; color: var(--text-primary); word-break: break-all; }
+        .au-tag { font-size: 11px; padding: 1px 7px; border-radius: 6px; background: var(--bg-panel); color: var(--text-secondary); }
+        .au-tag.admin { background: rgba(139,92,246,.2); color: #c4b5fd; }
+        .au-when { font-size: 11px; color: var(--text-secondary); }
+        .au-act { display: flex; gap: 6px; flex-shrink: 0; }
+        .au-act .btn { font-size: 12px; padding: 5px 11px; }
+        [data-theme="light"] .pending-badge { background: #fef3c7; color: #b45309; }
+        [data-theme="light"] .au-tag.admin { background: #ede9fe; color: #6d28d9; }
+
         /* ===== Toasts ===== */
         #toast-host { position: fixed; right: 18px; bottom: 18px; z-index: 11000; display: flex; flex-direction: column; gap: 10px; pointer-events: none; }
         .toast { display: flex; align-items: center; gap: 10px; min-width: 240px; max-width: 380px; padding: 12px 16px; border-radius: 10px; background: var(--bg-panel); color: var(--text-primary); border: 1px solid var(--border-color); box-shadow: 0 8px 24px rgba(0,0,0,.35); font-size: 14px; opacity: 0; transform: translateY(12px); transition: opacity .22s, transform .22s; pointer-events: auto; }
@@ -793,6 +814,20 @@
       Already have an account? <a href="#" onclick="showLoginPanel();return false;" style="color:#60a5fa;text-decoration:none;font-weight:600">Sign in</a>
     </div>
   </div>
+
+  <!-- 等待管理員審核 -->
+  <div class="login-card" id="pending-card" style="display:none">
+    <div class="login-title"><i class="ti ti-hourglass-high" aria-hidden="true"></i> Waiting for approval</div>
+    <div class="login-sub">Your account was created. An administrator needs to approve it before you can use AudioTracker.</div>
+    <div class="pending-box">
+      <div class="pending-row"><span>Account</span><b id="pending-email">—</b></div>
+      <div class="pending-row"><span>Status</span><b class="pending-badge" id="pending-status">Pending</b></div>
+    </div>
+    <div class="login-sub" style="margin-top:14px">You'll get access as soon as it's approved — just sign in again to check.</div>
+    <button type="button" class="btn" id="pending-refresh" style="width:100%;margin-top:14px;justify-content:center" onclick="recheckApproval()"><i class="ti ti-refresh" aria-hidden="true"></i> Check again</button>
+    <button type="button" class="btn" style="width:100%;margin-top:8px;justify-content:center;font-size:11px" onclick="doLogout()">Sign out</button>
+    <div class="login-err" id="pending-err" role="alert" aria-live="polite"></div>
+  </div>
 </div>
 
 <div class="app" id="app-main" hidden>
@@ -809,6 +844,7 @@
       <div class="topbar-actions">
         <span id="sync-lbl">—</span>
         <span style="font-size:12px;color:var(--text-secondary);font-family:monospace;" id="date-lbl"></span>
+        <button type="button" class="btn" id="admin-users-btn" onclick="manageUsers()" title="Approve accounts" aria-label="Approve accounts" hidden><i class="ti ti-users-group" aria-hidden="true"></i> <span id="admin-users-n"></span></button>
         <button type="button" class="btn" id="notify-toggle" onclick="enableNotifications()" title="Enable notifications" aria-label="Enable notifications"><i class="ti ti-bell" aria-hidden="true"></i></button>
         <button type="button" class="btn" id="theme-toggle" onclick="toggleTheme()" title="Toggle light / dark"><i class="ti ti-moon" aria-hidden="true"></i></button>
         <button type="button" class="btn" onclick="exportBackup()" title="Download JSON backup"><i class="ti ti-download" aria-hidden="true"></i> Export</button>
@@ -1794,6 +1830,10 @@ function getCurrentUser(){
   const em=currentLoginEmail||localStorage.getItem(LOGIN_EMAIL_KEY)||'';
   return em.includes('@')?em.split('@')[0]:em;
 }
+// Full address — getCurrentUser() is only the display name, so it must not be used as a key
+function getCurrentEmail(){
+  return (currentLoginEmail||localStorage.getItem(LOGIN_EMAIL_KEY)||'').trim().toLowerCase();
+}
 function setCurrentLoginEmail(email){
   currentLoginEmail=(email||'').trim();
 }
@@ -2477,6 +2517,151 @@ function showApp(){
   document.getElementById('login-screen').hidden=true;
   document.getElementById('app-main').hidden=false;
   if(pushSupported()) updateNotifyBtn();
+  updateAdminBtn();
+}
+
+/* ===== Account approval =====
+   RLS is the real gate (see aclab-approval-setup.sql); these screens exist so an
+   unapproved user gets a clear explanation instead of an empty, broken app. */
+let myApproval={approved:false,isAdmin:false,known:false};
+async function loadMyApproval(){
+  myApproval={approved:false,isAdmin:false,known:false};
+  if(!sb) return myApproval;
+  const email=getCurrentEmail();
+  if(!email) return myApproval;
+  try{
+    const {data,error}=await sb.from('allowed_users').select('approved,is_admin').eq('email',email).maybeSingle();
+    if(error) throw error;
+    myApproval={approved:!!(data&&data.approved),isAdmin:!!(data&&data.is_admin),known:true,exists:!!data};
+  }catch(e){
+    // Table missing = approval not deployed yet; keep the app usable as before
+    if(/relation .*allowed_users.* does not exist|schema cache/i.test(e.message||'')){
+      myApproval={approved:true,isAdmin:false,known:false,legacy:true};
+    }else console.warn('approval check failed',e);
+  }
+  return myApproval;
+}
+// Record a pending request for a brand-new account (self-approval is blocked by RLS)
+async function requestApproval(email){
+  if(!sb) return;
+  try{ await sb.from('allowed_users').insert({email:(email||'').trim().toLowerCase()}); }
+  catch(e){ /* already requested, or table not deployed — nothing to do */ }
+}
+function showPendingScreen(email){
+  document.getElementById('app-main').hidden=true;
+  document.getElementById('login-screen').hidden=false;
+  const lc=document.querySelector('#login-screen .login-card');
+  if(lc) lc.style.display='none';
+  const rc=document.getElementById('register-card'); if(rc) rc.style.display='none';
+  const pc=document.getElementById('pending-card'); if(pc) pc.style.display='';
+  const el=document.getElementById('pending-email'); if(el) el.textContent=email||getCurrentEmail()||'—';
+}
+async function recheckApproval(){
+  const btn=document.getElementById('pending-refresh');
+  const err=document.getElementById('pending-err');
+  if(btn){btn.disabled=true;btn.textContent='Checking…';}
+  if(err){err.textContent='';err.className='login-err';}
+  await loadMyApproval();
+  if(myApproval.approved){ showLoginPanel(); showApp(); startIdleTimer(); initSwipeBack(); await load(); return; }
+  if(err){ err.textContent='Still waiting for an administrator to approve this account.'; err.className='login-err'; }
+  if(btn){btn.disabled=false;btn.innerHTML='<i class="ti ti-refresh" aria-hidden="true"></i> Check again';}
+}
+// Returns true when the app may be entered
+async function enterAppIfApproved(email){
+  await loadMyApproval();
+  if(myApproval.approved) return true;
+  showPendingScreen(email);
+  return false;
+}
+
+/* ---- Admin: approve / revoke accounts ---- */
+async function fetchAllowedUsers(){
+  const {data,error}=await sb.from('allowed_users')
+    .select('email,approved,is_admin,requested_at,approved_at,approved_by').order('email');
+  if(error) throw error;
+  return data||[];
+}
+async function updateAdminBtn(){
+  const btn=document.getElementById('admin-users-btn');
+  if(!btn) return;
+  btn.hidden=!myApproval.isAdmin;
+  if(!myApproval.isAdmin) return;
+  try{
+    const pending=(await fetchAllowedUsers()).filter(u=>!u.approved).length;
+    const n=document.getElementById('admin-users-n');
+    if(n) n.textContent=pending?String(pending):'';
+    btn.classList.toggle('has-pending',pending>0);
+    btn.title=pending?(pending+' account(s) waiting for approval'):'Approve accounts';
+  }catch(e){}
+}
+function manageUsers(){
+  if(!myApproval.isAdmin) return;
+  const ov=document.createElement('div');
+  ov.className='modal-overlay';
+  ov.innerHTML=`<div class="modal-card" role="dialog" aria-modal="true" style="max-width:560px">
+    <div class="modal-title">Account approvals</div>
+    <div class="modal-msg" style="margin-bottom:12px">New sign-ups stay locked out until approved here. Revoking access takes effect immediately.</div>
+    <div id="au-list" class="au-list"><div class="db-empty">Loading…</div></div>
+    <div class="modal-actions"><button type="button" class="btn" id="au-done">Done</button></div>
+  </div>`;
+  document.body.appendChild(ov);
+  const close=()=>{ ov.classList.remove('show'); setTimeout(()=>ov.remove(),200); updateAdminBtn(); };
+  ov.addEventListener('click',e=>{ if(e.target===ov) close(); });
+  ov.querySelector('#au-done').onclick=close;
+  requestAnimationFrame(()=>ov.classList.add('show'));
+
+  const me=getCurrentEmail();
+  const draw=async()=>{
+    const host=ov.querySelector('#au-list');
+    let rows=[];
+    try{ rows=await fetchAllowedUsers(); }
+    catch(e){ host.innerHTML='<div class="db-empty">Could not load the list: '+esc(e.message||e)+'</div>'; return; }
+    const pending=rows.filter(u=>!u.approved), active=rows.filter(u=>u.approved);
+    const row=u=>{
+      const self=u.email.toLowerCase()===me;
+      return `<div class="au-row">
+        <div class="au-who"><span class="au-mail">${esc(u.email)}</span>
+          ${u.is_admin?'<span class="au-tag admin">admin</span>':''}
+          ${self?'<span class="au-tag">you</span>':''}
+          <span class="au-when">${u.approved?('approved '+esc((u.approved_at||'').slice(0,10))):('requested '+esc((u.requested_at||'').slice(0,10)))}</span>
+        </div>
+        <div class="au-act">
+          ${u.approved
+            ? `<button type="button" class="btn btn-danger-text" data-act="revoke" data-e="${esc(u.email)}"${self?' disabled title="You cannot revoke your own access"':''}>Revoke</button>`
+            : `<button type="button" class="btn primary" data-act="approve" data-e="${esc(u.email)}">Approve</button>
+               <button type="button" class="btn btn-danger-text" data-act="reject" data-e="${esc(u.email)}">Reject</button>`}
+        </div>
+      </div>`;
+    };
+    host.innerHTML=
+      `<div class="au-sec">Pending (${pending.length})</div>`+
+      (pending.length?pending.map(row).join(''):'<div class="db-empty">No pending requests</div>')+
+      `<div class="au-sec">Approved (${active.length})</div>`+
+      (active.length?active.map(row).join(''):'<div class="db-empty">Nobody approved yet</div>');
+    host.querySelectorAll('button[data-act]').forEach(b=>b.onclick=async()=>{
+      const email=b.dataset.e, act=b.dataset.act;
+      if(act==='reject'&&!(await confirmModal('Reject and remove the request from '+email+'? They can apply again later.',{title:'Reject request',okText:'Reject',danger:true}))) return;
+      if(act==='revoke'&&!(await confirmModal('Revoke access for '+email+'? They will be locked out immediately.',{title:'Revoke access',okText:'Revoke',danger:true}))) return;
+      b.disabled=true;
+      try{
+        if(act==='approve'){
+          const {error}=await sb.from('allowed_users').update({approved:true,approved_at:nowISO(),approved_by:getCurrentUser()}).eq('email',email);
+          if(error) throw error;
+          toast('Approved '+email,'success');
+        }else if(act==='revoke'){
+          const {error}=await sb.from('allowed_users').update({approved:false,approved_at:null,approved_by:getCurrentUser()}).eq('email',email);
+          if(error) throw error;
+          toast('Access revoked for '+email,'success');
+        }else{
+          const {error}=await sb.from('allowed_users').delete().eq('email',email);
+          if(error) throw error;
+          toast('Request rejected','success');
+        }
+      }catch(e){ toast(e.message||e,'error',5000); }
+      draw();
+    });
+  };
+  draw();
 }
 async function doLogin(){
   if(loginBusy) return;
@@ -2509,6 +2694,7 @@ async function doLogin(){
     const _ts=Date.now().toString();
     localStorage.setItem('aclab_login_at',_ts);
     sessionStorage.setItem('aclab_login_at',_ts);
+    if(!(await enterAppIfApproved(email.trim()))){ setLoginMsg('',''); return; }
     showApp();
     startIdleTimer();
     initSwipeBack();
@@ -2549,6 +2735,7 @@ function showRegister(){
 }
 function showLoginPanel(){
   document.getElementById('register-card').style.display='none';
+  const pc=document.getElementById('pending-card'); if(pc) pc.style.display='none';
   document.querySelector('#login-screen .login-card').style.display='';
 }
 async function sendRegisterOTP(){
@@ -2615,11 +2802,13 @@ async function completeRegister(){
     // 此時 OTP 已驗證，使用者已登入，直接設定密碼
     const {error}=await sb.auth.updateUser({password:p1});
     if(error) throw error;
-    setRegMsg('Account created! Loading…','ok');
     setCurrentLoginEmail(regEmail);
     const _ts=Date.now().toString();
     localStorage.setItem('aclab_login_at',_ts);
     sessionStorage.setItem('aclab_login_at',_ts);
+    await requestApproval(regEmail);          // file the request for an admin to review
+    if(!(await enterAppIfApproved(regEmail))){ setRegMsg('',''); return; }
+    setRegMsg('Account created! Loading…','ok');
     showApp();
     startIdleTimer();
     initSwipeBack();
@@ -2644,10 +2833,13 @@ async function initApp(){
     const elapsed=(Date.now()-savedAt)/1000/60;
     if(session&&savedAt>0&&elapsed<1440){
       currentLoginEmail=session.user.email;
-      showApp();
-      load();
-      startIdleTimer();
-      initSwipeBack();
+      enterAppIfApproved(currentLoginEmail).then(ok=>{
+        if(!ok) return;
+        showApp();
+        load();
+        startIdleTimer();
+        initSwipeBack();
+      });
     } else {
       if(session) sb.auth.signOut();
       showLogin();
