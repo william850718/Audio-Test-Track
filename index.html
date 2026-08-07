@@ -931,23 +931,33 @@
           </button>
           <div class="dropdown-menu" id="q-cat-menu"></div>
         </div>
-        <select id="q-sample" onchange="renderList()" title="Filter by sample type">
-          <option value="">All Sample Types</option>
-        </select>
+        <div class="dropdown filter-dd" id="q-sample-dd">
+          <button class="btn filter-btn" onclick="toggleDropdown(event,this)" title="Filter by sample type">
+            <span id="q-sample-lbl">All Sample Types</span> <i class="ti ti-chevron-down chev" aria-hidden="true"></i>
+          </button>
+          <div class="dropdown-menu" id="q-sample-menu"></div>
+        </div>
         <div class="dropdown filter-dd" id="q-type-dd">
           <button class="btn filter-btn" onclick="toggleDropdown(event,this)" title="Filter by record type">
             <span id="q-type-lbl">All Types</span> <i class="ti ti-chevron-down chev" aria-hidden="true"></i>
           </button>
           <div class="dropdown-menu" id="q-type-menu"></div>
         </div>
-        <select id="q-stat" onchange="renderList()">
+        <div class="dropdown filter-dd" id="q-stat-dd">
+          <button class="btn filter-btn" onclick="toggleDropdown(event,this)" title="Filter by status">
+            <span id="q-stat-lbl">All Status</span> <i class="ti ti-chevron-down chev" aria-hidden="true"></i>
+          </button>
+          <div class="dropdown-menu" id="q-stat-menu"></div>
+        </div>
+        <select id="q-cat" hidden></select>
+        <select id="q-subcat" hidden></select>
+        <select id="q-type" hidden></select>
+        <select id="q-sample" hidden></select>
+        <select id="q-stat" hidden>
           <option value="">All Status</option>
           <option value="in-progress">In Progress</option>
           <option value="closed">Closed</option>
         </select>
-        <select id="q-cat" hidden></select>
-        <select id="q-subcat" hidden></select>
-        <select id="q-type" hidden></select>
         <select id="q-subtype-update" hidden>
           <option value=""></option>
           <option value="spec">Spec</option>
@@ -1288,6 +1298,7 @@ function fillTypeFilter(){
   allTypes.forEach(t=>{opts+=`<option value="${t.v}">${t.lbl}</option>`;});
   sel.innerHTML=opts;
   if([...sel.options].some(o=>o.value===prev)) sel.value=prev; else sel.value='';
+  refreshFilterMenus();
 }
 function fillSampleFilter(){
   const sel=document.getElementById('q-sample');
@@ -1306,9 +1317,11 @@ function fillSampleFilter(){
   else addAllOf(curP);
   const list=[...m.values()];
   // 該平台/分類沒有樣品類型時（如 Lenovo）整個篩選器隱藏
-  sel.style.display=list.length?'':'none';
+  const dd=document.getElementById('q-sample-dd');
+  if(dd) dd.style.display=list.length?'':'none';
   sel.innerHTML='<option value="">All Sample Types</option>'+list.map(t=>`<option value="${t.v}">${esc(t.l)}</option>`).join('');
   if(list.length&&[...sel.options].some(o=>o.value===prev)) sel.value=prev; else sel.value='';
+  refreshFilterMenus();   // options are built here, so the menu must be rebuilt after
 }
 function catHasChildren(plat,cat){
   return !!PLATFORMS[plat]?.categories?.find(x=>x.v===cat)?.children?.length;
@@ -1419,7 +1432,29 @@ function renderTypeMenu(){
   }
   const dd=document.getElementById('q-type-dd'); if(dd) dd.classList.toggle('is-set',!!cur);
 }
-function refreshFilterMenus(){ renderCatMenu(); renderTypeMenu(); }
+// Single-level filters build their menu straight from the hidden select's options,
+// so every filter in the bar looks and behaves the same with no duplicated labels
+function renderSelectMenu(selId,ddId,menuId,lblId){
+  const sel=document.getElementById(selId), menu=document.getElementById(menuId), lbl=document.getElementById(lblId);
+  if(!sel||!menu) return;
+  const cur=sel.value, opts=[...sel.options];
+  // Options may not be built yet on first paint — leave the label rather than blanking it
+  if(!opts.length){ menu.innerHTML='<div class="dd-empty">Nothing to filter by</div>'; return; }
+  menu.innerHTML=opts.map(o=>filterMenuItem(o.textContent,cur===o.value,
+    `pickSelect('${selId}','${String(o.value).replace(/'/g,"\\'")}')`)).join('');
+  if(lbl) lbl.textContent=(opts.find(o=>o.value===cur)||opts[0]).textContent;
+  const dd=document.getElementById(ddId); if(dd) dd.classList.toggle('is-set',!!cur);
+}
+function pickSelect(selId,val){
+  const sel=document.getElementById(selId); if(!sel) return;
+  sel.value=val;
+  closeFilterMenus(); refreshFilterMenus(); renderList();
+}
+function refreshFilterMenus(){
+  renderCatMenu(); renderTypeMenu();
+  renderSelectMenu('q-sample','q-sample-dd','q-sample-menu','q-sample-lbl');
+  renderSelectMenu('q-stat','q-stat-dd','q-stat-menu','q-stat-lbl');
+}
 function closeFilterMenus(){ document.querySelectorAll('.dropdown.open').forEach(d=>d.classList.remove('open')); }
 function pickCat(cat,sub){
   const c=document.getElementById('q-cat'); if(c) c.value=cat;
@@ -3557,6 +3592,7 @@ function onStatCardClick(status){
   if(!sel) return;
   if(sel.value===status) sel.value='';
   else sel.value=status;
+  refreshFilterMenus();
   renderDashboard();
   renderList();
 }
