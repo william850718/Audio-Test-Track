@@ -1542,10 +1542,22 @@ const HEADSET_CONN=[
   {v:'bt-lea',l:'Native Bluetooth(LEA)'}
 ];
 const HEADSET_CONN_MAP=Object.fromEntries(HEADSET_CONN.map(c=>[c.v,c]));
-function connectionOpts(sel){
-  return '<option value="">— Select connection type —</option>'+HEADSET_CONN.map(c=>
-    `<option value="${c.v}" ${sel===c.v?'selected':''}>${c.l}</option>`
+// Backward-compatible: new projects use connectionTypes[], older ones had connectionType (string)
+function headsetConnValues(p){
+  if(Array.isArray(p&&p.connectionTypes)) return p.connectionTypes;
+  return (p&&p.connectionType)?[p.connectionType]:[];
+}
+function headsetConnLabels(p){
+  return headsetConnValues(p).map(v=>(HEADSET_CONN_MAP[v]||{}).l||v).filter(Boolean);
+}
+function connectionChecks(selected){
+  const sel=new Set(selected||[]);
+  return HEADSET_CONN.map(c=>
+    `<label class="chk-lbl"><input type="checkbox" class="pf-conn-cb" value="${c.v}" ${sel.has(c.v)?'checked':''}> ${c.l}</label>`
   ).join('');
+}
+function readConnectionsFromForm(){
+  return Array.from(document.querySelectorAll('.pf-conn-cb:checked')).map(c=>c.value);
 }
 function distanceOpts(sel){
   return '<option value="">— Select —</option>'+TEST_DISTANCES.map(d=>
@@ -1873,7 +1885,8 @@ function productTypeSummary(p){
   }
   if(p.productType==='personal-hs'){
     const parts=[t.l];
-    if(p.connectionType) parts.push(HEADSET_CONN_MAP[p.connectionType]?.l||p.connectionType);
+    const conns=headsetConnLabels(p);
+    if(conns.length) parts.push(conns.join(' + '));
     const feats=PERSONAL_FEATURES.filter(f=>p.personalFeatures?.[f.k]).map(f=>f.l);
     if(feats.length) parts.push(feats.join(', '));
     return parts.join(' · ');
@@ -1900,7 +1913,7 @@ function readProductTypeDraft(){
     d.micDistanceM=(document.getElementById('pf-mic-m')||{}).value||'';
     d.spkDistanceM=(document.getElementById('pf-spk-m')||{}).value||'';
   }else if(v==='personal-hs'){
-    d.connectionType=(document.getElementById('pf-conn')||{}).value||'';
+    d.connectionTypes=readConnectionsFromForm();
     d.personalFeatures=readPersonalFeaturesFromForm();
   }else if(t?.group==='other'){
     d.productTypeOther=(document.getElementById('pf-type-other')||{}).value||'';
@@ -1922,8 +1935,8 @@ function buildProductTypeExtra(p){
     const feats=p.personalFeatures||{};
     return `
       <div style="margin-bottom:12px">
-        <label for="pf-conn">Connection Type *</label>
-        <select id="pf-conn">${connectionOpts(p.connectionType||'')}</select>
+        <label>Connection Type * <span style="color:var(--text-secondary);font-weight:400">(select one or more)</span></label>
+        <div class="check-row">${connectionChecks(headsetConnValues(p))}</div>
       </div>
       <label style="margin-bottom:6px">Product Features (check all that apply)</label>
       <div class="check-row">${PERSONAL_FEATURES.map(f=>`
@@ -1947,15 +1960,15 @@ function collectProductTypeFields(){
   const v=(document.getElementById('pf-type')||{}).value||'';
   const t=PRODUCT_TYPE_MAP[v];
   if(!v){toast('Please select a product type.','warn');return null;}
-  const base={productType:v,micDistanceM:'',spkDistanceM:'',connectionType:'',personalFeatures:{},productTypeOther:''};
+  const base={productType:v,micDistanceM:'',spkDistanceM:'',connectionTypes:[],connectionType:'',personalFeatures:{},productTypeOther:''};
   if(t.group==='shared'){
     base.micDistanceM=(document.getElementById('pf-mic-m')||{}).value||'';
     base.spkDistanceM=(document.getElementById('pf-spk-m')||{}).value||'';
     return base;
   }
   if(v==='personal-hs'){
-    base.connectionType=(document.getElementById('pf-conn')||{}).value||'';
-    if(!base.connectionType){toast('Please select a connection type.','warn');return null;}
+    base.connectionTypes=readConnectionsFromForm();
+    if(!base.connectionTypes.length){toast('Please select at least one connection type.','warn');return null;}
     base.personalFeatures=readPersonalFeaturesFromForm();
     return base;
   }
