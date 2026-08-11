@@ -54,9 +54,6 @@
             --text-secondary: #64748b;
         }
         [data-theme="light"] .btn:hover { background: #e2e8f0; }
-        [data-theme="light"] .ra:hover { background: #e2e8f0; color: #0f172a; border-color: #cbd5e1; }
-        [data-theme="light"] .ra.danger { color: #dc2626; }
-        [data-theme="light"] .ra.danger:hover { background: #fee2e2; border-color: #fca5a5; color: #b91c1c; }
         [data-theme="light"] .btn-danger-text { color: #dc2626; }
         [data-theme="light"] .btn-danger-text:hover { background: #fee2e2; border-color: #fca5a5; color: #b91c1c; }
         [data-theme="light"] .desc { background: #f1f5f9; color: #334155; border-left-color: #cbd5e1; }
@@ -93,7 +90,7 @@
         [data-theme="light"] .ptab.p-google { background: #d1fae5; color: #047857; border-color: #6ee7b7; }
         [data-theme="light"] .ptab.p-lenovo { background: #ffe4e6; color: #be123c; border-color: #fda4af; }
         [data-theme="light"] .img-thumb, [data-theme="light"] .rec-images img, [data-theme="light"] .img-add-btn { background: #f1f5f9; }
-        [data-theme="light"] .meta-row, [data-theme="light"] .rec-actions { border-top-color: rgba(15,23,42,0.06); }
+        [data-theme="light"] .meta-row { border-top-color: rgba(15,23,42,0.06); }
         [data-theme="light"] .record:hover { box-shadow: 0 6px 16px rgba(15,23,42,.12); }
         [data-theme="light"] .toast, [data-theme="light"] .modal-card, [data-theme="light"] .dropdown-menu { box-shadow: 0 12px 32px rgba(15,23,42,.15); }
         [data-theme="light"] .db-bar-track { background: #eef2f7; }
@@ -243,7 +240,8 @@
         .rec-badges { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 10px; }
         .rec-badges:empty { display: none; }
         .rec-hover-actions { position: absolute; top: 10px; right: 12px; display: flex; align-items: center; gap: 1px; opacity: 0; transition: opacity .15s; background: var(--bg-panel); border: 0.5px solid var(--border-color); border-radius: 8px; padding: 2px; z-index: 2; }
-        .record:hover .rec-hover-actions, .record:focus-within .rec-hover-actions { opacity: 1; }
+        .record:hover .rec-hover-actions, .record:focus-within .rec-hover-actions,
+        .log-entry:hover .rec-hover-actions, .log-entry:focus-within .rec-hover-actions { opacity: 1; }
         .iconbtn { border: none; background: none; cursor: pointer; color: var(--text-secondary); font-size: 16px; padding: 5px 7px; border-radius: 6px; line-height: 1; display: inline-flex; }
         .iconbtn:hover { background: var(--bg-input); color: var(--text-primary); }
         .iconbtn.dgr:hover { color: #f87171; background: rgba(239,68,68,.14); }
@@ -285,15 +283,6 @@
         .ti-chip { font-size: 12px; padding: 1px 6px; border-radius: 4px; background: #1f2937; color: #9ca3af; border: 1px solid var(--border-color); }
         
         .desc { font-size: 14px; color: #d1d5db; line-height: 1.5; margin-bottom: 8px; background: #151f32; padding: 6px 10px; border-radius: 6px; border-left: 2px solid #4b5563; white-space: pre-wrap; overflow-wrap: anywhere; }
-        
-        .rec-actions { display: flex; gap: 6px; margin-top: 10px; justify-content: flex-end; border-top: 1px solid rgba(255,255,255,0.03); padding-top: 8px; }
-        .ra { 
-            font-size: 15px; padding: 4px 10px; border-radius: 4px; border: 1px solid var(--border-color); 
-            background: var(--bg-input); color: var(--text-secondary); cursor: pointer; display: inline-flex; align-items: center; gap: 4px; transition: all 0.1s;
-        }
-        .ra:hover { background: #374151; color: var(--text-primary); border-color: #4b5563; }
-        .ra.danger { color: #f87171; }
-        .ra.danger:hover { background: #451a1a; border-color: #7f1d1d; }
         
         .empty { text-align: center; padding: 3rem; color: var(--text-secondary); font-size: 15px; background: var(--bg-panel); border-radius: 10px; border: 1px solid var(--border-color); }
         
@@ -338,7 +327,7 @@
         .log-entry:has(.b-requal)::before { background: #a78bfa; }
         .log-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 6px; }
         .log-date { font-size: 15px; font-weight: 700; font-family: monospace; color: var(--text-primary); }
-        .log-summary { font-size: 15px; color: #d1d5db; line-height: 1.55; margin-top: 6px; }
+        .log-summary { font-size: 15px; color: #d1d5db; line-height: 1.55; margin-top: 6px; white-space: pre-wrap; overflow-wrap: anywhere; }
         .b-debug { background: rgba(245,158,11,0.2); color: #fbbf24; }
         .b-pretest { background: rgba(59,130,246,0.2); color: #60a5fa; }
         .b-qual { background: rgba(16,185,129,0.2); color: #34d399; }
@@ -467,8 +456,6 @@
           .rec-top { flex-wrap: wrap; gap: 6px; }
           .proj-card { padding: 12px; }
           .proj-hint { font-size: 12px; }
-          .rec-actions { flex-wrap: wrap; }
-          .rec-actions .ra { flex: 1; justify-content: center; }
           /* 專案 toolbar detail 按鈕：2欄 */
           #proj-tb-detail {
             display: grid;
@@ -4387,11 +4374,13 @@ function renderProjectListContent(){
         ${fw?` · FW ${esc(fw)}`:''}
         ${isClosed&&p.closedAt?` · <span style="color:#94a3b8">Closed ${esc(p.closedAt)}</span>`:''}
       </div>
-      <div class="rec-actions" style="margin-top:8px">
+      <div class="rec-hover-actions">
+        <button class="iconbtn" onclick="event.stopPropagation();showProjectForm('${p.id}')" title="Edit" aria-label="Edit"><i class="ti ti-edit" aria-hidden="true"></i></button>
         ${isClosed
-          ?`<button class="ra" onclick="event.stopPropagation();reopenProject('${p.id}')"><i class="ti ti-lock-open" aria-hidden="true"></i> Reopen</button>`
-          :`<button class="ra danger" onclick="event.stopPropagation();closeProjectFromCard('${p.id}')"><i class="ti ti-lock" aria-hidden="true"></i> Close Project</button>`
+          ?`<button class="iconbtn" onclick="event.stopPropagation();reopenProject('${p.id}')" title="Reopen" aria-label="Reopen"><i class="ti ti-lock-open" aria-hidden="true"></i></button>`
+          :`<button class="iconbtn" onclick="event.stopPropagation();closeProjectFromCard('${p.id}')" title="Close project" aria-label="Close project"><i class="ti ti-lock" aria-hidden="true"></i></button>`
         }
+        <button class="iconbtn dgr" onclick="event.stopPropagation();delProject('${p.id}')" title="Delete" aria-label="Delete"><i class="ti ti-trash" aria-hidden="true"></i></button>
       </div>
     </div>`;
   }).join('');
@@ -4439,9 +4428,9 @@ function renderProjectDetail(){
         ${l.summary?`<div class="log-summary">${esc(l.summary)}</div>`:''}
         ${imagesDisplayHtml(l.images)}
         ${filesDisplayHtml(l.files)}
-        <div class="rec-actions">
-          <button class="ra" onclick="event.stopPropagation();showLogForm('${l.id}')"><i class="ti ti-edit" aria-hidden="true"></i> Edit</button>
-          <button class="ra danger" onclick="event.stopPropagation();delLog('${l.id}')"><i class="ti ti-trash" aria-hidden="true"></i> Delete</button>
+        <div class="rec-hover-actions">
+          <button class="iconbtn" onclick="event.stopPropagation();showLogForm('${l.id}')" title="Edit" aria-label="Edit"><i class="ti ti-edit" aria-hidden="true"></i></button>
+          <button class="iconbtn dgr" onclick="event.stopPropagation();delLog('${l.id}')" title="Delete" aria-label="Delete"><i class="ti ti-trash" aria-hidden="true"></i></button>
         </div>
       </div>`;
     }).join('')+'</div>';
