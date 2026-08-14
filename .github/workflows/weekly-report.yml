@@ -1,0 +1,72 @@
+name: 開發週報
+
+# 台北時間每週一 09:00(cron 走 UTC,所以是 01:00),整理剛結束的那一週。
+# 也可以在 Actions 頁面手動觸發,並指定區間來補跑或測試。
+on:
+  schedule:
+    - cron: '0 1 * * 1'
+  workflow_dispatch:
+    inputs:
+      since:
+        description: '起(YYYY-MM-DD,含當天)。留白 = 上週一'
+        required: false
+      until:
+        description: '迄(YYYY-MM-DD,不含當天)。留白 = 本週一'
+        required: false
+
+permissions:
+  contents: write      # 把週報存進 docs/weekly/
+  issues: write        # 開 Issue,GitHub 會自動寄信通知
+
+jobs:
+  report:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0        # 需要完整歷史才能查區間
+
+      - name: 產生週報
+        id: gen
+        # 手動觸發的輸入一律走 env,不直接內插進 run:,免得變成指令注入的破口
+        env:
+          IN_SINCE: ${{ inputs.since }}
+          IN_UNTIL: ${{ inputs.until }}
+        run: |
+          args=()
+          if [ -n "$IN_SINCE" ]; then args+=(--since "$IN_SINCE"); fi
+          if [ -n "$IN_UNTIL" ]; then args+=(--until "$IN_UNTIL"); fi
+          node scripts/weekly-report.mjs "${args[@]}"
+
+      - name: 存進 repo
+        if: steps.gen.outputs.count != '0'
+        run: |
+          git config user.name  'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add docs/weekly           # 報告本身 + 重建過的索引
+          if git diff --cached --quiet; then
+            echo '內容沒有變化,略過 commit'
+          else
+            git commit -m "開發週報 ${{ steps.gen.outputs.label }}"
+            git push
+          fi
+
+      - name: 開 Issue 通知
+        if: steps.gen.outputs.count != '0'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          LABEL: ${{ steps.gen.outputs.label }}
+          SINCE: ${{ steps.gen.outputs.since }}
+          UNTIL: ${{ steps.gen.outputs.until }}
+          BODY:  ${{ steps.gen.outputs.path }}
+        run: |
+          gh label create weekly-report --color 0E8A16 --description '每週自動產生的開發紀錄' 2>/dev/null || true
+          gh issue create \
+            --title "開發週報 $LABEL($SINCE ~ $UNTIL)" \
+            --body-file "$BODY" \
+            --label weekly-report
+
+      # 沒有異動就完全不出聲,避免每週收到空信
+      - name: 本週無異動
+        if: steps.gen.outputs.count == '0'
+        run: echo '本週沒有 commit,不產生報告也不開 Issue。'
