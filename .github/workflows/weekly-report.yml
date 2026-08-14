@@ -60,11 +60,15 @@ jobs:
           SINCE: ${{ steps.gen.outputs.since }}
           UNTIL: ${{ steps.gen.outputs.until }}
           BODY:  ${{ steps.gen.outputs.path }}
+          OWNER: ${{ github.repository_owner }}
         run: |
           gh label create weekly-report --color 0E8A16 --description '每週自動產生的開發紀錄' 2>/dev/null || true
+          # 開頭 @ 自己:機器人開的 Issue 只會通知 Watching 全部活動的人,而預設訂閱是
+          # 「Participating and @mentions」,被點名才收得到。這一行只進 Issue,不進報告檔。
+          { printf '@%s 本週開發紀錄如下。\n\n' "$OWNER"; cat "$BODY"; } > /tmp/issue-body.md
           gh issue create \
             --title "開發週報 $LABEL($SINCE ~ $UNTIL)" \
-            --body-file "$BODY" \
+            --body-file /tmp/issue-body.md \
             --label weekly-report
 
       # 沒有異動就完全不出聲,避免每週收到空信
