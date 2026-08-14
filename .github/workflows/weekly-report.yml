@@ -22,7 +22,8 @@ jobs:
   report:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      # v5 起跑在 Node 24 上;v4 是 Node 20,GitHub 已標示淘汰並每次跑都會警告
+      - uses: actions/checkout@v5
         with:
           fetch-depth: 0        # 需要完整歷史才能查區間
 
