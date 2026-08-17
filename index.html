@@ -211,8 +211,18 @@
         input, select, textarea { width: 100%; background: var(--bg-input); border: 1px solid var(--border-color); color: var(--text-primary); padding: 8px 10px; border-radius: 6px; font-size: 15px; }
         input:focus, select:focus, textarea:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,.15); }
         textarea { resize: vertical; min-height: 70px; }
+        /* These two were never defined, so every label fell back to display:block and
+           the checkboxes stacked one per line. */
+        .check-row { display: flex; flex-wrap: wrap; gap: 8px; }
+        .chk-lbl {
+            display: inline-flex; align-items: center; gap: 7px; margin: 0;
+            padding: 7px 12px; border: 1px solid var(--border-color); border-radius: 8px;
+            background: var(--bg-input); font-size: 14px; cursor: pointer;
+            transition: background .15s, border-color .15s, color .15s;
+        }
+        .chk-lbl:hover { border-color: #6b7280; color: var(--text-primary); }
         .chk-lbl:has(input:checked) { background: rgba(59, 130, 246, 0.15); border-color: #3b82f6; color: #60a5fa; }
-        .chk-lbl input[type=checkbox] { width: auto; margin: 0; cursor: pointer; }
+        .chk-lbl input[type=checkbox], .chk-lbl input[type=radio] { width: auto; margin: 0; cursor: pointer; }
         .form-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; }
 
         /* Records / Cards */
@@ -331,9 +341,22 @@
 
         .proj-card { cursor: pointer; }
         .proj-card .rec-title { font-size: 16px; }
+        /* The title is flex:1 by default, which would shove anything after it to the
+           far edge. Wrapping the pair lets the customer sit against the name instead. */
+        .proj-titlewrap { display: flex; align-items: baseline; gap: 8px; flex: 1; min-width: 0; }
+        .proj-titlewrap .rec-title { flex: 0 1 auto; }
+        .cust-tag {
+            flex: 0 1 auto; min-width: 0; max-width: 40%;
+            overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+            font-size: 12px; font-weight: 500; color: var(--text-secondary);
+            display: inline-flex; align-items: center; gap: 4px;
+        }
+        .cust-tag .ti { font-size: 13px; flex-shrink: 0; }
         .proj-closed { opacity: 0.65; }
         .proj-closed .rec-title { text-decoration: line-through; color: #64748b; }
-        .proj-hint { font-size: 15px; color: var(--text-secondary); margin-top: 4px; }
+        /* 13px, not 15px: this line is a string of supporting detail under the title,
+           and at body size it competed with the project name it sits beneath. */
+        .proj-hint { font-size: 13px; line-height: 1.55; color: var(--text-secondary); margin-top: 4px; }
 
         .timeline { position: relative; padding-left: 20px; }
         .timeline::before { content: ''; position: absolute; left: 6px; top: 8px; bottom: 8px; width: 2px; background: var(--border-color); }
@@ -360,6 +383,56 @@
             font-size: 15px; font-weight: 500; transition: color .15s, border-color .15s;
         }
         .back-btn:hover, .back-btn:focus-visible { color: var(--text-primary); border-color: #6b7280; }
+
+        /* Certification progress — a segmented dial. Each tick is a rect rotated about
+           the centre, so the SVG transform attribute must stay untouched by CSS:
+           the reveal animates opacity only, never transform. */
+        .cert-gauge { position: relative; flex-shrink: 0; line-height: 0; }
+        .cert-gauge svg { width: 100%; height: 100%; display: block; }
+        .gseg { fill: var(--border-color); }
+        .gseg.on { animation: gsegIn .3s ease both; animation-delay: var(--d, 0ms); }
+        @keyframes gsegIn { from { opacity: .12; } to { opacity: 1; } }
+        .gauge-num {
+            position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+            font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -.02em;
+            color: #22c55e; line-height: 1;
+        }
+        .gauge-num.is-early { color: var(--text-secondary); }
+        .gauge-num small { font-size: .55em; font-weight: 600; margin-left: 1px; opacity: .8; }
+        @media (prefers-reduced-motion: reduce) { .gseg.on { animation: none; } }
+        .cert-pct { font-weight: 600; font-variant-numeric: tabular-nums; }
+        .proj-row { display: flex; align-items: center; gap: 14px; }
+        .proj-col { flex: 1; min-width: 0; }
+        .cert-list { display: flex; flex-direction: column; gap: 7px; margin-top: 12px; }
+        .cert-row { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-secondary); }
+        .cert-row.done { color: var(--text-primary); }
+        .cert-row .ti { font-size: 16px; }
+        .cert-row.done .ti { color: #22c55e; }
+        .cert-row .w { margin-left: auto; font-size: 12px; color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+        .cert-ref { font-size: 10px; padding: 1px 6px; border-radius: 999px; background: rgba(245,158,11,.16); color: #fbbf24; }
+        [data-theme="light"] .cert-ref { background: #fef3c7; color: #92400e; }
+        .cert-note { font-size: 11px; color: var(--text-secondary); opacity: .8; }
+        /* Reads as a field, but is inherited from the project rather than editable */
+        .lf-fixed {
+            padding: 8px 10px; border: 1px dashed var(--border-color); border-radius: 6px;
+            background: transparent; color: var(--text-secondary); font-size: 15px;
+        }
+
+        /* Segmented control — two exclusive options read faster as buttons.
+           The buttons are <label>s, so the global label rule has to be undone or its
+           margin leaves a gap the selected fill cannot reach. */
+        .seg { display: inline-flex; align-items: stretch; border: 1px solid var(--border-color); border-radius: 8px; overflow: hidden; }
+        .seg-btn { position: relative; display: flex; margin: 0; }
+        .seg-btn input { position: absolute; opacity: 0; pointer-events: none; }
+        .seg-btn span {
+            display: flex; align-items: center; padding: 8px 20px; font-size: 14px; line-height: 1.2;
+            cursor: pointer; color: var(--text-secondary); background: var(--bg-input);
+            transition: background .15s, color .15s;
+        }
+        .seg-btn + .seg-btn span { border-left: 1px solid var(--border-color); }
+        .seg-btn:hover span { color: var(--text-primary); }
+        .seg-btn input:checked + span { background: #6366f1; color: #fff; }
+        .seg-btn input:focus-visible + span { outline: 2px solid #818cf8; outline-offset: -2px; }
         .detail-title { font-size: 20px; font-weight: 700; }
         .fw-timeline { font-size: 13px; color: #60a5fa; margin-top: 4px; font-family: monospace; }
         .proj-tb-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; width: 100%; }
@@ -1553,14 +1626,52 @@ const PRODUCT_TYPES=[
   {v:'shared-sb',l:'Shared Space - SoundBar',group:'shared'},
   {v:'personal-sp',l:'Personal - Speakerphone',group:'personal'},
   {v:'personal-hs',l:'Personal - Headset',group:'personal'},
+  // Laptop is deliberately absent: Microsoft does not certify it. Platform
+  // Tracking still lists one as a Sample Type, and that is fine — the two modules
+  // are independent and only ever borrowed each other's vocabulary for reference.
+  {v:'personal-dp',l:'Personal - Deskphone',group:'personal'},
+  {v:'zoom-meeting',l:'Zoom Meeting',group:'device'},
+  {v:'zoom-rooms',l:'Zoom Rooms',group:'device'},
+  // Lenovo and Chromebook only ever put a laptop on the bench. Named plainly
+  // rather than reusing the Teams entry, because each platform names the same
+  // device its own way — the reason Sample Types are per-platform too.
+  {v:'laptop',l:'Laptop',group:'device'},
   {v:'other',l:'Other',group:'other'}
 ];
 const PRODUCT_TYPE_MAP=Object.fromEntries(PRODUCT_TYPES.map(t=>[t.v,t]));
+/* Which product types each certification platform offers. PRODUCT_TYPES above stays
+   the full catalogue so a value stored under one platform still renders its label
+   after the project is moved to another — only the picker narrows.
+   Chrome Audio and Lenovo get no list at all: those two are kept purely as a record
+   of what was tested, so asking for a product type would be a required field with
+   nothing riding on it. */
+const PRODUCT_TYPES_BY_PLATFORM={
+  Teams:['shared-sp','shared-sb','personal-sp','personal-hs','personal-dp','other'],
+  Zoom:['zoom-meeting','zoom-rooms','other'],
+  Google:[],
+  Lenovo:[]
+};
+function productTypesFor(platform){
+  const keys=PRODUCT_TYPES_BY_PLATFORM[platform]||PRODUCT_TYPES_BY_PLATFORM.Teams;
+  return keys.map(k=>PRODUCT_TYPE_MAP[k]).filter(Boolean);
+}
+function usesProductType(platform){ return productTypesFor(platform).length>0; }
 const TEST_DISTANCES=['1.5','2.3','3.5','4.5','7.5'];
+// hs:true marks the ones that only describe a headset, so a speakerphone is not
+// asked about its boom mic.
 const PERSONAL_FEATURES=[
-  {k:'boomMic',l:'Boom Mic'},{k:'ancButton',l:'ANC Button'},
-  {k:'superWideband',l:'Super Wideband'},{k:'openOfficeHeadset',l:'Open Office Headset'}
+  {k:'boomMic',l:'Boom Mic',hs:true},{k:'ancButton',l:'ANC Button',hs:true},
+  {k:'superWideband',l:'Super Wideband'},{k:'openOfficeHeadset',l:'Open Office Headset',hs:true},
+  // Decides whether ASP is part of Function, on every Teams device
+  {k:'teamsButton',l:'Teams Button'}
 ];
+// Earpiece count is its own field, not a feature checkbox: the two options are
+// mutually exclusive, and it has to stand alone to be filterable.
+const EARPIECE=[{v:'dual',l:'Dual'},{v:'mono',l:'Mono'}];
+// Speakerphones and SoundBars sometimes ship with their own OS. When they do there
+// is no connection mode to speak of, and the checklist comes from the OS instead.
+const BUILT_IN_OS=[{v:'',l:'None'},{v:'Windows',l:'Windows (MTRoW)'},{v:'Android',l:'Android (MTRoA)'}];
+const SELF_HOSTED_TYPES=['shared-sp','shared-sb','personal-sp'];
 const HEADSET_CONN=[
   {v:'usb-wired',l:'USB Wired'},
   {v:'usb-dongle',l:'USB Dongle'},
@@ -1920,26 +2031,40 @@ function productTypeSummary(p){
   if(!p) return '';
   const t=PRODUCT_TYPE_MAP[p.productType];
   if(!t) return p.dut||'';
-  if(t.group==='shared'){
-    let s=t.l;
-    const mic=p.micDistanceM,spk=p.spkDistanceM;
-    if(mic||spk) s+=` (Mic ${fmtDist(mic)||'—'} / SPK ${fmtDist(spk)||'—'})`;
-    return s;
+  if(SELF_HOSTED_TYPES.includes(p.productType)){
+    const parts=[t.l];
+    if(t.group==='shared'){
+      const mic=p.micDistanceM,spk=p.spkDistanceM;
+      if(mic||spk) parts[0]+=` (Mic ${fmtDist(mic)||'—'} / SPK ${fmtDist(spk)||'—'})`;
+    }
+    if(p.os) parts.push(p.os==='Windows'?'MTRoW':'MTRoA');
+    else{
+      const conns=headsetConnLabels(p);
+      if(conns.length) parts.push(conns.join(' + '));
+    }
+    const feats=PERSONAL_FEATURES.filter(f=>p.personalFeatures?.[f.k]).map(f=>f.l);
+    if(feats.length) parts.push(feats.join(', '));
+    return parts.join(' · ');
   }
   if(p.productType==='personal-hs'){
     const parts=[t.l];
     const conns=headsetConnLabels(p);
     if(conns.length) parts.push(conns.join(' + '));
+    if(p.earpiece) parts.push((EARPIECE.find(e=>e.v===p.earpiece)||{}).l||p.earpiece);
     const feats=PERSONAL_FEATURES.filter(f=>p.personalFeatures?.[f.k]).map(f=>f.l);
     if(feats.length) parts.push(feats.join(', '));
     return parts.join(' · ');
   }
+  if(p.productType==='personal-dp') return t.l+' · MTRoA';
   if(t.group==='personal') return t.l;
   if(t.group==='other') return p.productTypeOther||p.dut||'Other';
   return t.l;
 }
-function productTypeOpts(sel){
-  return '<option value="">— Select product type —</option>'+PRODUCT_TYPES.map(t=>
+// Only what this platform actually offers. A selection the new platform does not
+// have is dropped rather than carried across wearing a label saying so — the
+// product type has to be re-picked, which is the honest outcome of changing platform.
+function productTypeOpts(sel,platform){
+  return '<option value="">— Select product type —</option>'+productTypesFor(platform).map(t=>
     `<option value="${t.v}" ${sel===t.v?'selected':''}>${t.l}</option>`
   ).join('');
 }
@@ -1952,12 +2077,19 @@ function readProductTypeDraft(){
   const v=(document.getElementById('pf-type')||{}).value||'';
   const t=PRODUCT_TYPE_MAP[v];
   const d={productType:v};
-  if(t?.group==='shared'){
-    d.micDistanceM=(document.getElementById('pf-mic-m')||{}).value||'';
-    d.spkDistanceM=(document.getElementById('pf-spk-m')||{}).value||'';
+  if(SELF_HOSTED_TYPES.includes(v)){
+    if(t?.group==='shared'){
+      d.micDistanceM=(document.getElementById('pf-mic-m')||{}).value||'';
+      d.spkDistanceM=(document.getElementById('pf-spk-m')||{}).value||'';
+    }
+    d.os=(document.getElementById('pf-os')||{}).value||'';
+    d.connectionTypes=readConnectionsFromForm();
+    d.personalFeatures=readPersonalFeaturesFromForm();
+    d.hasControls=!!(document.getElementById('pf-controls')||{}).value;
   }else if(v==='personal-hs'){
     d.connectionTypes=readConnectionsFromForm();
     d.personalFeatures=readPersonalFeaturesFromForm();
+    d.earpiece=segValue('pf-ear','dual');
   }else if(t?.group==='other'){
     d.productTypeOther=(document.getElementById('pf-type-other')||{}).value||'';
   }
@@ -1967,30 +2099,80 @@ function buildProductTypeExtra(p){
   const v=p.productType||'';
   const t=PRODUCT_TYPE_MAP[v];
   if(!t) return '';
-  if(t.group==='shared') return `
-    <div class="fg2" style="margin-bottom:0">
+  if(SELF_HOSTED_TYPES.includes(v)){
+    const os=p.os||'';
+    return `
+    ${t.group==='shared'?`<div class="fg2" style="margin-bottom:10px">
       <div><label for="pf-mic-m">Mic Test Distance</label>
         <select id="pf-mic-m">${distanceOpts(p.micDistanceM||'')}</select></div>
       <div><label for="pf-spk-m">SPK Test Distance</label>
         <select id="pf-spk-m">${distanceOpts(p.spkDistanceM||'')}</select></div>
-    </div>`;
+    </div>`:''}
+    <div class="fg2" style="margin-bottom:0">
+      <div>
+        <label for="pf-os">Built-in System</label>
+        <select id="pf-os" onchange="onProductTypeChange()">${
+          BUILT_IN_OS.map(o=>`<option value="${o.v}" ${os===o.v?'selected':''}>${o.l}</option>`).join('')
+        }</select>
+      </div>
+      <div>
+        <label for="pf-controls">Buttons or Remote</label>
+        <select id="pf-controls">
+          <option value="" ${!p.hasControls?'selected':''}>No</option>
+          <option value="1" ${p.hasControls?'selected':''}>Yes</option>
+        </select>
+      </div>
+    </div>
+    ${os===''?`
+      <div style="margin-top:12px">
+        <label>Connection Type * <span style="color:var(--text-secondary);font-weight:400">(select one or more)</span></label>
+        <div class="check-row">${connectionChecks(headsetConnValues(p))}</div>
+      </div>
+      ${featureChecksHtml(p,false)}`:''}`;
+  }
+  if(v==='personal-dp') return `<div style="font-size:12px;color:var(--text-secondary)">
+    <i class="ti ti-info-circle" aria-hidden="true"></i> Android only — no connection type to select.</div>`;
   if(v==='personal-hs'){
-    const feats=p.personalFeatures||{};
     return `
       <div style="margin-bottom:12px">
         <label>Connection Type * <span style="color:var(--text-secondary);font-weight:400">(select one or more)</span></label>
         <div class="check-row">${connectionChecks(headsetConnValues(p))}</div>
       </div>
-      <label style="margin-bottom:6px">Product Features (check all that apply)</label>
-      <div class="check-row">${PERSONAL_FEATURES.map(f=>`
-        <label class="chk-lbl"><input type="checkbox" id="pf-f-${f.k}" ${feats[f.k]?'checked':''}> ${f.l}</label>
-      `).join('')}</div>`;
+      <div style="margin-bottom:12px">
+        <label>Earpiece *</label>
+        ${segHtml('pf-ear',EARPIECE,p.earpiece||'dual')}
+      </div>
+      ${featureChecksHtml(p)}`;
   }
-  if(v==='personal-sp') return '';
   if(t.group==='other') return `
     <label for="pf-type-other">Product Type Description *</label>
     <input type="text" id="pf-type-other" placeholder="Describe the product type" value="${esc(p.productTypeOther||p.dut||'')}">`;
   return '';
+}
+function featureChecksHtml(p,headsetOnly){
+  const feats=p.personalFeatures||{};
+  const list=headsetOnly===false?PERSONAL_FEATURES.filter(f=>!f.hs):PERSONAL_FEATURES;
+  return `<label style="margin-bottom:6px">Product Features (check all that apply)</label>
+    <div class="check-row">${list.map(f=>`
+      <label class="chk-lbl"><input type="checkbox" id="pf-f-${f.k}" ${feats[f.k]?'checked':''}
+        ${f.k==='teamsButton'?'onchange="onTeamsButtonChange(this)"':''}> ${f.l}</label>
+    `).join('')}</div>`;
+}
+// Keep the two from contradicting each other: a Teams Button is a physical control
+function onTeamsButtonChange(cb){
+  const ctl=document.getElementById('pf-controls');
+  if(cb.checked&&ctl&&!ctl.value) ctl.value='1';
+}
+// A segmented control rather than a dropdown: two mutually exclusive options read
+// faster as buttons, and only one can ever be active.
+function segHtml(name,opts,sel){
+  return `<div class="seg">${opts.map(o=>
+    `<label class="seg-btn"><input type="radio" name="${name}" value="${o.v}" ${sel===o.v?'checked':''}><span>${o.l}</span></label>`
+  ).join('')}</div>`;
+}
+function segValue(name,dflt){
+  const el=document.querySelector(`input[name="${name}"]:checked`);
+  return el?el.value:dflt;
 }
 function onProductTypeChange(){
   const wrap=document.getElementById('pf-type-extra');
@@ -2000,22 +2182,38 @@ function onProductTypeChange(){
   wrap.style.display=wrap.innerHTML?'block':'none';
 }
 function collectProductTypeFields(){
+  const platform=(document.getElementById('pf-plat')||{}).value||'Teams';
   const v=(document.getElementById('pf-type')||{}).value||'';
   const t=PRODUCT_TYPE_MAP[v];
+  // Platforms kept as a plain record have no product type to ask for
+  if(!usesProductType(platform)) return {productType:'',micDistanceM:'',spkDistanceM:'',
+    connectionTypes:[],connectionType:'',personalFeatures:{},productTypeOther:'',
+    os:'',earpiece:'',hasControls:false};
   if(!v){toast('Please select a product type.','warn');return null;}
-  const base={productType:v,micDistanceM:'',spkDistanceM:'',connectionTypes:[],connectionType:'',personalFeatures:{},productTypeOther:''};
-  if(t.group==='shared'){
-    base.micDistanceM=(document.getElementById('pf-mic-m')||{}).value||'';
-    base.spkDistanceM=(document.getElementById('pf-spk-m')||{}).value||'';
+  const base={productType:v,micDistanceM:'',spkDistanceM:'',connectionTypes:[],connectionType:'',
+              personalFeatures:{},productTypeOther:'',os:'',earpiece:'',hasControls:false};
+  if(SELF_HOSTED_TYPES.includes(v)){
+    if(t.group==='shared'){
+      base.micDistanceM=(document.getElementById('pf-mic-m')||{}).value||'';
+      base.spkDistanceM=(document.getElementById('pf-spk-m')||{}).value||'';
+    }
+    base.os=(document.getElementById('pf-os')||{}).value||'';
+    base.hasControls=!!(document.getElementById('pf-controls')||{}).value;
+    if(base.os===''){
+      base.connectionTypes=readConnectionsFromForm();
+      if(!base.connectionTypes.length){toast('Please select at least one connection type.','warn');return null;}
+      base.personalFeatures=readPersonalFeaturesFromForm();
+    }
     return base;
   }
   if(v==='personal-hs'){
     base.connectionTypes=readConnectionsFromForm();
     if(!base.connectionTypes.length){toast('Please select at least one connection type.','warn');return null;}
     base.personalFeatures=readPersonalFeaturesFromForm();
+    base.earpiece=segValue('pf-ear','dual');
     return base;
   }
-  if(v==='personal-sp') return base;
+  if(v==='personal-dp') return base;
   if(t.group==='other'){
     const o=(document.getElementById('pf-type-other')||{}).value||'';
     if(!o.trim()){toast('Please describe the product type.','warn');return null;}
@@ -2032,6 +2230,155 @@ const PHASES=[
   {v:'requal',lbl:'Re-Qualification',cls:'b-requal'}
 ];
 const PHASE_MAP=Object.fromEntries(PHASES.map(p=>[p.v,p]));
+
+/* ===== Certification plans =====
+   Deliberately NOT derived from PLATFORMS. The certification checklist and the
+   Platform Tracking categories only look similar: Cortana belongs to a different
+   platform there, Loop Latency does not exist there at all, and Google needs one
+   of its six categories. Tying the two together would mean changing PLATFORMS —
+   and that would reach into every record already filed under it.
+
+   progress:true  → the project shows a percentage bar
+   derive         → checklist computed from the device rather than a fixed list
+   ref:true       → only records whether it was tested; pass/fail is not the point */
+const CERT_PLANS={
+  Teams:{progress:true,derive:teamsCertItems},
+  Zoom:{progress:true,items:[
+    {v:'audio',l:'Audio',group:'Audio'},
+    {v:'aio',l:'AIO (Function)',group:'Function'}
+  ]},
+  Google:{progress:false,items:[
+    {v:'chrome-audio',l:'Chrome Audio',group:'Audio'}
+  ]},
+  Lenovo:{progress:false,items:[
+    {v:'lnv',l:'LNV',group:'LNV'},
+    {v:'hwf',l:'HWF',group:'HWF'}
+  ]}
+};
+// Groups where one log can only cover a single entry
+const CERT_SINGLE_GROUPS=['Audio'];
+const TEAMS_FN_SUB=[
+  {k:'hid',l:'HID',needsCtl:true},
+  {k:'asp',l:'ASP',needsBtn:true},
+  {k:'telemetry',l:'Telemetry'},
+  {k:'ucq',l:'UCQ'}
+];
+/* The Teams checklist is not a fixed list — it falls out of what the device is and
+   how it connects. Two rules drive most of it:
+     · USB carries no Audio or Cortana unless it is the only mode available
+     · a device with its own OS has no connection modes, so the OS decides instead */
+function teamsCertItems(p){
+  const t=p.productType||'', os=p.os||'';
+  const items=[];
+  const add=(v,l,group,ref)=>items.push({v,l,group,ref:!!ref});
+  const selfHosted=t==='personal-dp'||(SELF_HOSTED_TYPES.includes(t)&&os);
+
+  if(selfHosted){
+    // Deskphone is only ever certified on Android today
+    const android=t==='personal-dp'||os==='Android';
+    add('audio','Audio','Audio');
+    if(android){
+      add('loop-latency','Loop Latency','Loop Latency');
+    }else{
+      // MTRoW always tests HID, with or without physical controls. The controls
+      // flag is kept as device information rather than a gate here.
+      items.push({v:'fn:hid',l:'Function',group:'Function',ref:false,note:'HID'});
+      add('cortana','Cortana','Cortana',true);
+    }
+    return items;
+  }
+
+  const c=headsetConnValues(p);
+  const has={usb:c.includes('usb-wired'),dongle:c.includes('usb-dongle'),
+             nbt:c.includes('bt-classic'),lea:c.includes('bt-lea')};
+  const onlyUsb=has.usb&&!has.dongle&&!has.nbt&&!has.lea;
+  // Audio and Cortana turn out to follow the same rule, so derive the modes once
+  const modes=onlyUsb?[['usb','USB']]:[
+    has.dongle&&['dongle','Dongle'],has.nbt&&['nbt','NBT'],has.lea&&['lea','BT-LE']
+  ].filter(Boolean);
+
+  modes.forEach(([k,l])=>add('audio:'+k,`Audio (${l})`,'Audio'));
+
+  // Function is one item per mode, not one per sub-test: HID, ASP, Telemetry and
+  // UCQ are run together in practice, so splitting the percentage across them
+  // would only make the bar move in steps nobody works in.
+  const btn=!!(p.personalFeatures||{}).teamsButton;
+  // A headset always has something to press, so HID is a given there. A
+  // speakerphone or SoundBar might not, which is what the controls flag answers.
+  const askCtl=SELF_HOSTED_TYPES.includes(t);
+  // A Teams Button is itself a physical control, so it implies one is present —
+  // "no controls but has a Teams Button" is not a state a device can be in.
+  const ctl=!!p.hasControls||btn;
+  const sub=TEAMS_FN_SUB.filter(s=>
+    (!s.needsBtn||btn) && (!s.needsCtl||!askCtl||ctl)
+  ).map(s=>s.l).join(' / ');
+  [['usb','USB',has.usb],['dongle','Dongle',has.dongle]].forEach(([k,l,on])=>{
+    if(on) items.push({v:'fn:'+k,l:`Function (${l})`,group:'Function',ref:false,note:sub});
+  });
+  // Classic is only labelled as such when LE Audio sits beside it
+  if(has.nbt) add('fn:nbt','NBT Function'+(has.lea?' (Classic)':''),'Function');
+  if(has.lea) add('fn:lea','NBT Function (LE)','Function');
+
+  modes.forEach(([k,l])=>add('cortana:'+k,`Cortana (${l})`,'Cortana',true));
+  return items;
+}
+const CERT_PLATFORMS=Object.keys(CERT_PLANS);
+// Project Log talks about Chromebook where Platform Tracking says Google. Same key,
+// different label, so records filed under Google are unaffected.
+const CERT_PLAT_LABEL={Google:'Chrome Audio'};
+function certPlatLabel(k){ return CERT_PLAT_LABEL[k]||PLATFORMS[k]?.label||k; }
+const DEBUG_WEIGHT=0.2;   // Debug is worth 20%; the checklist splits the other 80%
+
+// Projects created before this feature carry no platform. They were all Teams, so
+// read them that way rather than rewriting stored rows.
+function projPlatform(p){ return (p&&p.platform)||'Teams'; }
+// OS belongs to the device, not the project: a headset has none, a Deskphone is
+// always Android, and only a self-hosted Speakerphone/SoundBar gets to choose.
+function projOS(p){
+  if(!p) return '';
+  if(p.productType==='personal-dp') return 'Android';
+  return SELF_HOSTED_TYPES.includes(p.productType)?(p.os||''):'';
+}
+function certItemsFor(p){
+  const plan=CERT_PLANS[projPlatform(p)];
+  if(!plan) return [];
+  return plan.derive?plan.derive(p):(plan.items||[]);
+}
+function certItemLabel(p,v){
+  return (certItemsFor(p).find(i=>i.v===v)||{}).l||v;
+}
+function hasProgressBar(p){
+  return !!(CERT_PLANS[projPlatform(p)]||{}).progress;
+}
+/* A checklist entry is satisfied by the logs themselves, so there is no separate
+   tick to keep in sync. A reference item counts once it has been tested at all;
+   everything else needs a passing log, which is what makes a failed qualification
+   simply not count until it is re-run. */
+// Newer logs cover several items at once; older ones stored a single certItem
+function logCertItems(l){
+  if(Array.isArray(l&&l.certItems)) return l.certItems;
+  return (l&&l.certItem)?[l.certItem]:[];
+}
+function certItemDone(p,item){
+  return (p.logs||[]).some(l=>
+    logCertItems(l).includes(item.v) && (item.ref ? true : l.result==='pass')
+  );
+}
+function certProgress(p){
+  const items=certItemsFor(p);
+  if(!items.length) return null;
+  const share=Math.round((1-DEBUG_WEIGHT)/items.length*1000)/10;
+  // A closed project counts as finished whatever the logs say. Items do get
+  // missed in practice, and back-filling a checklist after the fact to make a
+  // bar reach 100% is busywork that teaches people to distrust the number.
+  if(p.status==='closed'){
+    return {pct:100,closed:true,debugDone:true,done:items.length,total:items.length,items,share};
+  }
+  const debugDone=(p.logs||[]).some(l=>l.phase==='debug');
+  const done=items.filter(i=>certItemDone(p,i));
+  const pct=(debugDone?DEBUG_WEIGHT:0)+done.length*(1-DEBUG_WEIGHT)/items.length;
+  return {pct:Math.round(pct*100),closed:false,debugDone,done:done.length,total:items.length,items,share};
+}
 
 function getCurrentUser(){
   const em=currentLoginEmail||localStorage.getItem(LOGIN_EMAIL_KEY)||'';
@@ -4394,6 +4741,68 @@ function initHistoryGuard(){
     history.pushState({aclab:'list-guard'},'');
   }
 }
+const GAUGE_SEGS=24;
+// Ramp the filled ticks from deep to bright so the leading edge reads as "now"
+function gaugeMix(k){
+  const a=[13,120,90], b=[74,222,128];
+  return '#'+a.map((v,i)=>Math.round(v+(b[i]-v)*k).toString(16).padStart(2,'0')).join('');
+}
+function certGaugeHtml(p,size){
+  const pr=hasProgressBar(p)?certProgress(p):null;
+  if(!pr) return '';
+  const filled=Math.round(pr.pct/100*GAUGE_SEGS);
+  let segs='';
+  for(let i=0;i<GAUGE_SEGS;i++){
+    const on=i<filled;
+    // Chunky ticks: 7.6 wide against ~11.5 of arc per segment leaves a gap about
+    // half the tick, which is what gives the dial its solid look
+    // fill goes in the style attribute, not the fill attribute: a CSS rule beats a
+    // presentation attribute, so .gseg's own fill would win and every tick stay grey
+    segs+=`<rect class="gseg${on?' on':''}" x="46.2" y="3" width="7.6" height="16" rx="3.2"
+      transform="rotate(${i*(360/GAUGE_SEGS)} 50 50)"
+      ${on?`style="fill:${gaugeMix(filled>1?i/(filled-1):1)};--d:${i*22}ms"`:''}></rect>`;
+  }
+  return `<div class="cert-gauge" style="width:${size}px;height:${size}px"
+      role="img" aria-label="Certification progress ${pr.pct}%">
+    <svg viewBox="0 0 100 100">${segs}</svg>
+    <div class="gauge-num${pr.pct<25?' is-early':''}" style="font-size:${Math.round(size*0.33)}px"
+      data-pct="${pr.pct}">0<small>%</small></div>
+  </div>`;
+}
+/* The number counts up once per render. data-done stops a re-render of the same
+   list (a filter change, say) from replaying it on cards already on screen. */
+function animateCertGauges(root){
+  const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+  (root||document).querySelectorAll('.gauge-num[data-pct]').forEach(el=>{
+    const target=Number(el.dataset.pct)||0;
+    const write=v=>{ el.firstChild.nodeValue=v; };
+    if(reduce||el.dataset.done==='1'){ write(target); el.dataset.done='1'; return; }
+    el.dataset.done='1';
+    const dur=680, t0=performance.now();
+    const step=now=>{
+      const k=Math.min(1,(now-t0)/dur);
+      write(Math.round(target*(1-Math.pow(1-k,3))));
+      if(k<1) requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  });
+}
+function certListHtml(p){
+  const pr=hasProgressBar(p)?certProgress(p):null;
+  if(!pr) return '';
+  const row=(lbl,done,weight,ref,note)=>`<div class="cert-row${done?' done':''}">
+      <i class="ti ti-circle${done?'-check':''}" aria-hidden="true"></i>
+      <span>${esc(lbl)}</span>
+      ${ref?'<span class="cert-ref">reference</span>':''}
+      ${note?`<span class="cert-note">${esc(note)}</span>`:''}
+      <span class="w">${weight}%</span>
+    </div>`;
+  return `<div class="cert-list" style="margin-top:0">
+    ${row('Debug',pr.debugDone,Math.round(DEBUG_WEIGHT*100))}
+    ${pr.items.map(i=>row(i.l,pr.closed||certItemDone(p,i),pr.share,i.ref,i.note)).join('')}
+  </div>
+  ${pr.closed?'<div style="font-size:12px;color:var(--text-secondary);margin-top:8px"><i class="ti ti-lock" aria-hidden="true"></i> Closed — counted as complete</div>':''}`;
+}
 function renderProjectList(){
   curProjectId=null;
   setProjToolbar('list');
@@ -4420,17 +4829,24 @@ function renderProjectListContent(){
     const isClosed=p.status==='closed';
     const closedBadge=isClosed?`<span class="badge" style="background:rgba(239,68,68,0.15);color:#f87171">Closed</span>`:'';
     return`<div class="record proj-card${isClosed?' proj-closed':''}" onclick="openProject('${p.id}')">
-      <div class="rec-top">
-        <div class="rec-title">${esc(p.name)}</div>
-        ${closedBadge}
-        <span class="badge b-cat">${logs.length}  log(s)</span>
-      </div>
-      <div class="proj-hint">
-        ${productTypeSummary(p)?`<span class="meta"><i class="ti ti-device-audio" aria-hidden="true"></i>${esc(productTypeSummary(p))}</span> · `:''}
-        ${p.customer?`<span class="meta"><i class="ti ti-building" aria-hidden="true"></i>${esc(p.customer)}</span> · `:''}
-        ${last?`Latest ${fmtDateShort(last.date)} · ${PHASE_MAP[last.phase]?.lbl||last.phase}`:'No logs yet'}
-        ${fw?` · FW ${esc(fw)}`:''}
-        ${isClosed&&p.closedAt?` · <span style="color:#94a3b8">Closed ${esc(p.closedAt)}</span>`:''}
+      <div class="proj-row">
+        ${certGaugeHtml(p,74)}
+        <div class="proj-col">
+          <div class="rec-top" style="margin-bottom:6px">
+            <div class="proj-titlewrap">
+              <div class="rec-title">${esc(p.name)}</div>
+              ${p.customer?`<span class="cust-tag" title="${esc(p.customer)}"><i class="ti ti-building" aria-hidden="true"></i>${esc(p.customer)}</span>`:''}
+            </div>
+            ${closedBadge}
+            <span class="badge b-cat">${logs.length}  log(s)</span>
+          </div>
+          ${productTypeSummary(p)?`<div class="proj-hint">${esc(productTypeSummary(p))}</div>`:''}
+          <div class="proj-hint">
+            ${last?`Latest ${fmtDateShort(last.date)} · ${PHASE_MAP[last.phase]?.lbl||last.phase}`:'No logs yet'}
+            ${fw?` · FW ${esc(fw)}`:''}
+            ${isClosed&&p.closedAt?` · <span style="color:#94a3b8">Closed ${esc(p.closedAt)}</span>`:''}
+          </div>
+        </div>
       </div>
       <div class="rec-hover-actions">
         <button class="iconbtn" onclick="event.stopPropagation();showProjectForm('${p.id}')" title="Edit" aria-label="Edit"><i class="ti ti-edit" aria-hidden="true"></i></button>
@@ -4442,6 +4858,7 @@ function renderProjectListContent(){
       </div>
     </div>`;
   }).join('');
+  animateCertGauges(el);
 }
 
 function openProject(id){
@@ -4471,11 +4888,16 @@ function renderProjectDetail(){
     timeline='<div class="timeline">'+logs.map(l=>{
       const ph=PHASE_MAP[l.phase]||PHASES[0];
       const plat=l.platform?`<span class="badge b-${PLAT_COLOR[l.platform]||'cat'}">${esc(PLATFORMS[l.platform]?.label||l.platform)}</span>`:'';
+      // Show what the log counted towards, so the progress bar is never a black box
+      const mark=l.result==='pass'?' ✓':l.result==='fail'?' ✕':'';
+      const item=logCertItems(l).map(v=>
+        `<span class="badge b-cat">${esc(certItemLabel(p,v))}${mark}</span>`).join('');
       return`<div class="log-entry">
         <div class="log-head">
           <span class="log-date">${fmtDateShort(l.date)}</span>
           <span class="badge ${ph.cls}">${ph.lbl}</span>
           ${plat}
+          ${item}
         </div>
         <div class="meta-row" style="border:none;padding-top:0">
           ${l.fwVersion?`<span class="meta"><i class="ti ti-cpu" aria-hidden="true"></i>FW ${esc(l.fwVersion)}</span>`:''}
@@ -4504,14 +4926,20 @@ function renderProjectDetail(){
         <div class="proj-hint" style="margin-top:6px">
           ${productTypeSummary(p)?`Product: ${esc(productTypeSummary(p))} · `:''}
           ${p.customer?`Customer: ${esc(p.customer)} · `:''}
+          ${esc(certPlatLabel(projPlatform(p)))}${projOS(p)?' · '+esc(projOS(p)):''} ·
           Created ${esc(p.created)}
         </div>
         ${fwHistory?`<div class="fw-timeline"><i class="ti ti-history" aria-hidden="true"></i> FW History: ${esc(fwHistory)}</div>`:''}
         ${p.notes?`<div class="desc" style="margin-top:6px;font-size:13px;color:var(--text-secondary)">${esc(p.notes)}</div>`:''}
       </div>
     </div>
+    ${hasProgressBar(p)?`<div style="display:flex;align-items:flex-start;gap:20px;margin:14px 0 4px;flex-wrap:wrap">
+      ${certGaugeHtml(p,104)}
+      <div style="flex:1;min-width:220px">${certListHtml(p)}</div>
+    </div>`:''}
     <div class="sec-div"><hr><span>Test Logs (Newest → Oldest)</span><hr></div>
     ${timeline}`;
+  animateCertGauges(document.getElementById('proj-content'));
 }
 
 function showProjectForm(id){
@@ -4525,9 +4953,15 @@ function showProjectForm(id){
           <label for="pf-name">Project Name / Code *</label>
           <input type="text" id="pf-name" placeholder="e.g. 123、PRJ-Teams-2026" value="${esc(p.name||'')}">
         </div>
-        <div class="ff">
+        <div>
+          <label for="pf-plat">Certification Platform *</label>
+          <select id="pf-plat" onchange="onCertPlatformChange()">${
+            CERT_PLATFORMS.map(k=>`<option value="${k}" ${projPlatform(p)===k?'selected':''}>${esc(certPlatLabel(k))}</option>`).join('')
+          }</select>
+        </div>
+        <div class="ff" id="pf-type-wrap">
           <label for="pf-type">Product Type *</label>
-          <select id="pf-type" onchange="onProductTypeChange()">${productTypeOpts(p.productType||'')}</select>
+          <select id="pf-type" onchange="onProductTypeChange()">${productTypeOpts(p.productType||'',projPlatform(p))}</select>
           <div id="pf-type-extra" class="type-extra" style="display:none">${buildProductTypeExtra(p)}</div>
         </div>
         <div>
@@ -4545,7 +4979,24 @@ function showProjectForm(id){
       </div>
     </div>`;
   onProductTypeChange();
+  onCertPlatformChange();
   document.getElementById('proj-form-area').scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+// Only Teams splits its checklist by OS, so the field is hidden for the others
+// rather than sitting there collecting a value nothing reads.
+function onCertPlatformChange(){
+  const platform=(document.getElementById('pf-plat')||{}).value||'';
+  const wrap=document.getElementById('pf-type-wrap');
+  const sel=document.getElementById('pf-type');
+  const uses=usesProductType(platform);
+  if(wrap) wrap.style.display=uses?'':'none';
+  if(!sel) return;
+  // Rebuild for the new platform. A selection it does not offer simply goes; the
+  // browser leaves the select on its first option, so the extra fields must be
+  // redrawn too or they would keep describing the old choice.
+  const cur=sel.value;
+  sel.innerHTML=uses?productTypeOpts(cur,platform):'';
+  if(sel.value!==cur) onProductTypeChange();
 }
 
 async function submitProject(){
@@ -4553,10 +5004,12 @@ async function submitProject(){
   if(!name.trim()){toast('Please enter a project name.','warn');return;}
   const pt=collectProductTypeFields();
   if(!pt) return;
+  const platform=(document.getElementById('pf-plat')||{}).value||'Teams';
   const obj={
     name:name.trim(),
-    ...pt,
+    ...pt,                                  // carries os / earpiece / hasControls
     dut:productTypeSummary({...pt}),
+    platform,
     customer:(document.getElementById('pf-cust')||{}).value||'',
     notes:(document.getElementById('pf-notes')||{}).value||'',
     updated:todayISO()
@@ -4585,7 +5038,6 @@ function showLogForm(logId){
   if(!p) return;
   const l=logId?(p.logs||[]).find(x=>x.id===logId):{};
   const phaseOpts=PHASES.map(ph=>`<option value="${ph.v}" ${(l.phase||'debug')===ph.v?'selected':''}>${ph.lbl}</option>`).join('');
-  const platOpts=['<option value="">— Platform (optional) —</option>',...PLAT_NAMES.map(pl=>`<option value="${pl}" ${l.platform===pl?'selected':''}>${PLATFORMS[pl].label}</option>`)].join('');
 
   document.getElementById('proj-form-area').innerHTML=`
     <div class="form-panel">
@@ -4604,17 +5056,26 @@ function showLogForm(logId){
           <input type="text" id="lf-lab" placeholder="e.g. Taipei Lab A" value="${esc(l.lab||'')}">
         </div>
         <div>
-          <label for="lf-fw">FW Version *</label>
-          <input type="text" id="lf-fw" placeholder="e.g. v1.5.2 / Build 1234" value="${esc(l.fwVersion||'')}">
+          <label for="lf-fw">FW Version</label>
+          <input type="text" id="lf-fw" placeholder="Leave blank if not known yet" value="${esc(l.fwVersion||'')}">
         </div>
         <div>
-          <label for="lf-plat">Test Platform</label>
-          <select id="lf-plat">${platOpts}</select>
+          <label>Test Platform</label>
+          <div class="lf-fixed">${esc(certPlatLabel(projPlatform(p)))}${projOS(p)?' · '+esc(projOS(p)):''}</div>
         </div>
         <div>
           <label for="lf-who">Reported By</label>
           <input type="text" id="lf-who" placeholder="Your name" value="${esc(l.reporter||getCurrentUser())}">
         </div>
+      </div>
+      ${certItemChecksHtml(p,logCertItems(l))}
+      <div id="lf-result-wrap" style="max-width:220px;margin-bottom:8px">
+        <label for="lf-result">Result</label>
+        <select id="lf-result">
+          <option value="" ${!l.result?'selected':''}>— Not set —</option>
+          <option value="pass" ${l.result==='pass'?'selected':''}>Pass</option>
+          <option value="fail" ${l.result==='fail'?'selected':''}>Fail</option>
+        </select>
       </div>
       ${productTypeSummary(p)?`<div style="font-size:12px;color:var(--text-secondary);margin-bottom:10px"><i class="ti ti-device-audio" aria-hidden="true"></i> Product type: ${esc(productTypeSummary(p))}</div>`:''}
       <div class="fg2">
@@ -4634,7 +5095,51 @@ function showLogForm(logId){
     </div>`;
   initImageUploader(l.images);
   initFileUploader(l.files);
+  onCertItemChange();
   document.getElementById('proj-form-area').scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+/* Several items often get covered in one sitting — USB and Dongle Function on the
+   same day, for instance — so this is a multi-select grouped the way the checklist
+   reads, not a single dropdown. */
+function certItemChecksHtml(p,selected){
+  const items=certItemsFor(p);
+  if(!items.length) return '';
+  const sel=new Set(selected||[]);
+  const groups=[];
+  items.forEach(i=>{
+    const g=groups.find(x=>x.name===i.group);
+    (g||groups[groups.push({name:i.group,rows:[]})-1]).rows.push(i);
+  });
+  return `<label style="margin-bottom:6px">Certification Items</label>
+    <div style="margin-bottom:10px">${groups.map(g=>{
+      const one=CERT_SINGLE_GROUPS.includes(g.name);
+      return `<div style="margin-bottom:8px">
+        <div style="font-size:11px;color:var(--text-secondary);margin-bottom:4px">${esc(g.name)}${
+          one?' <span style="opacity:.75">(one only)</span>':''}</div>
+        <div class="check-row">${g.rows.map(i=>
+          `<label class="chk-lbl"><input type="checkbox" class="lf-item-cb" value="${i.v}"
+            data-group="${esc(g.name)}" ${sel.has(i.v)?'checked':''}
+            onchange="onCertItemChange(this)"> ${esc(i.l)}</label>`
+        ).join('')}</div>
+      </div>`;}).join('')}</div>`;
+}
+function readCertItemsFromForm(){
+  return Array.from(document.querySelectorAll('.lf-item-cb:checked')).map(c=>c.value);
+}
+// A reference item only records that it was tested, so pass/fail is only asked for
+// when something in the selection actually depends on it.
+function onCertItemChange(cb){
+  const p=getProject(curProjectId);
+  const wrap=document.getElementById('lf-result-wrap');
+  if(!p||!wrap) return;
+  // Audio takes a full session per mode, so a single log can only carry one of them
+  if(cb&&cb.checked&&CERT_SINGLE_GROUPS.includes(cb.dataset.group)){
+    document.querySelectorAll(`.lf-item-cb[data-group="${cb.dataset.group}"]`)
+      .forEach(o=>{ if(o!==cb) o.checked=false; });
+  }
+  // Result only appears when something in the selection is actually scored on it
+  const picked=readCertItemsFromForm();
+  wrap.style.display=certItemsFor(p).some(i=>picked.includes(i.v)&&!i.ref)?'':'none';
 }
 
 async function submitLog(){
@@ -4647,8 +5152,12 @@ async function submitLog(){
   const summary=(document.getElementById('lf-sum')||{}).value||'';
   if(!date){toast('Please select a date.','warn');return;}
   if(!lab.trim()){toast('Please enter the lab name.','warn');return;}
-  if(!fw.trim()){toast('Please enter the FW version (required for certification traceability).','warn',4200);return;}
+  // FW is often not known until qualification, so a log is allowed without one.
+  // latestFw() and the FW history already skip logs that have none.
   if(!summary.trim()){toast('Please enter today\'s work summary.','warn');return;}
+  const certItems=readCertItemsFromForm();
+  // Nothing scored means nothing to record a result against
+  const anyScored=certItemsFor(p).some(i=>certItems.includes(i.v)&&!i.ref);
   const logId = editLogId || genLogId(p);
   let images, files;
   try{ images = await commitImages('logs/'+p.id+'/'+logId); files = await commitFiles('logs/'+p.id+'/'+logId); }
@@ -4658,7 +5167,13 @@ async function submitLog(){
     phase,
     lab:lab.trim(),
     fwVersion:fw.trim(),
-    platform:(document.getElementById('lf-plat')||{}).value||'',
+    // The project already decided this; a log cannot belong to another platform
+    platform:projPlatform(p),
+    certItems,
+    certItem:'',   // superseded by certItems[]; cleared so the two cannot disagree
+    // The result applies to everything ticked. Items that passed and failed on the
+    // same day belong in separate logs.
+    result:anyScored?((document.getElementById('lf-result')||{}).value||''):'',
     reporter:((document.getElementById('lf-who')||{}).value||'').trim()||getCurrentUser(),
     summary:summary.trim(),
     images,
