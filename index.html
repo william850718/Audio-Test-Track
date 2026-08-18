@@ -436,8 +436,8 @@
         .seg-btn input { position: absolute; opacity: 0; pointer-events: none; }
         .seg-btn span {
             display: flex; align-items: center; padding: 8px 20px; font-size: 14px; line-height: 1.2;
-            cursor: pointer; color: var(--text-secondary); background: var(--bg-input);
-            transition: background .15s, color .15s;
+            white-space: nowrap; cursor: pointer; color: var(--text-secondary);
+            background: var(--bg-input); transition: background .15s, color .15s;
         }
         .seg-btn + .seg-btn span { border-left: 1px solid var(--border-color); }
         .seg-btn:hover span { color: var(--text-primary); }
@@ -1666,6 +1666,48 @@ function productTypesFor(platform){
   return keys.map(k=>PRODUCT_TYPE_MAP[k]).filter(Boolean);
 }
 function usesProductType(platform){ return productTypesFor(platform).length>0; }
+
+/* Chromebook does not fit the Product Type dropdown the other platforms use: what
+   matters is the OS it runs and which transducers it has, so it gets its own pair
+   of fields hung off the platform rather than a product type. */
+const CHROME_OS=[{v:'chromeos',l:'Chrome OS'},{v:'alos',l:'ALOS'}];
+// Mic count is one answer, not three independent ones — a device cannot be both
+// single-mic and dual-mic — so it is its own field rather than three checkboxes.
+const CHROME_MIC=[{v:'mic1',l:'Single mic'},{v:'mic2',l:'Dual mic'},{v:'mic3',l:'Third mic'}];
+const CHROME_FEATURES=[
+  {k:'speaker',l:'Speaker'},{k:'hsIn',l:'Headset in'},{k:'hsOut',l:'Headset out'}
+];
+function platformUsesExtra(platform){ return platform==='Google'; }
+function platformExtraHtml(platform,p){
+  if(platform!=='Google') return '';
+  const f=p.chromeFeatures||{};
+  return `<div style="margin-bottom:12px">
+      <label>OS Type *</label>
+      ${segHtml('pf-cros',CHROME_OS,p.chromeOs||'chromeos')}
+    </div>
+    <div style="margin-bottom:12px">
+      <label>Microphones *</label>
+      ${segHtml('pf-cmic',CHROME_MIC,p.chromeMic||'mic1')}
+    </div>
+    <label style="margin-bottom:6px">Product Features (check all that apply)</label>
+    <div class="check-row">${CHROME_FEATURES.map(x=>
+      `<label class="chk-lbl"><input type="checkbox" id="pf-cf-${x.k}" ${f[x.k]?'checked':''}> ${x.l}</label>`
+    ).join('')}</div>`;
+}
+function readChromeFields(){
+  const o={chromeOs:segValue('pf-cros','chromeos'),chromeMic:segValue('pf-cmic','mic1'),chromeFeatures:{}};
+  CHROME_FEATURES.forEach(x=>{o.chromeFeatures[x.k]=!!document.getElementById('pf-cf-'+x.k)?.checked;});
+  return o;
+}
+function chromeSummary(p){
+  // A project saved before these fields existed has neither; claiming Chrome OS
+  // for it would be inventing data
+  if(!p.chromeOs&&!p.chromeMic&&!Object.values(p.chromeFeatures||{}).some(Boolean)) return '';
+  const os=(CHROME_OS.find(o=>o.v===(p.chromeOs||'chromeos'))||{}).l||'';
+  const mic=(CHROME_MIC.find(m=>m.v===(p.chromeMic||'mic1'))||{}).l||'';
+  const feats=CHROME_FEATURES.filter(x=>p.chromeFeatures?.[x.k]).map(x=>x.l);
+  return [os,mic,feats.join(', ')].filter(Boolean).join(' · ');
+}
 const TEST_DISTANCES=['1.5','2.3','3.5','4.5','7.5'];
 // hs:true marks the ones that only describe a headset, so a speakerphone is not
 // asked about its boom mic.
@@ -2039,6 +2081,7 @@ function recordAssets(o){ return [...((o&&o.images)||[]),...((o&&o.files)||[])];
 
 function productTypeSummary(p){
   if(!p) return '';
+  if(p.platform==='Google') return chromeSummary(p)||p.dut||'';
   const t=PRODUCT_TYPE_MAP[p.productType];
   if(!t) return p.dut||'';
   if(SELF_HOSTED_TYPES.includes(p.productType)){
@@ -2195,10 +2238,11 @@ function collectProductTypeFields(){
   const platform=(document.getElementById('pf-plat')||{}).value||'Teams';
   const v=(document.getElementById('pf-type')||{}).value||'';
   const t=PRODUCT_TYPE_MAP[v];
-  // Platforms kept as a plain record have no product type to ask for
+  // Platforms with no product type still carry their own fields
   if(!usesProductType(platform)) return {productType:'',micDistanceM:'',spkDistanceM:'',
     connectionTypes:[],connectionType:'',personalFeatures:{},productTypeOther:'',
-    os:'',earpiece:'',hasControls:false};
+    os:'',earpiece:'',hasControls:false,
+    ...(platformUsesExtra(platform)?readChromeFields():{chromeOs:'',chromeMic:'',chromeFeatures:{}})};
   if(!v){toast('Please select a product type.','warn');return null;}
   const base={productType:v,micDistanceM:'',spkDistanceM:'',connectionTypes:[],connectionType:'',
               personalFeatures:{},productTypeOther:'',os:'',earpiece:'',hasControls:false};
@@ -2257,9 +2301,10 @@ const CERT_PLANS={
     {v:'audio',l:'Audio',group:'Audio'},
     {v:'aio',l:'AIO (Function)',group:'Function'}
   ]},
-  Google:{progress:false,items:[
-    {v:'chrome-audio',l:'Chrome Audio',group:'Audio'}
-  ]},
+  // No checklist: every log on a Chromebook project is Chrome Audio by definition,
+  // so a lone tick would record nothing. The entry itself stays — CERT_PLATFORMS is
+  // built from these keys, and removing it would drop Chromebook from the picker.
+  Google:{progress:false,items:[]},
   Lenovo:{progress:false,items:[
     {v:'lnv',l:'LNV',group:'LNV'},
     {v:'hwf',l:'HWF',group:'HWF'}
@@ -2335,7 +2380,7 @@ function teamsCertItems(p){
 const CERT_PLATFORMS=Object.keys(CERT_PLANS);
 // Project Log talks about Chromebook where Platform Tracking says Google. Same key,
 // different label, so records filed under Google are unaffected.
-const CERT_PLAT_LABEL={Google:'Chrome Audio'};
+const CERT_PLAT_LABEL={Google:'Chromebook'};
 function certPlatLabel(k){ return CERT_PLAT_LABEL[k]||PLATFORMS[k]?.label||k; }
 const DEBUG_WEIGHT=0.2;   // Debug is worth 20%; the checklist splits the other 80%
 
@@ -4976,6 +5021,7 @@ function showProjectForm(id){
           <select id="pf-type" onchange="onProductTypeChange()">${productTypeOpts(p.productType||'',projPlatform(p))}</select>
           <div id="pf-type-extra" class="type-extra" style="display:none">${buildProductTypeExtra(p)}</div>
         </div>
+        <div class="ff" id="pf-plat-extra">${platformExtraHtml(projPlatform(p),p)}</div>
         <div>
           <label for="pf-cust">Customer (optional)</label>
           <input type="text" id="pf-cust" placeholder="Customer name" value="${esc(p.customer||'')}">
@@ -5002,6 +5048,7 @@ function onCertPlatformChange(){
   const sel=document.getElementById('pf-type');
   const uses=usesProductType(platform);
   if(wrap) wrap.style.display=uses?'':'none';
+  renderPlatformExtra();
   if(!sel) return;
   // Rebuild for the new platform. A selection it does not offer simply goes; the
   // browser leaves the select on its first option, so the extra fields must be
@@ -5009,6 +5056,18 @@ function onCertPlatformChange(){
   const cur=sel.value;
   sel.innerHTML=uses?productTypeOpts(cur,platform):'';
   if(sel.value!==cur) onProductTypeChange();
+}
+// Fields that belong to the platform itself, not to a product type
+let chromeDraft=null;
+function renderPlatformExtra(){
+  const box=document.getElementById('pf-plat-extra');
+  if(!box) return;
+  // Snapshot before the box is torn down, so switching platform away and back
+  // does not quietly discard what was already filled in
+  if(document.querySelector('input[name="pf-cros"]')) chromeDraft=readChromeFields();
+  const platform=(document.getElementById('pf-plat')||{}).value||'';
+  box.innerHTML=platformExtraHtml(platform,chromeDraft||{});
+  box.style.display=box.innerHTML?'':'none';
 }
 
 async function submitProject(){
@@ -5019,8 +5078,8 @@ async function submitProject(){
   const platform=(document.getElementById('pf-plat')||{}).value||'Teams';
   const obj={
     name:name.trim(),
-    ...pt,                                  // carries os / earpiece / hasControls
-    dut:productTypeSummary({...pt}),
+    ...pt,                    // carries os / earpiece / hasControls / chrome fields
+    dut:productTypeSummary({...pt,platform}),
     platform,
     customer:(document.getElementById('pf-cust')||{}).value||'',
     notes:(document.getElementById('pf-notes')||{}).value||'',
