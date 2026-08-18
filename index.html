@@ -399,7 +399,17 @@
         }
         .gauge-num.is-early { color: var(--text-secondary); }
         .gauge-num small { font-size: .55em; font-weight: 600; margin-left: 1px; opacity: .8; }
-        @media (prefers-reduced-motion: reduce) { .gseg.on { animation: none; } }
+        /* Only the detail view pulses, and only the leading tick: a list of cards all
+           breathing at once reads as "loading", not as a settled number. */
+        /* Both animations, or the more specific rule would drop the entry sweep on
+           this one tick and it would start beating before the dial has filled. */
+        .cert-gauge.pulse .gseg.lead {
+            animation: gsegIn .3s ease var(--d, 0ms) both, gaugeFront 1.6s ease-in-out .9s infinite;
+        }
+        @keyframes gaugeFront { 0%,100% { opacity: 1; } 50% { opacity: .25; } }
+        @media (prefers-reduced-motion: reduce) {
+          .gseg.on, .cert-gauge.pulse .gseg.lead { animation: none; }
+        }
         .cert-pct { font-weight: 600; font-variant-numeric: tabular-nums; }
         .proj-row { display: flex; align-items: center; gap: 14px; }
         .proj-col { flex: 1; min-width: 0; }
@@ -4747,7 +4757,7 @@ function gaugeMix(k){
   const a=[13,120,90], b=[74,222,128];
   return '#'+a.map((v,i)=>Math.round(v+(b[i]-v)*k).toString(16).padStart(2,'0')).join('');
 }
-function certGaugeHtml(p,size){
+function certGaugeHtml(p,size,pulse){
   const pr=hasProgressBar(p)?certProgress(p):null;
   if(!pr) return '';
   const filled=Math.round(pr.pct/100*GAUGE_SEGS);
@@ -4758,11 +4768,13 @@ function certGaugeHtml(p,size){
     // half the tick, which is what gives the dial its solid look
     // fill goes in the style attribute, not the fill attribute: a CSS rule beats a
     // presentation attribute, so .gseg's own fill would win and every tick stay grey
-    segs+=`<rect class="gseg${on?' on':''}" x="46.2" y="3" width="7.6" height="16" rx="3.2"
+    segs+=`<rect class="gseg${on?' on':''}${on&&i===filled-1?' lead':''}" x="46.2" y="3" width="7.6" height="16" rx="3.2"
       transform="rotate(${i*(360/GAUGE_SEGS)} 50 50)"
       ${on?`style="fill:${gaugeMix(filled>1?i/(filled-1):1)};--d:${i*22}ms"`:''}></rect>`;
   }
-  return `<div class="cert-gauge" style="width:${size}px;height:${size}px"
+  // Nothing is in progress at 0 or 100, so the frontier tick has nothing to mark
+  const beat=pulse&&filled>0&&filled<GAUGE_SEGS;
+  return `<div class="cert-gauge${beat?' pulse':''}" style="width:${size}px;height:${size}px"
       role="img" aria-label="Certification progress ${pr.pct}%">
     <svg viewBox="0 0 100 100">${segs}</svg>
     <div class="gauge-num${pr.pct<25?' is-early':''}" style="font-size:${Math.round(size*0.33)}px"
@@ -4934,7 +4946,7 @@ function renderProjectDetail(){
       </div>
     </div>
     ${hasProgressBar(p)?`<div style="display:flex;align-items:flex-start;gap:20px;margin:14px 0 4px;flex-wrap:wrap">
-      ${certGaugeHtml(p,104)}
+      ${certGaugeHtml(p,104,true)}
       <div style="flex:1;min-width:220px">${certListHtml(p)}</div>
     </div>`:''}
     <div class="sec-div"><hr><span>Test Logs (Newest → Oldest)</span><hr></div>
