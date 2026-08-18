@@ -352,6 +352,7 @@
             display: inline-flex; align-items: center; gap: 4px;
         }
         .cust-tag .ti { font-size: 13px; flex-shrink: 0; }
+        .detail-header .cust-tag { font-size: 13px; }
         .proj-closed { opacity: 0.65; }
         .proj-closed .rec-title { text-decoration: line-through; color: #64748b; }
         /* 13px, not 15px: this line is a string of supporting detail under the title,
@@ -419,6 +420,28 @@
         .cert-row .ti { font-size: 16px; }
         .cert-row.done .ti { color: #22c55e; }
         .cert-row .w { margin-left: auto; font-size: 12px; color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+        /* Colour comes from the .b-* badge classes defined above, so this must not
+           set background or colour — it is declared later and would win. */
+        .plat-pill {
+            display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px;
+            border-radius: 999px; border: 1px solid transparent; cursor: pointer;
+            font-size: 13px; font-weight: 500; transition: border-color .15s, opacity .15s;
+        }
+        .plat-pill.neutral { background: var(--bg-input); color: var(--text-secondary); }
+        .plat-pill:hover { opacity: .82; }
+        .plat-pill.on { border-color: currentColor; }
+        .plat-pill .pill-n { font-size: 11px; opacity: .75; font-variant-numeric: tabular-nums; }
+        #pq-plat-row { display: flex; gap: 6px; flex-wrap: wrap; }
+        #pq-s { flex: 1 1 200px; min-width: 160px; }
+        .sample-warn {
+            display: flex; align-items: center; gap: 7px; margin-top: 12px;
+            padding: 8px 12px; border-radius: 8px; font-size: 13px;
+            background: rgba(245,158,11,.12); color: #fbbf24; border: 1px solid rgba(245,158,11,.3);
+        }
+        [data-theme="light"] .sample-warn { background: #fffbeb; color: #92400e; border-color: #fcd34d; }
+        .b-waived { background: rgba(245,158,11,.18); color: #fbbf24; }
+        [data-theme="light"] .b-waived { background: #fef3c7; color: #92400e; }
+        .iconbtn.on { color: #fbbf24; }
         .cert-ref { font-size: 10px; padding: 1px 6px; border-radius: 999px; background: rgba(245,158,11,.16); color: #fbbf24; }
         [data-theme="light"] .cert-ref { background: #fef3c7; color: #92400e; }
         .cert-note { font-size: 11px; color: var(--text-secondary); opacity: .8; }
@@ -446,7 +469,21 @@
         .detail-title { font-size: 20px; font-weight: 700; }
         .fw-timeline { font-size: 13px; color: #60a5fa; margin-top: 4px; font-family: monospace; }
         .proj-tb-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; width: 100%; }
+        .proj-tb-row[hidden] { display: none; }   /* the attribute alone loses to display:flex */
         #proj-toolbar { flex-direction: column; align-items: stretch; }
+        /* Inside a project the row is just two loose buttons; the panel around them
+           framed empty space rather than grouping anything. */
+        #proj-toolbar:has(#proj-tb-detail:not([hidden])) {
+            background: none; padding: 0; border: 0; border-radius: 0; margin-bottom: 0;
+        }
+        /* Back to List and New Daily Log sit one above the other, so they need to
+           share a width or the stack looks ragged. */
+        /* .btn and .back-btn have different padding, font size and radius, so matching
+           the stack means normalising all three rather than just the width. */
+        .proj-act {
+            min-width: 168px; justify-content: center;
+            padding: 8px 16px; font-size: 14px; line-height: 1.4; border-radius: 8px;
+        }
         #proj-toolbar > .proj-tb-row { margin: 0; }
 
         #login-screen {
@@ -1094,14 +1131,16 @@
     <div id="view-project" hidden>
       <div class="toolbar" id="proj-toolbar">
         <div id="proj-tb-list" class="proj-tb-row">
-          <input type="text" id="pq-s" placeholder="Search project name / product / customer..." oninput="onProjSearchInput()">
+          <div id="pq-plat-row"></div>
+          <input type="text" id="pq-s" placeholder="Search project..." oninput="onProjSearchInput()">
           <div class="tb-spacer"></div>
           <button type="button" class="btn primary" onclick="showProjectForm()"><i class="ti ti-folder-plus" aria-hidden="true"></i> New Project</button>
         </div>
         <div id="proj-tb-detail" class="proj-tb-row" hidden>
+          <button type="button" class="back-btn proj-act" onclick="backToProjectList()" style="margin-bottom:0">
+            <i class="ti ti-arrow-left" aria-hidden="true"></i> Back to List
+          </button>
           <div class="tb-spacer"></div>
-          <button type="button" class="btn" onclick="showProjectForm(curProjectId)"><i class="ti ti-edit" aria-hidden="true"></i> Edit Project</button>
-          <button type="button" class="btn primary" onclick="showLogForm()"><i class="ti ti-calendar-plus" aria-hidden="true"></i> New Daily Log</button>
           <div class="dropdown">
             <button type="button" class="btn" onclick="toggleDropdown(event,this)" title="Export this project"><i class="ti ti-download" aria-hidden="true"></i> Export <i class="ti ti-chevron-down chev" aria-hidden="true"></i></button>
             <div class="dropdown-menu">
@@ -1109,7 +1148,6 @@
               <button type="button" onclick="exportProjectCSV()"><i class="ti ti-file-spreadsheet" aria-hidden="true"></i> Excel (CSV)</button>
             </div>
           </div>
-          <button type="button" class="btn btn-danger-text" onclick="delProject()"><i class="ti ti-trash" aria-hidden="true"></i> Delete Project</button>
         </div>
       </div>
       <div id="proj-form-area"></div>
@@ -2312,6 +2350,9 @@ const CERT_PLANS={
 };
 // Groups where one log can only cover a single entry
 const CERT_SINGLE_GROUPS=['Audio'];
+/* Phases where a waiver means something. A failed debug run is just a failed
+   debug run — there is nothing for a customer to waive. */
+const CERT_PHASES=['qualification','requal'];
 const TEAMS_FN_SUB=[
   {k:'hid',l:'HID',needsCtl:true},
   {k:'asp',l:'ASP',needsBtn:true},
@@ -2414,9 +2455,13 @@ function logCertItems(l){
   if(Array.isArray(l&&l.certItems)) return l.certItems;
   return (l&&l.certItem)?[l.certItem]:[];
 }
+// A waived item counts as done. The failure is kept on the log rather than
+// rewritten to a pass, so the record still shows what actually happened and who
+// let it through.
+function logCounts(l){ return l.result==='pass'||l.waived===true; }
 function certItemDone(p,item){
   return (p.logs||[]).some(l=>
-    logCertItems(l).includes(item.v) && (item.ref ? true : l.result==='pass')
+    logCertItems(l).includes(item.v) && (item.ref ? true : logCounts(l))
   );
 }
 function certProgress(p){
@@ -4688,6 +4733,15 @@ function getProject(id){return projects.find(p=>p.id===id);}
 function sortedLogs(logs){
   return [...(logs||[])].sort((a,b)=>new Date(b.date)-new Date(a.date)||(b.id||'').localeCompare(a.id||''));
 }
+/* Qualification is supposed to run on one unit, so more than one sample number
+   across those logs is worth surfacing. Debug is exempt — swapping units while
+   debugging is normal. */
+function qualSampleClash(proj){
+  const nos=[...new Set((proj.logs||[])
+    .filter(l=>(l.phase==='qualification'||l.phase==='requal')&&l.sampleNo)
+    .map(l=>l.sampleNo.trim()))];
+  return nos.length>1?nos:null;
+}
 function latestFw(proj){
   const l=sortedLogs(proj.logs).find(x=>x.fwVersion);
   return l?l.fwVersion:'';
@@ -4863,20 +4917,46 @@ function certListHtml(p){
 function renderProjectList(){
   curProjectId=null;
   setProjToolbar('list');
+  renderProjPlatRow();
   renderProjectListContent();
+}
+/* Coloured toggles rather than a dropdown: there are only four platforms, each
+   already has a colour elsewhere in the app, and a filter you can see the state
+   of beats one you have to open. */
+let projPlatFilter='';
+function setProjPlatFilter(k){
+  // Not a toggle: "All" is already the way to clear, so clicking the active pill
+  // again bouncing back to All was a second, unsignposted way to do the same thing
+  projPlatFilter=k;
+  renderProjPlatRow();
+  renderProjectListContent();
+}
+function renderProjPlatRow(){
+  const row=document.getElementById('pq-plat-row');
+  if(!row) return;
+  const counts={};
+  projects.forEach(p=>{ const k=projPlatform(p); counts[k]=(counts[k]||0)+1; });
+  row.innerHTML=`<button type="button" class="plat-pill neutral${projPlatFilter===''?' on':''}"
+      onclick="setProjPlatFilter('')">All <span class="pill-n">${projects.length}</span></button>`
+    +CERT_PLATFORMS.map(k=>`<button type="button" class="plat-pill b-${PLAT_COLOR[k]||'cat'}${projPlatFilter===k?' on':''}"
+        onclick="setProjPlatFilter('${k}')">${esc(certPlatLabel(k))} <span class="pill-n">${counts[k]||0}</span></button>`).join('');
 }
 function renderProjectListContent(){
   const q=(document.getElementById('pq-s')||{}).value||'';
+  const fPlat=projPlatFilter;
   let list=[...projects];
   if(q) list=list.filter(p=>{
     const blob=[p.name,p.customer,productTypeSummary(p)].join(' ').toLowerCase();
     return blob.includes(q.toLowerCase());
   });
+  if(fPlat) list=list.filter(p=>projPlatform(p)===fPlat);
   list.sort((a,b)=>new Date((sortedLogs(b.logs)[0]||{}).date||b.created)-new Date((sortedLogs(a.logs)[0]||{}).date||a.created));
 
   const el=document.getElementById('proj-content');
   if(!list.length){
-    el.innerHTML='<div class="empty"><i class="ti ti-briefcase-off" style="font-size:26px;display:block;margin:0 auto 8px;color:#6b7280" aria-hidden="true"></i>No projects yet. Create your first project (e.g. WL327).</div>';
+    const filtering=q||fPlat;
+    el.innerHTML='<div class="empty"><i class="ti ti-briefcase-off" style="font-size:26px;display:block;margin:0 auto 8px;color:#6b7280" aria-hidden="true"></i>'
+      +(filtering?'No project matches these filters.':'No projects yet. Create your first project (e.g. WL327).')+'</div>';
     return;
   }
   el.innerHTML=list.map(p=>{
@@ -4946,7 +5026,7 @@ function renderProjectDetail(){
       const ph=PHASE_MAP[l.phase]||PHASES[0];
       const plat=l.platform?`<span class="badge b-${PLAT_COLOR[l.platform]||'cat'}">${esc(PLATFORMS[l.platform]?.label||l.platform)}</span>`:'';
       // Show what the log counted towards, so the progress bar is never a black box
-      const mark=l.result==='pass'?' ✓':l.result==='fail'?' ✕':'';
+      const mark=l.waived?' ✓':l.result==='pass'?' ✓':l.result==='fail'?' ✕':'';
       const item=logCertItems(l).map(v=>
         `<span class="badge b-cat">${esc(certItemLabel(p,v))}${mark}</span>`).join('');
       return`<div class="log-entry">
@@ -4955,9 +5035,11 @@ function renderProjectDetail(){
           <span class="badge ${ph.cls}">${ph.lbl}</span>
           ${plat}
           ${item}
+          ${l.waived?`<span class="badge b-waived" title="Failed, waived by the customer">Waived</span>`:''}
         </div>
         <div class="meta-row" style="border:none;padding-top:0">
           ${l.fwVersion?`<span class="meta"><i class="ti ti-cpu" aria-hidden="true"></i>FW ${esc(l.fwVersion)}</span>`:''}
+          ${l.sampleNo?`<span class="meta"><i class="ti ti-device-desktop" aria-hidden="true"></i>${esc(l.sampleNo)}</span>`:''}
           ${l.lab?`<span class="meta"><i class="ti ti-building-community" aria-hidden="true"></i>${esc(l.lab)}</span>`:''}
           ${l.reporter?`<span class="meta"><i class="ti ti-user" aria-hidden="true"></i>${esc(fmtUser(l.reporter))}</span>`:''}
           ${(l.updatedBy&&l.updatedBy!==l.reporter)?`<span class="meta" title="Last edited by"><i class="ti ti-pencil" aria-hidden="true"></i>${esc(fmtUser(l.updatedBy))}</span>`:''}
@@ -4966,6 +5048,8 @@ function renderProjectDetail(){
         ${imagesDisplayHtml(l.images,true)}
         ${filesDisplayHtml(l.files)}
         <div class="rec-hover-actions">
+          ${(l.result==='fail'&&CERT_PHASES.includes(l.phase))?`<button class="iconbtn${l.waived?' on':''}" onclick="event.stopPropagation();toggleWaive('${l.id}')"
+            title="${l.waived?'Remove waiver':'Waive this failure'}" aria-label="Waive"><i class="ti ti-shield-check" aria-hidden="true"></i></button>`:''}
           <button class="iconbtn" onclick="event.stopPropagation();showLogForm('${l.id}')" title="Edit" aria-label="Edit"><i class="ti ti-edit" aria-hidden="true"></i></button>
           <button class="iconbtn dgr" onclick="event.stopPropagation();delLog('${l.id}')" title="Delete" aria-label="Delete"><i class="ti ti-trash" aria-hidden="true"></i></button>
         </div>
@@ -4974,15 +5058,17 @@ function renderProjectDetail(){
   }
 
   document.getElementById('proj-content').innerHTML=`
-    <button type="button" class="back-btn" onclick="backToProjectList()">
-      <i class="ti ti-arrow-left" aria-hidden="true"></i> Back to List
+    <button type="button" class="btn primary proj-act" style="margin-bottom:14px" onclick="showLogForm()">
+      <i class="ti ti-calendar-plus" aria-hidden="true"></i> New Daily Log
     </button>
     <div class="detail-header">
-      <div>
-        <div class="detail-title">${esc(p.name)}</div>
-        <div class="proj-hint" style="margin-top:6px">
-          ${productTypeSummary(p)?`Product: ${esc(productTypeSummary(p))} · `:''}
-          ${p.customer?`Customer: ${esc(p.customer)} · `:''}
+      <div style="min-width:0">
+        <div class="proj-titlewrap">
+          <div class="detail-title">${esc(p.name)}</div>
+          ${p.customer?`<span class="cust-tag" title="${esc(p.customer)}"><i class="ti ti-building" aria-hidden="true"></i>${esc(p.customer)}</span>`:''}
+        </div>
+        ${productTypeSummary(p)?`<div class="proj-hint" style="margin-top:6px">${esc(productTypeSummary(p))}</div>`:''}
+        <div class="proj-hint">
           ${esc(certPlatLabel(projPlatform(p)))}${projOS(p)?' · '+esc(projOS(p)):''} ·
           Created ${esc(p.created)}
         </div>
@@ -4990,6 +5076,10 @@ function renderProjectDetail(){
         ${p.notes?`<div class="desc" style="margin-top:6px;font-size:13px;color:var(--text-secondary)">${esc(p.notes)}</div>`:''}
       </div>
     </div>
+    ${(()=>{const c=qualSampleClash(p);return c?`<div class="sample-warn">
+      <i class="ti ti-alert-triangle" aria-hidden="true"></i>
+      Qualification logs use more than one sample: ${esc(c.join(', '))}
+    </div>`:'';})()}
     ${hasProgressBar(p)?`<div style="display:flex;align-items:flex-start;gap:20px;margin:14px 0 4px;flex-wrap:wrap">
       ${certGaugeHtml(p,104,true)}
       <div style="flex:1;min-width:220px">${certListHtml(p)}</div>
@@ -5131,6 +5221,10 @@ function showLogForm(logId){
           <input type="text" id="lf-fw" placeholder="Leave blank if not known yet" value="${esc(l.fwVersion||'')}">
         </div>
         <div>
+          <label for="lf-sample">Sample No.</label>
+          <input type="text" id="lf-sample" placeholder="e.g. SN-004" value="${esc(l.sampleNo||'')}">
+        </div>
+        <div>
           <label>Test Platform</label>
           <div class="lf-fixed">${esc(certPlatLabel(projPlatform(p)))}${projOS(p)?' · '+esc(projOS(p)):''}</div>
         </div>
@@ -5240,6 +5334,7 @@ async function submitLog(){
     fwVersion:fw.trim(),
     // The project already decided this; a log cannot belong to another platform
     platform:projPlatform(p),
+    sampleNo:((document.getElementById('lf-sample')||{}).value||'').trim(),
     certItems,
     certItem:'',   // superseded by certItems[]; cleared so the two cannot disagree
     // The result applies to everything ticked. Items that passed and failed on the
@@ -5272,6 +5367,26 @@ async function submitLog(){
 function cancelProjForm(){
   document.getElementById('proj-form-area').innerHTML='';
   editProjId=null; editLogId=null;
+}
+
+/* A waiver is the customer accepting a failure, so it is recorded on the failing
+   log rather than turning it into a pass — the log still says it failed, and who
+   waived it and when is kept alongside. */
+async function toggleWaive(logId){
+  const p=getProject(curProjectId);
+  if(!p) return;
+  const l=(p.logs||[]).find(x=>x.id===logId);
+  if(!l) return;
+  if(!l.waived&&!(await confirmModal(
+      'This failure will count towards certification progress. The log still shows it as a fail.',
+      {title:'Waive this failure?',okText:'Waive'}))) return;
+  if(l.waived){ delete l.waived; delete l.waivedBy; delete l.waivedAt; }
+  else { l.waived=true; l.waivedBy=getCurrentUser(); l.waivedAt=todayISO(); }
+  l.updated=todayISO();
+  p.updated=todayISO();
+  await afterMutation(()=>saveLogRow(p.id,l,false),{k:'saveLog',projId:p.id,data:l});
+  renderProjectDetail();
+  toast(l.waived?'Waived — counts as passed':'Waiver removed','success');
 }
 
 async function delLog(logId){
