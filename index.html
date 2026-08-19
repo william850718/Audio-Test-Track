@@ -4733,9 +4733,10 @@ function getProject(id){return projects.find(p=>p.id===id);}
 function sortedLogs(logs){
   return [...(logs||[])].sort((a,b)=>new Date(b.date)-new Date(a.date)||(b.id||'').localeCompare(a.id||''));
 }
-/* Qualification is supposed to run on one unit, so more than one sample number
-   across those logs is worth surfacing. Debug is exempt — swapping units while
-   debugging is normal. */
+/* Qualification is supposed to run on one unit, so more than one PAL ID across
+   those logs is worth surfacing. Debug is exempt — swapping units while debugging
+   is normal. The stored key stays sampleNo; renaming it would strand anything
+   already filed under the old name for nothing but tidiness. */
 function qualSampleClash(proj){
   const nos=[...new Set((proj.logs||[])
     .filter(l=>(l.phase==='qualification'||l.phase==='requal')&&l.sampleNo)
@@ -5078,7 +5079,7 @@ function renderProjectDetail(){
     </div>
     ${(()=>{const c=qualSampleClash(p);return c?`<div class="sample-warn">
       <i class="ti ti-alert-triangle" aria-hidden="true"></i>
-      Qualification logs use more than one sample: ${esc(c.join(', '))}
+      Qualification logs use more than one PAL ID: ${esc(c.join(', '))}
     </div>`:'';})()}
     ${hasProgressBar(p)?`<div style="display:flex;align-items:flex-start;gap:20px;margin:14px 0 4px;flex-wrap:wrap">
       ${certGaugeHtml(p,104,true)}
@@ -5221,8 +5222,8 @@ function showLogForm(logId){
           <input type="text" id="lf-fw" placeholder="Leave blank if not known yet" value="${esc(l.fwVersion||'')}">
         </div>
         <div>
-          <label for="lf-sample">Sample No.</label>
-          <input type="text" id="lf-sample" placeholder="e.g. SN-004" value="${esc(l.sampleNo||'')}">
+          <label for="lf-sample">PAL ID</label>
+          <input type="text" id="lf-sample" value="${esc(l.sampleNo||'')}">
         </div>
         <div>
           <label>Test Platform</label>
