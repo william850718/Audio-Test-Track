@@ -939,10 +939,10 @@
     <label for="login-email">Email</label>
     <input type="email" id="login-email" placeholder="team@company.com" autocomplete="username" style="margin-bottom:10px">
     <label for="login-pass">Password</label>
-    <input type="password" id="login-pass" placeholder="Shared team password" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
+    <input type="password" id="login-pass" placeholder="Your account password" autocomplete="current-password" onkeydown="if(event.key==='Enter')doLogin()">
     <div style="margin-top:10px;margin-bottom:10px;display:flex;align-items:center;gap:8px;white-space:nowrap">
       <input type="checkbox" id="remember-creds" onchange="onRememberToggle(this.checked)" style="width:auto;flex-shrink:0">
-      <label for="remember-creds" style="font-size:11px;color:var(--text-secondary);font-weight:600;cursor:pointer;white-space:nowrap">Remember credentials</label>
+      <label for="remember-creds" style="font-size:11px;color:var(--text-secondary);font-weight:600;cursor:pointer;white-space:nowrap">Remember email</label>
     </div>
     <button type="button" class="btn primary" id="login-btn" style="width:100%;margin-top:14px;justify-content:center" onclick="doLogin()">Sign In</button>
     <div class="login-err" id="login-err" role="alert" aria-live="polite"></div>
@@ -2664,7 +2664,14 @@ let sb=null, currentLoginEmail='';
 const SUPABASE_URL='https://ygoywjqgatkwboepxaaz.supabase.co';
 const SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inlnb3l3anFnYXRrd2JvZXB4YWF6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk3NzQ0MTAsImV4cCI6MjA5NTM1MDQxMH0.cpnejjVh8s9mHQl1MwUAPQXl8tipUGJSWSuPO5cFmiw';
 const LOGIN_EMAIL_KEY='aclab_login_email';
+/* Only ever deleted now. The app used to keep the account password here in plain
+   text so it could refill the field; the browser's own password manager does that
+   properly, encrypted and behind the OS. purgeStoredPassword() clears it on every
+   start so the ones already saved go away without anyone having to be told. */
 const LOGIN_PASS_KEY='aclab_login_pass';
+/* Named "creds" from when it also covered the password. Renaming it would reset
+   the checkbox for everyone currently ticked, for a key no one ever sees — so the
+   name stays and this comment explains it. It means: remember the email. */
 const REMEMBER_CREDS_KEY='aclab_remember_creds';
 let loginBusy=false;
 
@@ -3191,7 +3198,7 @@ function showLogin(){
   const em=document.getElementById('login-email');
   const pw=document.getElementById('login-pass');
   if(em) em.value=remember?(localStorage.getItem(LOGIN_EMAIL_KEY)||''):'';
-  if(pw) pw.value=remember?(localStorage.getItem(LOGIN_PASS_KEY)||''):'';
+  if(pw) pw.value='';   // never refilled — autocomplete="current-password" hands this to the browser
   setLoginMsg('','');
   updateLoginFileWarn();
 }
@@ -3362,13 +3369,9 @@ async function doLogin(){
     const {data:{session}}=await sb.auth.getSession();
     if(!session) throw new Error('Login succeeded but session could not be saved. Please disable private/incognito mode and allow local storage.');
     try{
-      if(remember){
-        localStorage.setItem(LOGIN_EMAIL_KEY,email.trim());
-        localStorage.setItem(LOGIN_PASS_KEY,pass);
-      }else{
-        localStorage.removeItem(LOGIN_EMAIL_KEY);
-        localStorage.removeItem(LOGIN_PASS_KEY);
-      }
+      if(remember) localStorage.setItem(LOGIN_EMAIL_KEY,email.trim());
+      else localStorage.removeItem(LOGIN_EMAIL_KEY);
+      purgeStoredPassword();
       localStorage.setItem(REMEMBER_CREDS_KEY,remember?'1':'0');
     }catch(e){}
     setCurrentLoginEmail(email.trim());
@@ -3503,17 +3506,21 @@ async function completeRegister(){
   }
 }
 async function initApp(){
+  purgeStoredPassword();   // before anything else, so a failure later still clears it
   if(!window.supabase){toast('Failed to load Supabase JS. Please check your connection to cdn.jsdelivr.net.','error',5000);return;}
   sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY,{
     auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:false,storage:authStorage}
   });
   updateLoginFileWarn();
   const _d=new Date();const _days=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];document.getElementById('date-lbl').textContent=_d.toLocaleDateString('en-US',{month:'short',day:'numeric'})+' '+_days[_d.getDay()];
-  // 檢查是否有現有 session（10 分鐘內 refresh 不需重新登入）
+  /* Reopening within SESSION_MAX_MIN skips the login screen. The idle timer only
+     runs while a tab is open, so this is what covers a closed laptop: eight hours
+     carries one working day and expires overnight, which matters on a shared
+     machine. (It read 1440 — a day — under a comment claiming ten minutes.) */
   sb.auth.getSession().then(({data:{session}})=>{
     const savedAt=parseInt(localStorage.getItem('aclab_login_at')||sessionStorage.getItem('aclab_login_at')||'0');
     const elapsed=(Date.now()-savedAt)/1000/60;
-    if(session&&savedAt>0&&elapsed<1440){
+    if(session&&savedAt>0&&elapsed<SESSION_MAX_MIN){
       currentLoginEmail=session.user.email;
       enterAppIfApproved(currentLoginEmail).then(ok=>{
         if(!ok) return;
@@ -3532,7 +3539,8 @@ async function initApp(){
   });
   initHistoryGuard();
 }
-const IDLE_TIMEOUT_MS=20*60*1000; // 20 分鐘閒置登出
+const SESSION_MAX_MIN=8*60;        // 關閉分頁後多久內免重新登入
+const IDLE_TIMEOUT_MS=20*60*1000;  // 20 分鐘閒置登出
 let idleTimer=null;
 function resetIdleTimer(){
   clearTimeout(idleTimer);
@@ -3600,11 +3608,14 @@ function initSwipeBack(){
 function onRememberToggle(checked){
   try{
     localStorage.setItem(REMEMBER_CREDS_KEY,checked?'1':'0');
-    if(!checked){
-      localStorage.removeItem(LOGIN_EMAIL_KEY);
-      localStorage.removeItem(LOGIN_PASS_KEY);
-    }
+    if(!checked) localStorage.removeItem(LOGIN_EMAIL_KEY);
   }catch(e){}
+}
+/* Runs on every start, whatever the checkbox says: the point is to remove what
+   earlier versions saved, and those users have no reason to know it is there. */
+function purgeStoredPassword(){
+  try{ localStorage.removeItem(LOGIN_PASS_KEY); }catch(e){}
+  try{ sessionStorage.removeItem(LOGIN_PASS_KEY); }catch(e){}
 }
 
 function switchMode(m){
