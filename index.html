@@ -1173,7 +1173,13 @@ const PLATFORMS={
       {v:'personal-speakerphone',l:'Personal - Speakerphone'},
       {v:'personal-deskphone',l:'Personal - Deskphone'},
       {v:'personal-laptop',l:'Personal - Laptop'},
-      {v:'shared-speakerphone',l:'Shared - Speakerphone'}
+      /* Three, not two: a shared speakerphone may carry no system of its own and
+         connect like a peripheral, which is the case the plain entry covers and the
+         one existing records already use. MTRoW/MTRoA name the built-in system the
+         same way Project Log does. */
+      {v:'shared-speakerphone',l:'Shared - Speakerphone'},
+      {v:'shared-speakerphone-mtrow',l:'Shared - Speakerphone (MTRoW)'},
+      {v:'shared-speakerphone-mtroa',l:'Shared - Speakerphone (MTRoA)'}
     ],
     categories:[
       {v:'Audio',l:'Audio'},
