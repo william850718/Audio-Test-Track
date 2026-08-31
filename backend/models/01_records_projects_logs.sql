@@ -40,14 +40,13 @@ alter table public.records  enable row level security;
 alter table public.projects enable row level security;
 alter table public.logs     enable row level security;
 
-drop policy if exists "records all"  on public.records;
-create policy "records all"  on public.records  for all to authenticated using (true) with check (true);
-
-drop policy if exists "projects all" on public.projects;
-create policy "projects all" on public.projects for all to authenticated using (true) with check (true);
-
-drop policy if exists "logs all"     on public.logs;
-create policy "logs all"     on public.logs     for all to authenticated using (true) with check (true);
+-- Policies are NOT defined here. They all live in
+-- backend/middlewares/policies.sql, so that re-running this file cannot
+-- weaken them - which is what used to happen: this script created
+-- "using (true)" policies that the approval script replaced, and whichever
+-- ran last won. RLS is on with no policy until policies.sql runs, and a
+-- table in that state denies everything, which is the right way to be
+-- half-configured.
 
 -- 3) Realtime: push row changes to all open clients -------------------
 --    (safe to re-run: ignores "already added" errors)

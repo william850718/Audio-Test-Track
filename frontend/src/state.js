@@ -24,6 +24,11 @@ export let curP = 'all';               // platform tab
 export let viewMode = 'platform';      // platform | project | lab
 export let curProjectId = null;
 
+/* Who is signed in and what they may do. Read by permissions, by the guards on
+   every destructive control and by the login screen, so it crosses everything. */
+export let myApproval = { approved: false, isAdmin: false, known: false };
+export let allowedUsersCache = null;   // filled once per session for the admin picker
+
 export let imgState  = { list: [], original: [] };
 export let fileState = { list: [], original: [] };
 
@@ -40,3 +45,5 @@ export function setViewMode(v){ viewMode = v; }
 export function setCurProjectId(v){ curProjectId = v; }
 export function setImgState(v){ imgState = v; }
 export function setFileState(v){ fileState = v; }
+export function setMyApproval(v){ myApproval = v; }
+export function setAllowedUsersCache(v){ allowedUsersCache = v; }

@@ -17,28 +17,33 @@ insert into storage.buckets (id, name, public)
 values ('attachments', 'attachments', true)
 on conflict (id) do update set public = true;
 
+-- Policies are NOT defined here; they live in
+-- backend/middlewares/policies.sql. The four below are kept commented out
+-- as a record of what this file used to create: they were the permissive
+-- versions, without the approval check, and whichever script ran last won.
+
 -- 2) Allow logged-in users to upload files into this bucket
 drop policy if exists "aclab attachments insert" on storage.objects;
-create policy "aclab attachments insert"
+-- create policy "aclab attachments insert"
   on storage.objects for insert to authenticated
-  with check (bucket_id = 'attachments');
+--   with check (bucket_id = 'attachments');
 
 -- 3) Allow logged-in users to overwrite files in this bucket
 drop policy if exists "aclab attachments update" on storage.objects;
-create policy "aclab attachments update"
+-- create policy "aclab attachments update"
   on storage.objects for update to authenticated
-  using (bucket_id = 'attachments');
+--   using (bucket_id = 'attachments');
 
 -- 4) Allow logged-in users to delete files in this bucket
 --    (used when an image is removed from a record before saving)
 drop policy if exists "aclab attachments delete" on storage.objects;
-create policy "aclab attachments delete"
+-- create policy "aclab attachments delete"
   on storage.objects for delete to authenticated
-  using (bucket_id = 'attachments');
+--   using (bucket_id = 'attachments');
 
 -- 5) Public read (a public bucket already serves files publicly, this
 --    policy is harmless and makes the intent explicit)
 drop policy if exists "aclab attachments read" on storage.objects;
-create policy "aclab attachments read"
+-- create policy "aclab attachments read"
   on storage.objects for select to public
-  using (bucket_id = 'attachments');
+--   using (bucket_id = 'attachments');

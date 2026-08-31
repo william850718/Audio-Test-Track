@@ -143,6 +143,16 @@ create policy "aclab attachments delete" on storage.objects
   for delete to authenticated
   using (bucket_id = 'attachments' and public.is_approved());
 
+/* Moved here from the bucket script so every policy is in one file.
+   Deliberately unchanged, including the part worth noticing: reading an
+   attachment asks only that you are signed in, while writing one asks for
+   approval. The bucket is public anyway - the app fetches images by public
+   URL and never goes through this - so tightening it belongs with the move
+   to a private bucket rather than being slipped in here. */
+create policy "aclab attachments read"
+  on storage.objects for select to public
+  using (bucket_id = 'attachments');
+
 -- 5) Grandfather everyone who already has an account ------------------
 --    Nobody currently using the app gets locked out by this migration.
 insert into public.allowed_users (email, approved, approved_at, approved_by, note)

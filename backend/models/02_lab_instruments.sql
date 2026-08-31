@@ -19,9 +19,13 @@ create table if not exists public.lab_instruments (
 
 alter table public.lab_instruments enable row level security;
 
-drop policy if exists "lab_instruments all" on public.lab_instruments;
-create policy "lab_instruments all" on public.lab_instruments
-  for all to authenticated using (true) with check (true);
+-- Policies are NOT defined here. They all live in
+-- backend/middlewares/policies.sql, so that re-running this file cannot
+-- weaken them - which is what used to happen: this script created
+-- "using (true)" policies that the approval script replaced, and whichever
+-- ran last won. RLS is on with no policy until policies.sql runs, and a
+-- table in that state denies everything, which is the right way to be
+-- half-configured.
 
 -- Realtime so updates propagate to everyone (ignore "already added")
 do $$

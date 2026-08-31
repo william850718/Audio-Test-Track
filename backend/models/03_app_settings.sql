@@ -16,8 +16,8 @@ create table if not exists public.app_settings (
 alter table public.app_settings enable row level security;
 
 drop policy if exists "settings all" on public.app_settings;
-create policy "settings all" on public.app_settings
-  for all to authenticated using (true) with check (true);
+-- create policy "settings all" on public.app_settings   -- superseded by middlewares/policies.sql
+--   for all to authenticated using (true) with check (true);   -- superseded by middlewares/policies.sql
 
 -- Realtime so list changes propagate to everyone (ignore "already added")
 do $$
