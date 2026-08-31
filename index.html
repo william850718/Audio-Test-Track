@@ -15,928 +15,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <style>
-        :root {
-            --bg-app: #0b0f19;
-            --bg-panel: #111827;
-            --bg-input: #1f2937;
-            --border-color: #374151;
-            --text-primary: #f3f4f6;
-            --text-secondary: #9ca3af;
-            
-            /* 平台與類型專用色 */
-            --color-teams: #6366f1;
-            --color-cortana: #8b5cf6;
-            --color-zoom: #f59e0b;
-            --color-intel: #0ea5e9;
-            --color-google: #10b981;
-            --color-lenovo: #e11d48;
-
-            --color-issue: #ef4444;
-            --color-update: #3b82f6;
-            --color-status: #6b7280;
-
-            --accent: #6366f1;
-            --accent-2: #8b5cf6;
-            --accent-grad: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
-            --accent-grad-hover: linear-gradient(135deg, #5457ea 0%, #7c3aed 100%);
-            --accent-glow: 0 6px 20px rgba(99,102,241,.38);
-            --panel-shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px -12px rgba(0,0,0,.5);
-        }
-
-        /* ===== Light theme ===== */
-        [data-theme="light"] {
-            --bg-app: #f1f5f9;
-            --bg-panel: #ffffff;
-            --bg-input: #f1f5f9;
-            --border-color: #d9e0ea;
-            --text-primary: #0f172a;
-            --text-secondary: #64748b;
-        }
-        [data-theme="light"] .btn:hover { background: #e2e8f0; }
-        [data-theme="light"] .btn-danger-text { color: #dc2626; }
-        [data-theme="light"] .btn-danger-text:hover { background: #fee2e2; border-color: #fca5a5; color: #b91c1c; }
-        [data-theme="light"] .desc { background: #f1f5f9; color: #334155; border-left-color: #cbd5e1; }
-        [data-theme="light"] .b-cat { background: #eef2f7; color: #475569; border-color: #cbd5e1; }
-        /* Light-theme badge palettes (light tint bg + darker readable text) */
-        [data-theme="light"] .b-teams { background: #e0e7ff; color: #4338ca; }
-        [data-theme="light"] .b-cortana { background: #ede9fe; color: #6d28d9; }
-        [data-theme="light"] .b-zoom { background: #fef3c7; color: #b45309; }
-        [data-theme="light"] .b-intel { background: #e0f2fe; color: #0369a1; }
-        [data-theme="light"] .b-google { background: #d1fae5; color: #047857; }
-        [data-theme="light"] .b-lenovo { background: #ffe4e6; color: #be123c; }
-        [data-theme="light"] .lf-pill.lf-ok { background: #d1fae5; color: #047857; }
-        [data-theme="light"] .lf-pill.lf-warn { background: #fef3c7; color: #b45309; }
-        [data-theme="light"] .lf-pill.lf-old { background: #fee2e2; color: #b91c1c; }
-        [data-theme="light"] .lf-pill.lf-none { background: #eef2f7; color: #64748b; }
-        [data-theme="light"] .lab-chg-new { color: #047857; }
-        [data-theme="light"] .b-issue { background: #fee2e2; color: #b91c1c; border-color: #fecaca; }
-        [data-theme="light"] .b-acqua-fw { background: #dbeafe; color: #1d4ed8; border-color: #bfdbfe; }
-        [data-theme="light"] .b-test-seq { background: #ede9fe; color: #6d28d9; border-color: #ddd6fe; }
-        [data-theme="light"] .b-spec { background: #e0f2fe; color: #0369a1; border-color: #bae6fd; }
-        [data-theme="light"] .b-hw-cal { background: #e5e7eb; color: #374151; border-color: #d1d5db; }
-        [data-theme="light"] .b-inprog { background: #fef3c7; color: #b45309; }
-        [data-theme="light"] .b-pending { background: #fee2e2; color: #b91c1c; }
-        [data-theme="light"] .b-closed { background: #d1fae5; color: #047857; }
-        [data-theme="light"] .b-teams-cert { background: #e0e7ff; color: #4338ca; }
-        [data-theme="light"] .b-uc-cert { background: #ede9fe; color: #6d28d9; }
-        [data-theme="light"] .b-internal { background: #f1f5f9; color: #475569; border-color: #cbd5e1; }
-        /* Light-theme active platform pills */
-        [data-theme="light"] .ptab.p-all { background: #e2e8f0; color: #0f172a; border-color: #cbd5e1; }
-        [data-theme="light"] .ptab.p-teams { background: #e0e7ff; color: #4338ca; border-color: #a5b4fc; }
-        [data-theme="light"] .ptab.p-cortana { background: #ede9fe; color: #6d28d9; border-color: #c4b5fd; }
-        [data-theme="light"] .ptab.p-zoom { background: #fef3c7; color: #b45309; border-color: #fcd34d; }
-        [data-theme="light"] .ptab.p-intel { background: #e0f2fe; color: #0369a1; border-color: #7dd3fc; }
-        [data-theme="light"] .ptab.p-google { background: #d1fae5; color: #047857; border-color: #6ee7b7; }
-        [data-theme="light"] .ptab.p-lenovo { background: #ffe4e6; color: #be123c; border-color: #fda4af; }
-        [data-theme="light"] .img-thumb, [data-theme="light"] .rec-images img, [data-theme="light"] .img-add-btn { background: #f1f5f9; }
-        [data-theme="light"] .meta-row { border-top-color: rgba(15,23,42,0.06); }
-        [data-theme="light"] .record:hover { box-shadow: 0 6px 16px rgba(15,23,42,.12); }
-        [data-theme="light"] .toast, [data-theme="light"] .modal-card, [data-theme="light"] .dropdown-menu { box-shadow: 0 12px 32px rgba(15,23,42,.15); }
-
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-            font-size: 16px;
-            color: var(--text-primary);
-            background-color: var(--bg-app);
-            background-image:
-              radial-gradient(1100px 560px at 12% -8%, rgba(99,102,241,.14), transparent 60%),
-              radial-gradient(1000px 520px at 100% 0%, rgba(139,92,246,.12), transparent 55%);
-            background-attachment: fixed;
-            line-height: 1.5;
-        }
-        [data-theme="light"] body {
-            background-image:
-              radial-gradient(1100px 560px at 12% -8%, rgba(99,102,241,.10), transparent 60%),
-              radial-gradient(1000px 520px at 100% 0%, rgba(139,92,246,.08), transparent 55%);
-        }
-
-        .app { max-width: 1200px; margin: 0 auto; padding: 1.5rem 1rem 2.5rem; }
-        
-        /* Topbar */
-        .topbar { display: flex; align-items: center; justify-content: space-between; margin-bottom: 1.5rem; }
-        .topbar-main { display: flex; align-items: center; }
-        .topbar-actions { display: flex; align-items: center; gap: 8px; margin-left: auto; }
-        .logo-wrap { display: flex; align-items: center; gap: 12px; }
-        .logo-icon { 
-            width: 48px; height: 48px; border-radius: 50%;
-            display: flex; align-items: center; justify-content: center;
-            overflow: hidden; flex-shrink: 0;
-        }
-        .logo-icon img { width: 100%; height: 100%; object-fit: cover; }
-        .logo-title { font-size: 19px; font-weight: 700; letter-spacing: 0.2px; background: var(--accent-grad); -webkit-background-clip: text; background-clip: text; color: transparent; width: fit-content; }
-        .logo-sub { font-size: 14px; color: var(--text-secondary); margin-top: 2px; }
-
-        /* Stats Row */
-        .stat-row { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 1.5rem; }
-        .stat { background: var(--bg-panel); border: 1px solid var(--border-color); border-radius: 8px; padding: 14px; text-align: center; cursor: pointer; transition: transform .15s, box-shadow .15s, border-color .15s; user-select: none; }
-        .stat:hover { transform: translateY(-2px); box-shadow: 0 8px 22px rgba(0,0,0,0.35); border-color: var(--accent); }
-        .stat.active-filter { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(99,102,241,0.35); }
-        .stat-n { font-size: 24px; font-weight: 600; font-family: monospace; transition: color .2s; }
-        .stat-n.zero { color: #4b5563 !important; }
-        .stat-l { font-size: 15px; color: var(--text-secondary); margin-top: 4px; text-transform: uppercase; letter-spacing: 0.5px; transition: color .2s; }
-        .stat-l.zero { color: #374151 !important; }
-
-        /* Platform Tabs */
-        .ptabs { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 1.25rem; }
-        .ptab { 
-            padding: 6px 16px; border-radius: 20px; border: 1px solid var(--border-color); 
-            background: var(--bg-panel); color: var(--text-secondary); font-size: 14px; 
-            cursor: pointer; transition: all 0.2s ease; font-weight: 500;
-        }
-        .ptab:hover { border-color: var(--text-secondary); color: var(--text-primary); }
-        .ptab.p-all { background: #374151; color: var(--text-primary); border-color: #4b5563; }
-        .ptab.p-teams { background: rgba(99, 102, 241, 0.15); color: #a5b4fc; border-color: var(--color-teams); }
-        .ptab.p-cortana { background: rgba(139, 92, 246, 0.15); color: #c4b5fd; border-color: var(--color-cortana); }
-        .ptab.p-zoom { background: rgba(245, 158, 11, 0.15); color: #fde68a; border-color: var(--color-zoom); }
-        .ptab.p-intel { background: rgba(14, 165, 233, 0.15); color: #7dd3fc; border-color: var(--color-intel); }
-        .ptab.p-google { background: rgba(16, 185, 129, 0.15); color: #a7f3d0; border-color: var(--color-google); }
-        .ptab.p-lenovo { background: rgba(225, 29, 72, 0.15); color: #fecdd3; border-color: var(--color-lenovo); }
-
-        /* Toolbar */
-        .toolbar {
-            display: flex; flex-direction: column; align-items: stretch;
-            gap: 10px; margin-bottom: 1rem;
-            overflow: visible;
-            background: var(--bg-panel); padding: 12px; border-radius: 10px;
-            border: 1px solid var(--border-color); min-width: 0; width: 100%; box-sizing: border-box;
-        }
-        .tb-primary { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-        .tb-primary .tb-search-wrap { flex: 1 1 260px; max-width: none; }
-        .tb-filters { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-        .tb-filters > select, .tb-filters > span { flex: 1 1 160px; }
-        .tb-filters > span select { width: 100%; }
-        .tb-filters > .dropdown { flex: 0 0 auto; }
-        .toolbar::-webkit-scrollbar { height: 4px; }
-        .toolbar::-webkit-scrollbar-thumb { background: var(--border-color); border-radius: 2px; }
-        .toolbar input, .toolbar select {
-            font-size: 14px; height: 36px; background: var(--bg-input);
-            border: 1px solid var(--border-color); color: var(--text-primary);
-            padding: 0 28px 0 10px; border-radius: 6px; flex-shrink: 0;
-            white-space: nowrap; width: auto;
-        }
-        .toolbar select { min-width: 0; width: auto; cursor: pointer; }
-        .toolbar input { cursor: text; }
-        .tb-search-wrap { position: relative; display: flex; align-items: center; flex: 1 1 240px; max-width: 380px; }
-        .tb-search-wrap input { padding-left: 32px; width: 100%; min-width: 0; }
-        .tb-search-icon { position: absolute; left: 9px; top: 50%; transform: translateY(-50%); color: var(--text-secondary); pointer-events: none; font-size: 14px; }
-        .tb-spacer { flex: 1; min-width: 8px; }
-        .tb-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-left: auto; }
-        #q-subtype-update-wrap { display: none; }
-
-        /* Buttons */
-        .btn { 
-            padding: 6px 14px; border-radius: 6px; font-size: 14px; cursor: pointer; 
-            border: 1px solid var(--border-color); background: var(--bg-input); color: var(--text-primary); 
-            display: inline-flex; align-items: center; gap: 6px; font-weight: 500; transition: all 0.15s ease;
-        }
-        .btn:hover { background: #374151; border-color: #4b5563; transform: translateY(-1px); }
-        .btn:active { transform: translateY(0); }
-        .btn.primary { background: var(--accent-grad); color: #ffffff; border-color: transparent; box-shadow: var(--accent-glow); }
-        .btn.primary:hover { background: var(--accent-grad-hover); box-shadow: 0 8px 26px rgba(99,102,241,.5); }
-        .btn-danger-text { color: #f87171; }
-        .btn-danger-text:hover { background: rgba(239,68,68,.14); border-color: #7f1d1d; color: #fca5a5; }
-
-        /* Form Panel */
-        .form-panel { background: var(--bg-panel); border: 1px solid var(--border-color); border-radius: 12px; padding: 1.25rem; margin-bottom: 1.25rem; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.3); animation: panelIn .2s ease both; }
-        .stat-strip { animation: panelIn .2s ease both; }
-        @keyframes panelIn { from { opacity: 0; transform: translateY(-6px);} to { opacity: 1; transform: translateY(0);} }
-        .fp-title { font-size: 14px; font-weight: 600; color: #3b82f6; letter-spacing: .05em; text-transform: uppercase; margin-bottom: 14px; border-bottom: 1px solid var(--border-color); padding-bottom: 6px; }
-        .fg2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
-        .fg3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 12px; }
-        .ff { grid-column: 1/-1; }
-        label { display: block; font-size: 15px; color: var(--text-secondary); margin-bottom: 4px; font-weight: 500; }
-        input, select, textarea { width: 100%; background: var(--bg-input); border: 1px solid var(--border-color); color: var(--text-primary); padding: 8px 10px; border-radius: 6px; font-size: 15px; }
-        input:focus, select:focus, textarea:focus { outline: none; border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,.15); }
-        textarea { resize: vertical; min-height: 70px; }
-        /* These two were never defined, so every label fell back to display:block and
-           the checkboxes stacked one per line. */
-        .check-row { display: flex; flex-wrap: wrap; gap: 8px; }
-        .chk-lbl {
-            display: inline-flex; align-items: center; gap: 7px; margin: 0;
-            padding: 7px 12px; border: 1px solid var(--border-color); border-radius: 8px;
-            background: var(--bg-input); font-size: 14px; cursor: pointer;
-            transition: background .15s, border-color .15s, color .15s;
-        }
-        .chk-lbl:hover { border-color: #6b7280; color: var(--text-primary); }
-        .chk-lbl:has(input:checked) { background: rgba(59, 130, 246, 0.15); border-color: #3b82f6; color: #60a5fa; }
-        /* The hidden attribute has no weight of its own, so any rule that sets display
-           — .btn, .toolbar, .batch-bar — silently overrode it. That bug has surfaced
-           four times; one rule here retires the whole class of it. */
-        [hidden] { display: none !important; }
-        .chk-lbl input[type=checkbox], .chk-lbl input[type=radio] { width: auto; margin: 0; cursor: pointer; }
-        .form-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px; }
-
-        /* Records / Cards */
-        .record { 
-            border: 1px solid var(--border-color); border-radius: 10px; padding: 14px 16px; margin-bottom: 10px; 
-            background: var(--bg-panel); transition: transform 0.15s ease, box-shadow 0.15s ease;
-            position: relative; overflow: hidden;
-        }
-        .record:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(0,0,0,0.45); border-color: #4b5563; }
-        
-        /* 左側狀態邊條 */
-        .record::before { content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: var(--color-other); }
-        .record:has(.b-issue)::before { background: var(--color-issue); }
-        .record:has(.b-acqua-fw)::before { background: var(--color-update); }
-        .record:has(.b-test-seq)::before { background: #8b5cf6; }
-        .record:has(.b-spec)::before { background: #0ea5e9; }
-        .record:has(.b-hw-cal)::before { background: var(--color-status); }
-        .archive-section { margin-top: 1.5rem; }
-        .archive-hint { font-size: 15px; color: var(--text-secondary); margin-bottom: 8px; }
-        .archive-hint-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
-        .archive-hint-row .archive-hint { margin-bottom: 0; flex: 1 1 260px; }
-
-        .rec-top { display: flex; align-items: flex-start; gap: 8px; margin-bottom: 8px; }
-        .rec-title { font-size: 16px; font-weight: 600; flex: 1; min-width: 0; line-height: 1.4; color: var(--text-primary); overflow-wrap: anywhere; }
-        .rec-status { flex-shrink: 0; margin-left: auto; align-self: flex-start; }
-        .rec-badges { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 10px; }
-        /* Card hierarchy: status is the only coloured thing; classification stays quiet */
-        /* Status sits flush right; on hover it yields that spot to the action icons
-           rather than leaving a permanent gap reserved for them */
-        .rec-status { flex-shrink: 0; transition: opacity .15s; }
-        /* One slot for every badge that sits under the hover pill, so the pill never
-           has to be a particular width to hide them */
-        .rec-status-group { display: inline-flex; align-items: center; gap: 8px; }
-        .record:hover .rec-status, .record:focus-within .rec-status { opacity: 0; }
-        @media (hover: none) { .record:hover .rec-status { opacity: 1; } }
-        .rec-crumb { font-size: 12.5px; color: var(--text-secondary); margin-bottom: 6px; line-height: 1.6; overflow-wrap: anywhere; }
-        .rec-crumb .crumb-sep { color: #6b7280; margin: 0 3px; }
-        .rec-crumb .badge { margin-left: 6px; }
-        .crumb-plat, .crumb-type { display: inline-flex; align-items: center; gap: 4px; }
-        .crumb-plat { font-weight: 600; }
-        .crumb-plat i, .crumb-type i { font-size: 13px; opacity: .85; }
-        /* Card shows a taste of the details; the full text lives in the record view */
-        .desc-clamp { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
-        .desc-more { display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; color: var(--text-secondary); margin: -4px 0 8px; }
-        .rec-aux { display: flex; flex-wrap: wrap; gap: 6px 14px; margin: 6px 0 0; }
-        .rec-aux .aux { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; color: var(--text-secondary); }
-        .rec-aux .aux i { font-size: 14px; opacity: .8; }
-        .rec-badges:empty { display: none; }
-        .rec-hover-actions { position: absolute; top: 10px; right: 12px; display: flex; align-items: center; gap: 1px;
-            opacity: 0; transition: opacity .15s; z-index: 2; border-radius: 8px; padding: 2px;
-            background: var(--bg-input); border: 1px solid var(--border-color);
-            box-shadow: 0 4px 14px rgba(0,0,0,.5); }
-        [data-theme="light"] .rec-hover-actions { box-shadow: 0 4px 14px rgba(15,23,42,.16); }
-        .record:hover .rec-hover-actions, .record:focus-within .rec-hover-actions,
-        .log-entry:hover .rec-hover-actions, .log-entry:focus-within .rec-hover-actions { opacity: 1; }
-        .iconbtn { border: none; background: none; cursor: pointer; color: var(--text-secondary); font-size: 16px; padding: 5px 7px; border-radius: 6px; line-height: 1; display: inline-flex; }
-        .iconbtn:hover { background: rgba(127,127,127,.22); color: var(--text-primary); }
-        .iconbtn.dgr:hover { color: #f87171; background: rgba(239,68,68,.14); }
-        [data-theme="light"] .iconbtn.dgr:hover { color: #dc2626; }
-        @media (hover: none) {
-          .rec-hover-actions { opacity: 1; position: static; margin-top: 10px; justify-content: flex-end; background: none; border: none; box-shadow: none; padding: 0; border-top: 1px solid rgba(255,255,255,0.03); padding-top: 8px; }
-          .iconbtn { font-size: 18px; padding: 6px 10px; }
-        }
-        
-        /* Badges */
-        .badge { font-size: 12px; padding: 2px 8px; border-radius: 4px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.3px; }
-        .b-teams { background: rgba(99, 102, 241, 0.2); color: #818cf8; }
-        .b-cortana { background: rgba(139, 92, 246, 0.2); color: #a78bfa; }
-        .b-zoom { background: rgba(245, 158, 11, 0.2); color: #fbbf24; }
-        .b-intel { background: rgba(14, 165, 233, 0.2); color: #38bdf8; }
-        .b-google { background: rgba(16, 185, 129, 0.2); color: #34d399; }
-        .b-lenovo { background: rgba(225, 29, 72, 0.2); color: #fb7185; }
-        .b-cat { background: #1f2937; color: #d1d5db; border: 0.5px solid #4b5563; }
-        
-        .b-issue { background: #451a1a; color: #f87171; border: 0.5px solid #7f1d1d; }
-        .b-acqua-fw { background: #1e3a8a; color: #60a5fa; border: 0.5px solid #1e40af; }
-        .b-test-seq { background: #2e1065; color: #c4b5fd; border: 0.5px solid #5b21b6; }
-        .b-spec { background: #0c4a6e; color: #7dd3fc; border: 0.5px solid #0369a1; }
-        .b-hw-cal { background: #374151; color: #d1d5db; border: 0.5px solid #4b5563; }
-        
-        .b-inprog { background: rgba(245, 158, 11, 0.15); color: #f59e0b; }
-        .b-pending { background: rgba(239, 68, 68, 0.15); color: #ef4444; }
-        .b-closed { background: rgba(16, 185, 129, 0.15); color: #10b981; }
-        
-        .b-teams-cert { background: #1e1b4b; color: #c7d2fe; }
-        .b-uc-cert { background: #2e1065; color: #e9d5ff; }
-        .b-internal { background: #111827; color: #9ca3af; border: 0.5px solid #374151; }
-
-        .meta-row { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; border-top: 1px solid rgba(255,255,255,0.03); padding-top: 6px; }
-        .meta { font-size: 15px; color: var(--text-secondary); display: inline-flex; align-items: center; gap: 4px; font-family: monospace; }
-        .meta i { font-size: 14px; color: #6b7280; }
-        
-        .ti-chips { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 8px; }
-        .ti-chip { font-size: 12px; padding: 1px 6px; border-radius: 4px; background: #1f2937; color: #9ca3af; border: 1px solid var(--border-color); }
-        
-        .desc { font-size: 14px; color: #d1d5db; line-height: 1.5; margin-bottom: 8px; background: #151f32; padding: 6px 10px; border-radius: 6px; border-left: 2px solid #4b5563; white-space: pre-wrap; overflow-wrap: anywhere; }
-        
-        .empty { text-align: center; padding: 3rem; color: var(--text-secondary); font-size: 15px; background: var(--bg-panel); border-radius: 10px; border: 1px solid var(--border-color); }
-        
-        .sec-div { display: flex; align-items: center; gap: 8px; margin: 12px 0 10px; }
-        .sec-div span { font-size: 15px; color: #6b7280; white-space: nowrap; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
-        .sec-div hr { flex: 1; height: 1px; background: var(--border-color); border: none; }
-
-        .cat-group { display: flex; flex-direction: column; gap: 8px; }
-        .subcat-nested {
-            padding: 10px 12px 10px 14px; margin-top: 2px;
-            border-left: 2px solid var(--color-teams);
-            background: rgba(99, 102, 241, 0.06); border-radius: 0 6px 6px 0;
-        }
-        .subcat-nested label { color: #a5b4fc; }
-        .subcat-nested label::before { content: '↳ '; color: var(--text-secondary); }
-        .type-extra {
-            margin-top: 8px; padding: 12px 14px;
-            border-left: 2px solid #3b82f6; background: rgba(59,130,246,0.06);
-            border-radius: 0 8px 8px 0;
-        }
-        #q-subcat-wrap { display: none; }
-        #q-subcat-wrap.visible { display: contents; }
-
-        .mode-nav { display: flex; gap: 6px; margin-bottom: 1.25rem; padding: 4px; background: var(--bg-panel); border: 1px solid var(--border-color); border-radius: 10px; width: fit-content; }
-        .mode-tab { padding: 8px 18px; border-radius: 8px; border: none; background: transparent; color: var(--text-secondary); font-size: 15px; font-weight: 600; cursor: pointer; transition: all 0.15s; }
-        .mode-tab:hover { color: var(--text-primary); }
-        .mode-tab.active { background: var(--accent-grad); color: #fff; box-shadow: var(--accent-glow); }
-
-        .proj-card { cursor: pointer; }
-        .proj-card .rec-title { font-size: 16px; }
-        /* The title is flex:1 by default, which would shove anything after it to the
-           far edge. Wrapping the pair lets the customer sit against the name instead. */
-        .proj-titlewrap { display: flex; align-items: baseline; gap: 8px; flex: 1; min-width: 0; }
-        .proj-titlewrap .rec-title { flex: 0 1 auto; }
-        .cust-tag {
-            flex: 0 1 auto; min-width: 0; max-width: 40%;
-            overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-            font-size: 12px; font-weight: 500; color: var(--text-secondary);
-            display: inline-flex; align-items: center; gap: 4px;
-        }
-        .cust-tag .ti { font-size: 13px; flex-shrink: 0; }
-        .detail-header .cust-tag { font-size: 13px; }
-        .proj-closed { opacity: 0.65; }
-        .proj-closed .rec-title { text-decoration: line-through; color: #64748b; }
-        /* 13px, not 15px: this line is a string of supporting detail under the title,
-           and at body size it competed with the project name it sits beneath. */
-        .proj-hint { font-size: 13px; line-height: 1.55; color: var(--text-secondary); margin-top: 4px; }
-
-        .timeline { position: relative; padding-left: 20px; }
-        .timeline::before { content: ''; position: absolute; left: 6px; top: 8px; bottom: 8px; width: 2px; background: var(--border-color); }
-        .log-entry { position: relative; margin-bottom: 14px; padding: 12px 14px; background: var(--bg-panel); border: 1px solid var(--border-color); border-radius: 10px; }
-        .log-entry::before { content: ''; position: absolute; left: -17px; top: 18px; width: 10px; height: 10px; border-radius: 50%; background: #3b82f6; border: 2px solid var(--bg-app); }
-        .log-entry:has(.b-debug)::before { background: #f59e0b; }
-        .log-entry:has(.b-pretest)::before { background: #60a5fa; }
-        .log-entry:has(.b-qual)::before { background: #34d399; }
-        .log-entry:has(.b-requal)::before { background: #a78bfa; }
-        .log-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 6px; }
-        .log-date { font-size: 15px; font-weight: 700; font-family: monospace; color: var(--text-primary); }
-        .log-summary { font-size: 15px; color: #d1d5db; line-height: 1.55; margin-top: 6px; white-space: pre-wrap; overflow-wrap: anywhere; }
-        .b-debug { background: rgba(245,158,11,0.2); color: #fbbf24; }
-        .b-pretest { background: rgba(59,130,246,0.2); color: #60a5fa; }
-        .b-qual { background: rgba(16,185,129,0.2); color: #34d399; }
-        .b-requal { background: rgba(167,139,250,0.2); color: #c4b5fd; }
-        .detail-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 1rem; flex-wrap: wrap; }
-        /* Hover lives in CSS, not inline onmouseleave: clearing an inline colour drops the
-           base value too, leaving the button in the UA default (unreadably dark). */
-        .back-btn {
-            display: inline-flex; align-items: center; gap: 6px; margin-bottom: 14px;
-            padding: 8px 16px; border-radius: 8px; border: 1px solid var(--border-color);
-            background: var(--bg-panel); color: var(--text-secondary); cursor: pointer;
-            font-size: 15px; font-weight: 500; transition: color .15s, border-color .15s;
-        }
-        .back-btn:hover, .back-btn:focus-visible { color: var(--text-primary); border-color: #6b7280; }
-
-        /* Certification progress — a segmented dial. Each tick is a rect rotated about
-           the centre, so the SVG transform attribute must stay untouched by CSS:
-           the reveal animates opacity only, never transform. */
-        .cert-gauge { position: relative; flex-shrink: 0; line-height: 0; }
-        .cert-gauge svg { width: 100%; height: 100%; display: block; }
-        .gseg { fill: var(--border-color); }
-        .gseg.on { animation: gsegIn .3s ease both; animation-delay: var(--d, 0ms); }
-        @keyframes gsegIn { from { opacity: .12; } to { opacity: 1; } }
-        .gauge-num {
-            position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
-            font-weight: 700; font-variant-numeric: tabular-nums; letter-spacing: -.02em;
-            color: #22c55e; line-height: 1;
-        }
-        .gauge-num.is-early { color: var(--text-secondary); }
-        .gauge-num small { font-size: .55em; font-weight: 600; margin-left: 1px; opacity: .8; }
-        /* Only the detail view pulses, and only the leading tick: a list of cards all
-           breathing at once reads as "loading", not as a settled number. */
-        /* Both animations, or the more specific rule would drop the entry sweep on
-           this one tick and it would start beating before the dial has filled. */
-        .cert-gauge.pulse .gseg.lead {
-            animation: gsegIn .3s ease var(--d, 0ms) both, gaugeFront 1.6s ease-in-out .9s infinite;
-        }
-        @keyframes gaugeFront { 0%,100% { opacity: 1; } 50% { opacity: .25; } }
-        @media (prefers-reduced-motion: reduce) {
-          .gseg.on, .cert-gauge.pulse .gseg.lead { animation: none; }
-        }
-        .cert-pct { font-weight: 600; font-variant-numeric: tabular-nums; }
-        .proj-row { display: flex; align-items: center; gap: 14px; }
-        .proj-col { flex: 1; min-width: 0; }
-        /* Two columns on a wide screen: the list is short enough that one column left
-           most of the row empty. Multi-column rather than grid so items flow down each
-           column in turn — a grid fills across, which split Audio and Function apart. */
-        .cert-list { margin-top: 12px; column-gap: 34px; }
-        .cert-list > .cert-row { break-inside: avoid; margin-bottom: 7px; }
-        @media (min-width: 820px) { .cert-list { columns: 2; } }
-        .cert-row { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-secondary); }
-        .cert-row.done { color: var(--text-primary); }
-        .cert-row .ti { font-size: 16px; }
-        .cert-row.done .ti { color: #22c55e; }
-        /* Colour comes from the .b-* badge classes defined above, so this must not
-           set background or colour — it is declared later and would win. */
-        .plat-pill {
-            display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px;
-            border-radius: 999px; border: 1px solid transparent; cursor: pointer;
-            font-size: 13px; font-weight: 500; transition: border-color .15s, opacity .15s;
-        }
-        .plat-pill.neutral { background: var(--bg-input); color: var(--text-secondary); }
-        .plat-pill:hover { opacity: .82; }
-        .plat-pill.on { border-color: currentColor; }
-        .plat-pill .pill-n { font-size: 11px; opacity: .75; font-variant-numeric: tabular-nums; }
-        #pq-plat-row { display: flex; gap: 6px; flex-wrap: wrap; }
-        #pq-s { flex: 1 1 200px; min-width: 160px; }
-        .sample-warn {
-            display: flex; align-items: center; gap: 7px; margin-top: 12px;
-            padding: 8px 12px; border-radius: 8px; font-size: 13px;
-            background: rgba(245,158,11,.12); color: #fbbf24; border: 1px solid rgba(245,158,11,.3);
-        }
-        [data-theme="light"] .sample-warn { background: #fffbeb; color: #92400e; border-color: #fcd34d; }
-        .b-waived { background: rgba(245,158,11,.18); color: #fbbf24; }
-        [data-theme="light"] .b-waived { background: #fef3c7; color: #92400e; }
-        .iconbtn.on { color: #fbbf24; }
-        .cert-ref { font-size: 10px; padding: 1px 6px; border-radius: 999px; background: rgba(245,158,11,.16); color: #fbbf24; }
-        [data-theme="light"] .cert-ref { background: #fef3c7; color: #92400e; }
-        .cert-note { font-size: 11px; color: var(--text-secondary); opacity: .8; }
-        /* Reads as a field, but is inherited from the project rather than editable */
-        .lf-fixed {
-            padding: 8px 10px; border: 1px dashed var(--border-color); border-radius: 6px;
-            background: transparent; color: var(--text-secondary); font-size: 15px;
-        }
-
-        /* Segmented control — two exclusive options read faster as buttons.
-           The buttons are <label>s, so the global label rule has to be undone or its
-           margin leaves a gap the selected fill cannot reach. */
-        .seg { display: inline-flex; align-items: stretch; border: 1px solid var(--border-color); border-radius: 8px; overflow: hidden; }
-        .seg-btn { position: relative; display: flex; margin: 0; }
-        .seg-btn input { position: absolute; opacity: 0; pointer-events: none; }
-        .seg-btn span {
-            display: flex; align-items: center; padding: 8px 20px; font-size: 14px; line-height: 1.2;
-            white-space: nowrap; cursor: pointer; color: var(--text-secondary);
-            background: var(--bg-input); transition: background .15s, color .15s;
-        }
-        .seg-btn + .seg-btn span { border-left: 1px solid var(--border-color); }
-        .seg-btn:hover span { color: var(--text-primary); }
-        .seg-btn input:checked + span { background: #6366f1; color: #fff; }
-        .seg-btn input:focus-visible + span { outline: 2px solid #818cf8; outline-offset: -2px; }
-        .detail-title { font-size: 20px; font-weight: 700; }
-        .fw-timeline { font-size: 13px; color: #60a5fa; margin-top: 4px; font-family: monospace; }
-        .proj-tb-row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; width: 100%; }
-        #proj-toolbar { flex-direction: column; align-items: stretch; }
-        /* Inside a project the row is just two loose buttons; the panel around them
-           framed empty space rather than grouping anything. */
-        #proj-toolbar:has(#proj-tb-detail:not([hidden])) {
-            background: none; padding: 0; border: 0; border-radius: 0; margin-bottom: 0;
-        }
-        /* Back to List and New Daily Log sit one above the other, so they need to
-           share a width or the stack looks ragged. */
-        /* .btn and .back-btn have different padding, font size and radius, so matching
-           the stack means normalising all three rather than just the width. */
-        .proj-act {
-            min-width: 168px; justify-content: center;
-            padding: 8px 16px; font-size: 14px; line-height: 1.4; border-radius: 8px;
-        }
-        #proj-toolbar > .proj-tb-row { margin: 0; }
-
-        #login-screen {
-            min-height: 100vh; display: flex; align-items: center; justify-content: center;
-            padding: 1.5rem; background: var(--bg-app);
-        }
-        .login-card {
-            width: 100%; max-width: 400px; background: var(--bg-panel);
-            border: 1px solid var(--border-color); border-radius: 16px; padding: 1.75rem;
-            position: relative; overflow: hidden;
-            box-shadow: 0 24px 60px -24px rgba(99,102,241,.45), 0 10px 30px rgba(0,0,0,.35);
-        }
-        .login-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; background: var(--accent-grad); }
-        .login-title { font-size: 18px; font-weight: 600; margin-bottom: 6px; text-align: center; }
-        .login-sub { font-size: 14px; color: var(--text-secondary); margin-bottom: 1.25rem; line-height: 1.5; text-align: center; }
-        .login-err {
-            font-size: 15px; color: #fecaca; margin-top: 10px; line-height: 1.5;
-            padding: 10px 12px; border-radius: 8px;
-            background: rgba(127, 29, 29, 0.35); border: 1px solid #7f1d1d;
-            display: none;
-        }
-        .login-err.ok {
-            display: block;
-            color: #a7f3d0; background: rgba(6, 78, 59, 0.35); border-color: #065f46;
-        }
-        .login-err.busy {
-            display: block;
-            color: #fde68a; background: rgba(120, 53, 15, 0.35); border-color: #92400e;
-        }
-        .login-err.err {
-            display: block;
-        }
-        [data-theme="light"] .login-err { color: #b91c1c; background: #fef2f2; border-color: #fecaca; }
-        [data-theme="light"] .login-err.ok { color: #047857; background: #ecfdf5; border-color: #a7f3d0; }
-        [data-theme="light"] .login-err.busy { color: #b45309; background: #fffbeb; border-color: #fcd34d; }
-        .topbar-actions { display: flex; align-items: center; gap: 8px; margin-left: auto; }
-        #sync-lbl { font-size: 15px; color: var(--text-secondary); }
-        #sync-lbl.ok { color: #34d399; }
-        #sync-lbl.err { color: #f87171; }
-
-        /* ============ Mobile Responsive ============ */
-        @media (max-width: 640px) {
-          /* Header: 變成上下兩列，Logo 在上，按鈕在下 */
-          .topbar {
-            flex-direction: column;
-            align-items: stretch;
-            gap: 0;
-            margin-bottom: 0;
-            padding: 0;
-            border-bottom: 1px solid var(--border-color);
-          }
-          /* Logo 列 */
-          .logo-wrap {
-            padding: 12px 14px 10px;
-            border-bottom: 1px solid var(--border-color);
-          }
-          /* 按鈕列：三欄 grid */
-          .topbar-actions {
-            margin-left: 0;
-            padding: 8px 14px;
-            display: grid;
-            grid-template-columns: 1fr 1fr 1fr;
-            grid-template-rows: auto auto;
-            gap: 6px;
-            align-items: center;
-          }
-          /* sync 狀態跨 2 欄，日期靠右 1 欄 */
-          #sync-lbl  { grid-column: 1 / 3; font-size: 13px; }
-          #date-lbl  { grid-column: 3 / 4; text-align: right; font-size: 12px; }
-          /* 匯出/匯入/登出各佔 1 欄 */
-          .topbar-actions .btn {
-            padding: 10px 4px;
-            justify-content: center;
-            font-size: 13px;
-          }
-          /* 隱藏按鈕文字，只顯示 icon（空間不夠時） */
-          @media (max-width: 380px) {
-            .topbar-actions .btn span { display: none; }
-          }
-          /* Mode tabs */
-          .mode-nav {
-            margin: 10px 14px 0;
-            padding: 4px;
-            width: calc(100% - 28px);
-            box-sizing: border-box;
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-          }
-          .mode-nav .mode-tab {
-            flex: unset;
-            width: 100%;
-            text-align: center;
-            padding: 10px 8px;
-            font-size: 14px;
-            border-radius: 7px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 6px;
-          }
-          /* 主內容區塊 padding */
-          .app { padding: 0 0 2.5rem; }
-          .main-content { padding: 12px 14px; }
-          /* 統計列 */
-          .stat-row { gap: 8px; }
-          .stat-n { font-size: 20px; }
-          /* Toolbar */
-          .toolbar { flex-wrap: wrap; overflow: visible; gap: 8px; padding: 10px; }
-          .tb-search-wrap { flex: 1 1 100%; max-width: none; }
-          .toolbar select { flex: 1 1 auto; min-width: 120px; }
-          .tb-spacer { display: none; }
-          /* 卡片 */
-          .record { padding: 10px 12px; }
-          .rec-title { font-size: 15px; }
-          .rec-top { flex-wrap: wrap; gap: 6px; }
-          .proj-card { padding: 12px; }
-          .proj-hint { font-size: 12px; }
-          /* 專案 toolbar detail 按鈕：2欄 */
-          #proj-tb-detail {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 6px;
-            width: 100%;
-          }
-          #proj-tb-detail .tb-spacer { display: none; }
-          #proj-tb-detail .btn { justify-content: center; }
-          /* Timeline */
-          .detail-title { font-size: 17px; }
-          .timeline { padding-left: 16px; }
-          /* Platform tabs 橫向滾動 */
-          .ptabs {
-            overflow: visible;
-            flex-wrap: wrap;
-            padding-bottom: 0;
-          }
-          .ptab { white-space: nowrap; font-size: 13px; padding: 5px 12px; }
-        }
-
-        /* ===== Image attachments ===== */
-        .img-thumbs { display: flex; flex-wrap: wrap; gap: 10px; align-items: flex-start; }
-        .img-thumb { position: relative; width: 84px; height: 84px; border-radius: 8px; overflow: hidden; border: 1px solid var(--border-color); background: #0b0f19; }
-        .img-thumb img { width: 100%; height: 100%; object-fit: cover; cursor: pointer; display: block; }
-        .img-thumb .rm { position: absolute; top: 3px; right: 3px; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; border: none; border-radius: 50%; background: rgba(0,0,0,.65); color: #fff; cursor: pointer; font-size: 12px; line-height: 1; padding: 0; }
-        .img-thumb .rm:hover { background: #ef4444; }
-        .img-add-btn { width: 84px; height: 84px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; border: 1px dashed var(--border-color); border-radius: 8px; color: var(--text-secondary); cursor: pointer; font-size: 12px; transition: all .15s; }
-        .img-add-btn:hover { border-color: #6366f1; color: #a5b4fc; }
-        .img-add-btn i { font-size: 20px; }
-        .img-hint { font-size: 12px; color: var(--text-secondary); margin-top: 8px; }
-        /* ===== File attachments ===== */
-        .file-list { display: flex; flex-direction: column; gap: 6px; }
-        .file-list:empty { display: none; }
-        .file-chip { display: flex; align-items: center; gap: 8px; padding: 6px 10px; background: var(--bg-input); border: 1px solid var(--border-color); border-radius: 8px; font-size: 13px; }
-        .file-chip > i { font-size: 18px; flex-shrink: 0; }
-        .file-chip .file-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-primary); }
-        .file-chip .file-size { color: var(--text-secondary); font-size: 12px; flex-shrink: 0; font-variant-numeric: tabular-nums; }
-        .file-chip .file-rm { flex-shrink: 0; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; border: none; border-radius: 50%; background: transparent; color: var(--text-secondary); cursor: pointer; padding: 0; }
-        .file-chip .file-rm:hover { background: #ef4444; color: #fff; }
-        .file-add-btn { display: inline-flex; align-items: center; gap: 6px; margin-top: 8px; padding: 7px 12px; border: 1px dashed var(--border-color); border-radius: 8px; color: var(--text-secondary); cursor: pointer; font-size: 13px; transition: all .15s; }
-        .file-add-btn:hover { border-color: #6366f1; color: #a5b4fc; }
-        .file-add-btn i { font-size: 17px; }
-        .rec-files { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
-        .file-dl { display: inline-flex; align-items: center; gap: 7px; max-width: 280px; padding: 5px 10px; background: var(--bg-input); border: 1px solid var(--border-color); border-radius: 8px; text-decoration: none; color: var(--text-primary); font-size: 13px; transition: border-color .12s; }
-        .file-dl:hover { border-color: #6366f1; }
-        .file-dl > i { font-size: 17px; flex-shrink: 0; }
-        .file-dl .file-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .file-dl .file-size { color: var(--text-secondary); font-size: 12px; flex-shrink: 0; }
-        .file-dl .dl-ic { font-size: 15px; color: var(--text-secondary); }
-        /* ===== Version history (record detail) ===== */
-        .record.clickable { cursor: pointer; }
-        .ver-pill { font-size: 11px; font-weight: 600; padding: 1px 7px; margin-left: 7px; border-radius: 6px; background: rgba(139, 92, 246, 0.2); color: #c4b5fd; }
-        .ver-tag { font-size: 12px; font-weight: 600; padding: 2px 8px; border-radius: 6px; background: rgba(139, 92, 246, 0.2); color: #c4b5fd; }
-        .ver-when, .ver-by { font-size: 12px; color: var(--text-secondary); display: inline-flex; align-items: center; gap: 4px; }
-        .ver-timeline { list-style: none; margin: 0; padding: 0; }
-        .ver-tl-item { display: grid; grid-template-columns: 18px 1fr; gap: 10px; }
-        .ver-tl-rail { position: relative; display: flex; justify-content: center; }
-        .ver-tl-rail::before { content: ''; position: absolute; top: 14px; bottom: -4px; width: 1px; background: var(--border-color); }
-        .ver-tl-item.last .ver-tl-rail::before { display: none; }
-        .ver-tl-dot { width: 9px; height: 9px; border-radius: 50%; background: #8b5cf6; margin-top: 6px; flex-shrink: 0; z-index: 1; }
-        .ver-tl-dot.first { background: transparent; border: 1.5px solid #6b7280; }
-        .ver-tl-body { padding-bottom: 16px; min-width: 0; }
-        .ver-tl-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-        .ver-note { font-size: 13px; color: var(--text-primary); line-height: 1.5; margin-top: 5px; white-space: pre-wrap; overflow-wrap: anywhere; }
-        .ver-note.muted { color: var(--text-secondary); font-style: italic; }
-        /* Save-mode block in the edit form */
-        .save-mode { background: var(--bg-input); border: 0.5px solid var(--border-color); border-radius: 8px; padding: 12px 14px; margin-top: 16px; }
-        .sm-lbl { font-size: 11px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: .05em; margin-bottom: 4px; }
-        .sm-opt { display: flex; gap: 9px; align-items: flex-start; padding: 7px 0; cursor: pointer; }
-        .sm-opt input { margin-top: 3px; width: 15px; height: 15px; accent-color: #8b5cf6; cursor: pointer; flex-shrink: 0; }
-        .sm-n { display: block; font-size: 13px; color: var(--text-primary); }
-        .sm-d { display: block; font-size: 12px; color: var(--text-secondary); margin-top: 1px; }
-        #ver-note-wrap { margin-top: 6px; padding-top: 10px; border-top: 0.5px solid var(--border-color); }
-        /* Record detail modal */
-        .modal-card.rec-detail { max-width: 720px; max-height: 86vh; overflow-y: auto; position: relative; }
-        .rd-close { position: absolute; top: 14px; right: 14px; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; border: none; border-radius: 50%; background: transparent; color: var(--text-secondary); cursor: pointer; font-size: 17px; }
-        .rd-close:hover { background: var(--bg-input); color: var(--text-primary); }
-        .rd-head { display: flex; align-items: flex-start; gap: 10px; margin: 0 34px 8px 0; }
-        .rd-title { flex: 1; min-width: 0; font-size: 17px; font-weight: 600; color: var(--text-primary); line-height: 1.4; overflow-wrap: anywhere; }
-        .rd-head .badge { flex-shrink: 0; }
-        .rd-sec { font-size: 11px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: .05em; margin: 18px 0 10px; padding-top: 14px; border-top: 0.5px solid var(--border-color); display: flex; align-items: center; gap: 6px; }
-        .rd-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 18px; padding-top: 14px; border-top: 0.5px solid var(--border-color); }
-        [data-theme="light"] .ver-pill, [data-theme="light"] .ver-tag { background: #ede9fe; color: #6d28d9; }
-        /* ===== Lab Instruments ===== */
-        .lab-head { margin-bottom: 16px; }
-        .lab-h1 { font-size: 20px; font-weight: 600; color: var(--text-primary); display: flex; align-items: center; gap: 8px; }
-        .lab-sub { font-size: 13px; color: var(--text-secondary); margin-top: 4px; }
-        .lab-note { font-size: 12px; color: var(--text-secondary); font-weight: 400; margin-left: 8px; padding: 2px 7px; border: 0.5px solid var(--border-color); border-radius: 6px; }
-        .lab-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
-        .lab-card { text-align: left; background: var(--bg-panel); border: 1px solid var(--border-color); border-radius: 12px; padding: 14px 16px; cursor: pointer; transition: border-color .12s, transform .12s; color: var(--text-primary); font: inherit; }
-        .lab-card:hover { border-color: #6366f1; transform: translateY(-2px); }
-        .lab-card-top { display: flex; justify-content: space-between; align-items: center; }
-        .lab-name { font-size: 16px; font-weight: 600; display: flex; align-items: center; }
-        .lab-card-meta { font-size: 13px; color: var(--text-secondary); margin: 8px 0; }
-        .lf-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
-        .lf-pill { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; padding: 3px 9px; border-radius: 6px; white-space: nowrap; }
-        .lab-by { font-size: 12px; color: var(--text-secondary); white-space: nowrap; }
-        .lf-ok.lf-dot, .lf-ok { }
-        .lf-dot.lf-ok { background: #34d399; } .lf-pill.lf-ok { background: rgba(52,211,153,.18); color: #34d399; }
-        .lf-dot.lf-warn { background: #fbbf24; } .lf-pill.lf-warn { background: rgba(251,191,36,.18); color: #fbbf24; }
-        .lf-dot.lf-old { background: #f87171; } .lf-pill.lf-old { background: rgba(248,113,113,.18); color: #f87171; }
-        .lf-dot.lf-none { background: #6b7280; } .lf-pill.lf-none { background: rgba(107,114,128,.2); color: #9ca3af; }
-        .lab-detail-head { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 12px; margin-bottom: 14px; }
-        .lab-dates { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 6px; }
-        .lab-changed-note { font-size: 12px; color: var(--text-secondary); display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
-        .lab-paste-sub { font-size: 12px; color: var(--text-secondary); margin-bottom: 8px; }
-        .lab-actions { display: flex; gap: 8px; flex-wrap: wrap; }
-        .lab-table { border: 1px solid var(--border-color); border-radius: 12px; overflow: hidden; }
-        .lab-tr { display: grid; grid-template-columns: 1.1fr 1.4fr 116px 104px; gap: 16px; align-items: center; padding: 10px 14px; border-top: 0.5px solid var(--border-color); }
-        .lab-tr:first-child { border-top: none; }
-        .lab-tr-edit { background: var(--bg-input); }
-        .lab-thead { background: var(--bg-input); font-size: 12px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: .04em; }
-        .lab-name-cell { font-size: 14px; color: var(--text-primary); }
-        .lab-val-cell { font-size: 13px; color: var(--text-secondary); font-family: ui-monospace, Menlo, Consolas, monospace; word-break: break-word; }
-        .lab-ver-col { display: flex; flex-direction: column; align-items: flex-end; text-align: right; }
-        .lab-ver { font-size: 13px; font-family: ui-monospace, Menlo, Consolas, monospace; color: var(--text-primary); }
-        .lab-chg { font-size: 13px; color: var(--text-secondary); font-family: ui-monospace, Menlo, Consolas, monospace; }
-        .lab-empty { padding: 22px 14px; text-align: center; color: var(--text-secondary); font-size: 13px; }
-        .lab-in { height: 32px; border: 0.5px solid var(--border-color); background: var(--bg-input); border-radius: 6px; color: var(--text-primary); padding: 0 8px; font-size: 13px; width: 100%; }
-        .lab-in:focus { outline: none; border-color: #6366f1; }
-        .lab-val-in { font-family: ui-monospace, Menlo, Consolas, monospace; }
-        .lab-row-actions { display: flex; gap: 4px; justify-content: flex-end; align-items: center; }
-        .lab-iconbtn { width: 28px; height: 28px; display: inline-flex; align-items: center; justify-content: center; border: 0.5px solid var(--border-color); border-radius: 6px; background: transparent; color: var(--text-secondary); cursor: pointer; padding: 0; font-size: 15px; }
-        .lab-iconbtn:hover { color: var(--text-primary); border-color: var(--text-secondary); }
-        .lab-iconbtn.ok:hover { background: #059669; color: #fff; border-color: #059669; }
-        .lab-iconbtn.danger:hover { background: #ef4444; color: #fff; border-color: #ef4444; }
-        .lab-iconbtn:disabled { opacity: .3; cursor: default; }
-        .lab-addrow { display: flex; gap: 8px; flex-wrap: wrap; margin: 10px 14px; }
-        /* Category sections */
-        .lab-group-head { display: flex; align-items: center; gap: 8px; padding: 8px 14px; background: rgba(99,102,241,.10); border-top: 0.5px solid var(--border-color); font-size: 12px; font-weight: 600; color: #a5b4fc; text-transform: uppercase; letter-spacing: .04em; }
-        .lab-group-head.none { color: var(--text-secondary); background: var(--bg-input); }
-        .lab-group-head:first-child { border-top: none; }
-        .lab-group-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .lab-group-head .lab-row-actions { flex-shrink: 0; margin-left: auto; }
-        .lab-group-head.editing { padding: 8px 10px; gap: 8px; }
-        .lab-group-head.editing .lab-in { max-width: 260px; text-transform: none; }
-        .lab-group-empty { padding: 10px 14px; font-size: 12px; color: var(--text-secondary); font-style: italic; border-top: 0.5px solid var(--border-color); }
-        .lab-tr-edit { grid-template-columns: 120px 1fr 1.2fr 72px; }
-        .lab-group-in { font-size: 12px; }
-        .lab-paste-cat { display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: 12px; color: var(--text-secondary); }
-        .lab-paste-cat input { flex: 1; max-width: 220px; height: 30px; border: 0.5px solid var(--border-color); background: var(--bg-input); border-radius: 6px; color: var(--text-primary); padding: 0 8px; font-size: 13px; }
-        [data-theme="light"] .lab-group-head { background: #eef2ff; color: #4338ca; }
-        /* Reorder mode */
-        .lab-reorder-hint { display: flex; align-items: center; gap: 7px; font-size: 12px; color: #c4b5fd; background: rgba(139, 92, 246, 0.12); border-left: 2px solid #8b5cf6; padding: 8px 12px; margin-bottom: 10px; }
-        .lab-table.reordering { border-color: #8b5cf6; }
-        .lab-tr-reorder { grid-template-columns: 24px 1.1fr 1.4fr 116px 72px; }
-        .lab-grip { display: flex; align-items: center; justify-content: center; color: var(--text-secondary); cursor: grab; font-size: 16px; }
-        .lab-grip:active { cursor: grabbing; }
-        .lab-thead .lab-grip { cursor: default; }
-        .lab-tr-reorder[draggable="true"] { background: var(--bg-input); }
-        .lab-tr-reorder.drop-above { box-shadow: inset 0 2px 0 #8b5cf6; }
-        .lab-tr-reorder.drop-below { box-shadow: inset 0 -2px 0 #8b5cf6; }
-        .lab-table.reordering .lab-group-head { outline-offset: -2px; }
-        .lab-table.reordering .lab-group-head:hover { outline: 2px dashed #8b5cf6; }
-        /* Move-to-category menu */
-        .lab-menu { position: fixed; z-index: 10800; min-width: 178px; max-height: 60vh; overflow-y: auto; background: var(--bg-panel); border: 1px solid var(--border-color); border-radius: 10px; padding: 5px; box-shadow: 0 12px 32px rgba(0,0,0,.45); }
-        .lab-menu-h { font-size: 11px; color: var(--text-secondary); text-transform: uppercase; letter-spacing: .05em; padding: 5px 9px 6px; }
-        .lab-menu button { display: flex; align-items: center; justify-content: space-between; gap: 8px; width: 100%; text-align: left; background: transparent; border: none; border-radius: 6px; padding: 7px 9px; font-size: 13px; color: var(--text-primary); cursor: pointer; }
-        .lab-menu button:hover { background: var(--bg-input); }
-        .lab-menu button.sel { color: #a5b4fc; }
-        [data-theme="light"] .lab-reorder-hint { background: #f5f3ff; color: #6d28d9; }
-        .lab-paste { margin-top: 18px; padding: 14px 16px; border: 0.5px dashed var(--border-color); border-radius: 12px; }
-        .lab-paste-h { font-size: 14px; font-weight: 500; color: var(--text-primary); margin-bottom: 8px; display: flex; align-items: center; gap: 6px; }
-        .lab-paste-txt { width: 100%; min-height: 78px; border: 0.5px solid var(--border-color); background: var(--bg-input); border-radius: 8px; color: var(--text-primary); padding: 8px; font-size: 13px; font-family: ui-monospace, Menlo, Consolas, monospace; resize: vertical; }
-        .lab-parse-panel { margin-top: 12px; }
-        .lab-parse-sum { font-size: 13px; color: var(--text-secondary); margin-bottom: 8px; }
-        .lab-parse-row { display: grid; grid-template-columns: 70px 1fr auto; gap: 10px; align-items: center; padding: 6px 0; border-top: 0.5px solid var(--border-color); }
-        .lab-parse-name { font-size: 13px; color: var(--text-primary); }
-        .lab-parse-ver { font-size: 13px; font-family: ui-monospace, Menlo, Consolas, monospace; text-align: right; }
-        .lab-badge { font-size: 11px; padding: 2px 7px; border-radius: 6px; text-align: center; }
-        .lab-chg-old { color: var(--text-secondary); } .lab-chg-new { color: #34d399; }
-        @media (max-width: 600px){
-          /* One column, with the actions on their own line so nothing is cramped */
-          .lab-tr, .lab-tr-edit, .lab-tr-reorder { grid-template-columns: 1fr; row-gap: 7px; }
-          .lab-name-cell, .lab-val-cell, .lab-ver-col, .lab-in, .lab-row-actions { grid-column: 1; }
-          .lab-ver-col { align-items: flex-start; text-align: left; flex-direction: row; gap: 8px; }
-          .lab-row-actions { justify-content: flex-start; }
-          /* No native touch drag — the arrows are the reliable path on phones */
-          .lab-grip { display: none; }
-        }
-        /* ===== Stat strip (replaces the old dashboard panel) ===== */
-        .stat-strip { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; background: var(--bg-panel); border: 1px solid var(--border-color); border-radius: 12px; padding: 7px 10px; margin-bottom: 12px; }
-        /* Share the bar evenly instead of bunching at the left edge */
-        .stat-pill { flex: 1 1 0; min-width: 128px; display: inline-flex; align-items: baseline; justify-content: center; gap: 7px; padding: 5px 12px; border-radius: 8px; background: var(--bg-input); border: 1px solid transparent; color: var(--text-primary); font: inherit; cursor: pointer; transition: border-color .12s; }
-        .stat-pill:hover { border-color: var(--text-secondary); }
-        .stat-pill.on { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(99,102,241,.25); }
-        .stat-pill.static { cursor: default; background: none; }
-        .stat-pill.static:hover { border-color: transparent; }
-        .stat-n { font-size: 17px; font-weight: 700; line-height: 1.1; font-variant-numeric: tabular-nums; }
-        .s-open .stat-n { color: #60a5fa; } .s-closed .stat-n { color: #34d399; } .stat-n.s-avg { color: #fbbf24; }
-        .stat-k { font-size: 12px; color: var(--text-secondary); }
-        .stat-warn { flex: 0 0 auto; display: inline-flex; align-items: center; gap: 5px; padding: 0 6px; font-size: 12px; color: #f87171; }
-        .db-empty { color: var(--text-secondary); font-size: 13px; }
-        .btn.active { border-color: #6366f1; color: #a5b4fc; }
-        .sample-checks { display: flex; flex-wrap: wrap; gap: 8px 16px; padding: 10px 12px; background: var(--bg-input); border: 1px solid var(--border-color); border-radius: 8px; }
-        .sample-chk { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text-primary); cursor: pointer; white-space: nowrap; }
-        .sample-chk input { width: 15px; height: 15px; accent-color: #6366f1; cursor: pointer; }
-        .rec-images { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 8px; align-items: flex-start; }
-        .rec-images img { max-width: 100%; width: auto; height: auto; object-fit: contain; border-radius: 8px; border: 1px solid var(--border-color); background: #0b0f19; cursor: zoom-in; transition: border-color .12s; }
-        .rec-images img.sz-sm { max-height: 90px; }
-        .rec-images img.sz-md { max-height: 180px; }
-        .rec-images img.sz-lg { max-height: 340px; }
-        .img-size { position: absolute; bottom: 3px; left: 3px; width: 46px; height: 20px; padding: 0 3px; font-size: 11px; line-height: 1; border: none; border-radius: 4px; background: rgba(0,0,0,.68); color: #fff; cursor: pointer; }
-        .rec-images img:hover { border-color: #6366f1; }
-        /* List cards preview screenshots at a fixed size; full size lives in the record view */
-        .rec-thumbs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
-        .rec-thumbs .thumb { position: relative; width: 68px; height: 68px; border-radius: 8px; overflow: hidden; border: 1px solid var(--border-color); background: #0b0f19; cursor: zoom-in; flex-shrink: 0; }
-        .rec-thumbs .thumb:hover { border-color: #6366f1; }
-        .rec-thumbs .thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
-        .thumb-more { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,.62); color: #fff; font-size: 15px; font-weight: 600; }
-        /* Above .modal-overlay (10500) so it is not trapped behind the record view,
-           but below #toast-host (11000) so messages stay readable */
-        .img-lightbox { position: fixed; inset: 0; z-index: 10900; background: rgba(0,0,0,.85); display: flex; align-items: center; justify-content: center; padding: 24px; cursor: zoom-out; }
-        .img-lightbox img { max-width: 95%; max-height: 95%; border-radius: 8px; box-shadow: 0 10px 40px rgba(0,0,0,.6); }
-        .img-lightbox .lb-close { position: fixed; top: 18px; right: 22px; width: 40px; height: 40px; border: none; border-radius: 50%; background: rgba(255,255,255,.12); color: #fff; font-size: 20px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
-        .img-lightbox .lb-close:hover { background: rgba(255,255,255,.25); }
-
-        /* ===== Account approval ===== */
-        .pending-box { margin-top: 16px; border: 1px solid var(--border-color); border-radius: 8px; overflow: hidden; }
-        .pending-row { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 9px 12px; font-size: 13px; color: var(--text-secondary); border-top: 0.5px solid var(--border-color); }
-        .pending-row:first-child { border-top: none; }
-        .pending-row b { color: var(--text-primary); font-weight: 500; word-break: break-all; }
-        .pending-badge { background: rgba(251,191,36,.18); color: #fbbf24; border-radius: 6px; padding: 2px 9px; font-size: 12px; }
-        /* Icon-only like its neighbours; the pending count rides as a corner badge
-           so the button never changes size and the glyph stays centred */
-        #admin-users-btn { position: relative; }
-        #admin-users-btn.has-pending { border-color: #fbbf24; color: #fbbf24; }
-        .admin-badge { position: absolute; top: -6px; right: -6px; min-width: 17px; height: 17px; padding: 0 4px; border-radius: 9px; background: #fbbf24; color: #1f2937; font-size: 10px; font-weight: 700; line-height: 1; display: flex; align-items: center; justify-content: center; }
-        .au-list { max-height: 340px; overflow-y: auto; margin-bottom: 14px; }
-        .au-sec { font-size: 11px; text-transform: uppercase; letter-spacing: .05em; color: var(--text-secondary); margin: 12px 0 6px; }
-        .au-sec:first-child { margin-top: 0; }
-        .au-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; padding: 9px 10px; border: 0.5px solid var(--border-color); border-radius: 8px; margin-bottom: 6px; background: var(--bg-input); }
-        .au-who { min-width: 0; display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
-        .au-mail { font-size: 13px; color: var(--text-primary); word-break: break-all; }
-        .au-tag { font-size: 11px; padding: 1px 7px; border-radius: 6px; background: var(--bg-panel); color: var(--text-secondary); }
-        .au-tag.admin { background: rgba(139,92,246,.2); color: #c4b5fd; }
-        .au-when { font-size: 11px; color: var(--text-secondary); }
-        .au-act { display: flex; gap: 6px; flex-shrink: 0; }
-        .au-act .btn { font-size: 12px; padding: 5px 11px; }
-        [data-theme="light"] .pending-badge { background: #fef3c7; color: #b45309; }
-        [data-theme="light"] .au-tag.admin { background: #ede9fe; color: #6d28d9; }
-
-        /* ===== Toasts ===== */
-        #toast-host { position: fixed; right: 18px; bottom: 18px; z-index: 11000; display: flex; flex-direction: column; gap: 10px; pointer-events: none; }
-        .toast { display: flex; align-items: center; gap: 10px; min-width: 240px; max-width: 380px; padding: 12px 16px; border-radius: 10px; background: var(--bg-panel); color: var(--text-primary); border: 1px solid var(--border-color); box-shadow: 0 8px 24px rgba(0,0,0,.35); font-size: 14px; opacity: 0; transform: translateY(12px); transition: opacity .22s, transform .22s; pointer-events: auto; }
-        .toast.show { opacity: 1; transform: translateY(0); }
-        .toast i { font-size: 18px; flex-shrink: 0; }
-        .toast-success { border-left: 3px solid #34d399; } .toast-success i { color: #34d399; }
-        .toast-warn { border-left: 3px solid #fbbf24; } .toast-warn i { color: #fbbf24; }
-        .toast-error { border-left: 3px solid #f87171; } .toast-error i { color: #f87171; }
-        .toast-info { border-left: 3px solid #60a5fa; } .toast-info i { color: #60a5fa; }
-
-        /* ===== Confirm modal ===== */
-        .modal-overlay { position: fixed; inset: 0; z-index: 10500; background: rgba(0,0,0,.55); display: flex; align-items: center; justify-content: center; padding: 20px; opacity: 0; transition: opacity .18s; }
-        .modal-overlay.show { opacity: 1; }
-        .modal-card { background: var(--bg-panel); border: 1px solid var(--border-color); border-radius: 14px; padding: 24px 26px; max-width: 420px; width: 100%; box-shadow: 0 20px 60px rgba(0,0,0,.5); transform: scale(.96); transition: transform .18s; }
-        .modal-overlay.show .modal-card { transform: scale(1); }
-        .modal-title { font-size: 17px; font-weight: 600; color: var(--text-primary); margin-bottom: 8px; }
-        .modal-msg { font-size: 14px; color: var(--text-secondary); line-height: 1.55; margin-bottom: 22px; white-space: pre-line; }
-        .modal-actions { display: flex; justify-content: flex-end; gap: 10px; }
-        .ts-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 8px 10px; background: var(--bg-input); border: 1px solid var(--border-color); border-radius: 6px; margin-bottom: 6px; font-size: 14px; color: var(--text-primary); }
-        .ts-del { border: none; background: none; color: #f87171; cursor: pointer; font-size: 14px; display: flex; padding: 4px; border-radius: 4px; }
-        .ts-del:hover { background: rgba(239,68,68,.14); }
-        [data-theme="light"] .ts-del { color: #dc2626; }
-
-        /* Batch selection */
-        .rec-select { width: 16px; height: 16px; accent-color: #6366f1; cursor: pointer; flex-shrink: 0; margin-right: 2px; }
-        .record.selected { border-color: var(--accent); box-shadow: 0 0 0 2px rgba(99,102,241,.25); }
-        .batch-bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; background: var(--bg-panel); border: 1px solid var(--accent); border-radius: 10px; padding: 10px 14px; margin-bottom: 12px; box-shadow: var(--accent-glow); }
-        .batch-bar .batch-n { font-weight: 600; color: var(--text-primary); display: inline-flex; align-items: center; gap: 6px; margin-right: auto; }
-        /* Skeleton loading */
-        .skel-wrap { display: flex; flex-direction: column; gap: 10px; }
-        .skel-card { background: var(--bg-panel); border: 1px solid var(--border-color); border-radius: 10px; padding: 16px; }
-        .skel-line { height: 12px; border-radius: 6px; margin-bottom: 10px; background: linear-gradient(90deg, var(--bg-input) 25%, rgba(148,163,184,.18) 37%, var(--bg-input) 63%); background-size: 400% 100%; animation: skel 1.4s ease infinite; }
-        .skel-line:last-child { margin-bottom: 0; }
-        .skel-line.w30 { width: 30%; } .skel-line.w70 { width: 70%; } .skel-line.w90 { width: 90%; }
-        @keyframes skel { 0% { background-position: 100% 0; } 100% { background-position: 0 0; } }
-        /* Keyboard shortcuts help */
-        .kbd-row { display: flex; align-items: center; gap: 12px; padding: 6px 0; font-size: 14px; color: var(--text-primary); }
-        .kbd { min-width: 42px; text-align: center; padding: 3px 8px; border-radius: 6px; border: 1px solid var(--border-color); background: var(--bg-input); font-family: monospace; font-size: 13px; color: var(--text-primary); }
-        .btn.danger-solid { background: #ef4444; border-color: #ef4444; color: #fff; }
-        .btn.danger-solid:hover { background: #dc2626; border-color: #dc2626; }
-
-        /* ===== Dropdown menu ===== */
-        .dropdown { position: relative; display: inline-block; }
-        .dropdown-menu { position: absolute; top: calc(100% + 6px); right: 0; min-width: 190px; background: var(--bg-panel); border: 1px solid var(--border-color); border-radius: 10px; box-shadow: 0 12px 32px rgba(0,0,0,.4); padding: 6px; display: none; z-index: 60; }
-        .dropdown.open .dropdown-menu { display: block; animation: ddIn .14s ease; }
-        @keyframes ddIn { from { opacity: 0; transform: translateY(-4px);} to { opacity: 1; transform: translateY(0);} }
-        .dropdown-menu button { display: flex; align-items: center; gap: 9px; width: 100%; padding: 9px 12px; background: none; border: none; border-radius: 6px; color: var(--text-primary); font-size: 14px; text-align: left; cursor: pointer; }
-        .dropdown-menu button:hover { background: var(--bg-input); }
-        .dropdown-menu button i { font-size: 16px; color: var(--text-secondary); }
-        .dropdown-menu button.active { color: var(--accent-2); font-weight: 600; background: rgba(99,102,241,.12); }
-        /* ===== Category / Type filter menus (one level of fly-out children) ===== */
-        .tb-filters > .filter-dd { flex: 1 1 160px; }
-        .filter-dd .filter-btn { width: 100%; justify-content: space-between; gap: 8px; }
-        .filter-dd .filter-btn > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .filter-dd.is-set .filter-btn { border-color: var(--accent); color: var(--text-primary); }
-        .filter-dd .dropdown-menu { left: 0; right: auto; min-width: 100%; }
-        .dd-item { position: relative; }
-        .dd-item > button { width: 100%; }
-        .dd-item.has-sub > button { padding-right: 8px; }
-        .dd-arrow { margin-left: auto; font-size: 15px; color: var(--text-secondary); }
-        .dd-empty { padding: 10px 12px; font-size: 13px; color: var(--text-secondary); }
-        /* Desktop: children fly out to the right on hover/focus */
-        .dd-sub { display: none; position: absolute; top: -6px; left: 100%; min-width: 176px; background: var(--bg-panel); border: 1px solid var(--border-color); border-radius: 10px; box-shadow: 0 12px 32px rgba(0,0,0,.4); padding: 6px; z-index: 61; }
-        .dd-item.has-sub:hover > .dd-sub, .dd-item.has-sub:focus-within > .dd-sub { display: block; }
-        .dd-sub button { display: flex; width: 100%; padding: 8px 12px; background: none; border: none; border-radius: 6px; color: var(--text-primary); font-size: 13px; text-align: left; cursor: pointer; }
-        .dd-sub button:hover { background: var(--bg-input); }
-        .dd-sub button.active { color: var(--accent-2); font-weight: 600; background: rgba(99,102,241,.12); }
-        /* Not enough room to the right? flip the fly-out to the left */
-        .filter-dd.flip .dd-sub { left: auto; right: 100%; }
-        /* Touch / narrow: no hover, so children sit inline under their parent */
-        @media (hover: none), (max-width: 720px) {
-          .dd-sub { display: block; position: static; border: none; box-shadow: none; padding: 0 0 4px 14px; min-width: 0; background: none; }
-          .dd-item.has-sub > button .dd-arrow { transform: rotate(90deg); }
-        }
-        .btn.icon-btn { padding: 6px 10px; }
-        .btn.icon-btn i { font-size: 16px; }
-        .btn .chev { font-size: 11px; margin-left: 2px; opacity: .7; }
-    </style>
+    <link rel="stylesheet" href="./frontend/src/assets/app.css">
 </head>
 <body>
 
@@ -945,6 +24,21 @@
     <div class="login-title">AudioTracker</div>
     <div class="login-sub">Sync daily, thrive together.</div>
     <div id="login-file-warn" class="login-sub" style="display:none;color:#fbbf24;margin-top:-8px;margin-bottom:10px"></div>
+    <!-- A classic script on purpose. The app is a module, and a browser will not
+         fetch a module over file:// - its origin is "null", so the CORS check can
+         never pass and nothing below runs at all. That means the module cannot be
+         the thing that warns you about it: the warning has to come from a script
+         that still runs, which is this one. -->
+    <script>
+      if (location.protocol === 'file:') {
+        var w = document.getElementById('login-file-warn');
+        w.style.display = 'block';
+        w.innerHTML = 'Opened as a local file, so none of the buttons will work \u2014 ' +
+          'a browser refuses to load this page\u2019s code over <b>file://</b>. ' +
+          'Run <b>aclab-start.bat</b> in the project folder and use ' +
+          '<b>http://127.0.0.1:8765/</b> instead. The published site is unaffected.';
+      }
+    </script>
     <label for="login-email">Email</label>
     <input type="email" id="login-email" placeholder="team@company.com" autocomplete="username" style="margin-bottom:10px">
     <label for="login-pass">Password</label>
@@ -1169,154 +263,23 @@
     </div>
 </div>
 
-<script>
-/* samples: 該平台/分類可選的 Sample Type。
-   - 放在平台層 = 該平台所有分類共用
-   - 放在分類層 = 只有該分類適用（優先於平台層）
-   - 兩層都沒有 = 該組合不需要 Sample Type，表單不顯示這一段 */
-const PLATFORMS={
-  Teams:{
-    color:'teams',pfx:'TM',label:'Teams',
-    samples:[
-      {v:'personal-hs-usb',l:'Personal - Headset (USB)'},
-      {v:'personal-hs-dongle',l:'Personal - Headset (Dongle)'},
-      {v:'personal-hs-nbt-classic',l:'Personal - Headset (NBT-Classic)'},
-      {v:'personal-hs-nbt-lea',l:'Personal - Headset (NBT-LE Audio)'},
-      {v:'personal-speakerphone',l:'Personal - Speakerphone'},
-      {v:'personal-deskphone',l:'Personal - Deskphone'},
-      {v:'personal-laptop',l:'Personal - Laptop'},
-      /* Three, not two: a shared speakerphone may carry no system of its own and
-         connect like a peripheral, which is the case the plain entry covers and the
-         one existing records already use. MTRoW/MTRoA name the built-in system the
-         same way Project Log does. */
-      {v:'shared-speakerphone',l:'Shared - Speakerphone'},
-      {v:'shared-speakerphone-mtrow',l:'Shared - Speakerphone (MTRoW)'},
-      {v:'shared-speakerphone-mtroa',l:'Shared - Speakerphone (MTRoA)'}
-    ],
-    categories:[
-      {v:'Audio',l:'Audio'},
-      {v:'Function',l:'Function',children:[
-        {v:'ASP HID',l:'ASP HID'},
-        {v:'Telemetry',l:'Telemetry'},
-        {v:'UCQ',l:'UCQ'},
-        {v:'NBT Function',l:'NBT Function'}
-      ]},
-      {v:'RTC',l:'RTC (Real-time Communication)'}
-    ]
-  },
-  'Microsoft HDE':{
-    color:'cortana',pfx:'CO',label:'Microsoft HDE',
-    categories:[
-      {v:'Cortana',l:'Cortana',children:[
-        {v:'HWKWS',l:'HWKWS'},
-        {v:'SWKWS',l:'SWKWS'}
-      ],samples:[
-        {v:'hde-headset',l:'Headset'},
-        {v:'hde-laptop',l:'Laptop'},
-        {v:'hde-center-of-room',l:'Center of room'},
-        {v:'hde-edge-of-room',l:'Edge of room'}
-      ]},
-      // Talk Analysis Suite 只有筆電，不需要 Sample Type
-      {v:'Talk Analysis Suite',l:'Talk Analysis Suite'}
-    ]
-  },
-  Zoom:{
-    color:'zoom',pfx:'ZM',label:'Zoom',
-    categories:[
-      {v:'Audio',l:'Audio',samples:[
-        {v:'zoom-meeting',l:'Zoom Meeting'},
-        {v:'zoom-rooms',l:'Zoom Rooms'}
-      ]},
-      {v:'AIO',l:'AIO (Function)',samples:[
-        {v:'zoom-zrc',l:'ZRC'},
-        {v:'zoom-zrp',l:'ZRP'},
-        {v:'zoom-fw-aio',l:'FW&AIO'}
-      ]}
-    ]
-  },
-  Intel:{
-    color:'intel',pfx:'IN',label:'Intel',
-    categories:[
-      {v:'SPET',l:'SPET',samples:[
-        {v:'intel-lnl',l:'LNL'},
-        {v:'intel-ptl',l:'PTL'}
-      ]},
-      {v:'BT Audio',l:'BT Audio'}
-    ]
-  },
-  Google:{
-    color:'google',pfx:'GG',label:'Google',
-    categories:[
-      {v:'Fastpair',l:'Fastpair'},
-      {v:'ART',l:'ART (GRT)'},
-      {v:'BART',l:'BART (BGRT)'},
-      {v:'SASS',l:'SASS'},
-      {v:'FindMyDevices',l:'FindMyDevices'},
-      {v:'Chrome Audio',l:'Chrome Audio',samples:[
-        {v:'google-chromebox',l:'Chromebox'},
-        {v:'google-chromebook-system',l:'Chromebook system'},
-        {v:'google-alos-system',l:'ALOS system'},
-        {v:'google-soundcheck-v20',l:'Soundcheck v.20'},
-        {v:'google-soundcheck-v21',l:'Soundcheck v.21'}
-      ]}
-    ]
-  },
-  Lenovo:{
-    color:'lenovo',pfx:'LN',label:'Lenovo',
-    samples:[
-      {v:'lenovo-soundcheck-v20',l:'Soundcheck v.20'},
-      {v:'lenovo-soundcheck-v21',l:'Soundcheck v.21'},
-      {v:'lenovo-winbg',l:'WinBG'},
-      {v:'lenovo-sweep',l:'Sweep'},
-      {v:'lenovo-pink-noise',l:'Pink noise'}
-    ],
-    categories:[
-      {v:'LNV',l:'LNV'},
-      {v:'HWF',l:'HWF'}
-    ]
-  }
-};
-const PLAT_NAMES=Object.keys(PLATFORMS);
-const PLAT_COLOR=Object.fromEntries(PLAT_NAMES.map(p=>[p,PLATFORMS[p].color]));
-const PLAT_PFX=Object.fromEntries(PLAT_NAMES.map(p=>[p,PLATFORMS[p].pfx]));
-const STORAGE_KEY='aclab_v5';
-const LEGACY_KEYS=['aclab_v4','aclab_v3'];
+<script type="module">
+import { ARCHIVE_AFTER_DAYS, applyStatusOnRecord, closeDaysOf, isProjectArchived, isRecordArchived, recordClosedAt, recordStatus } from './frontend/src/domain/archive.js';
+import { CERT_PHASES, CERT_PLATFORMS, CERT_SINGLE_GROUPS, GAUGE_SEGS, PHASES, PHASE_MAP, certItemDone, certItemLabel, certItemsFor, certPlatLabel, certProgress, hasProgressBar, latestFw, logCertItems, projOS, projPlatform, qualSampleClash, sortedLogs } from './frontend/src/domain/certification.js';
+import { CERT_CLS, CERT_LBL, LABS, PLATFORMS, PLAT_COLOR, PLAT_NAMES, PLAT_PFX, STATUSES, STATUS_MAP, STATUS_NEXT, TYPES_ALT_MAP, TYPES_AUDIO_MAP, TYPE_ICON, TYPE_MAP, UPDATE_SUBTYPES, catDef, catDisplay, catHasChildren, catLbl, getTypesForPlat, legacyTypeLabel, recordSampleLabels, recordSampleValues, recordTypeLabel, sampleOptsFor, sampleTypesFor } from './frontend/src/domain/platforms.js';
+import { BUILT_IN_OS, CHROME_FEATURES, CHROME_MIC, CHROME_OS, EARPIECE, HEADSET_CONN, PERSONAL_FEATURES, PRODUCT_TYPE_MAP, SELF_HOSTED_TYPES, TEST_DISTANCES, headsetConnValues, platformUsesExtra, productTypeSummary, productTypesFor, usesProductType } from './frontend/src/domain/products.js';
+import { STORAGE_KEY, migrateRecords, recordAssets, recordVersionNo, stripLogs } from './frontend/src/domain/records.js';
+import { daysSince, fmtDateShort, isoDaysAgo, isoMonthsAhead, nowISO, todayISO } from './frontend/src/utils/dates.js';
+import { downloadJson } from './frontend/src/utils/download.js';
+import { esc, extractVersion, fmtMB, fmtUser, qv } from './frontend/src/utils/format.js';
 
-/* ===== Lab Instruments ===== */
-// The lab roster (note = what the lab is used for). Instrument data lives in Supabase.
-const LABS=[
-  {id:'A1',note:'TAS'},
-  {id:'A2',note:''},
-  {id:'A3',note:'Zoom'},
-  {id:'A4',note:''},
-  {id:'A5',note:''},
-  {id:'A6',note:'Zoom AIO'},
-  {id:'A7',note:''},
-  {id:'A8',note:'203 Cortana'},
-  {id:'A9',note:'Stylus'},
-  {id:'A10',note:'202 SPET/DNS'}
-];
-// Pull the first version-like number (e.g. 6.2.210) out of a value string
-function extractVersion(s){ const m=String(s||'').match(/(\d+(?:\.\d+){1,4})/); return m?m[1]:''; }
-// Days since an ISO date (null-safe)
-function daysSince(iso){ if(!iso) return Infinity; return Math.floor((Date.now()-new Date(iso).getTime())/86400000); }
 // Freshness bucket for the "last verified" indicator
 function labFreshness(iso){
   const n=daysSince(iso);
-  if(!iso||n===Infinity) return {cls:'lf-none',label:'never'};
+  if(!iso) return {cls:'lf-none',label:'never'};   // daysSince never returns Infinity
   return {cls:n<=30?'lf-ok':n<=90?'lf-warn':'lf-old',label:n+'d ago'};
 }
 
-function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
-/* Local calendar day, not UTC. toISOString() reports the UTC date, which in Taipei
-   is still yesterday between midnight and 08:00 - so anything closed or logged in
-   that window was stamped a day early, and daysSince() reads the string back as
-   local midnight, so the two have to agree on which day it is. Under the old timer
-   that meant a record could be deleted a day before its thirty were up. */
-function localISO(d){ return new Date(d.getTime()-d.getTimezoneOffset()*60000).toISOString().slice(0,10); }
-function todayISO(){ return localISO(new Date()); }
-function isoDaysAgo(n){ const d=new Date(); d.setDate(d.getDate()-n); return localISO(d); }
-function isoMonthsAhead(n){ const d=new Date(); d.setMonth(d.getMonth()+n); return localISO(d); }
 
 /* ===== Toast notifications + custom confirm dialog ===== */
 function toast(msg,type,ms){
@@ -1331,6 +294,7 @@ function toast(msg,type,ms){
   requestAnimationFrame(()=>el.classList.add('show'));
   setTimeout(()=>{ el.classList.remove('show'); setTimeout(()=>el.remove(),260); }, ms);
 }
+
 function confirmModal(message,opts){
   opts=opts||{};
   return new Promise(resolve=>{
@@ -1355,6 +319,7 @@ function confirmModal(message,opts){
     requestAnimationFrame(()=>{ ov.classList.add('show'); ov.querySelector('[data-act=ok]').focus(); });
   });
 }
+
 function toggleDropdown(e,btn){
   e.stopPropagation();
   const dd=btn.closest('.dropdown');
@@ -1364,6 +329,7 @@ function toggleDropdown(e,btn){
 }
 document.addEventListener('click',()=>document.querySelectorAll('.dropdown.open').forEach(d=>d.classList.remove('open')));
 
+
 /* ===== Light / dark theme ===== */
 function applyTheme(t){
   const dark=(t!=='light');
@@ -1371,6 +337,7 @@ function applyTheme(t){
   const btn=document.getElementById('theme-toggle');
   if(btn){ btn.innerHTML=`<i class="ti ti-${dark?'moon':'sun'}" aria-hidden="true"></i>`; btn.title=dark?'Switch to light mode':'Switch to dark mode'; }
 }
+
 function toggleTheme(){
   const cur=document.documentElement.getAttribute('data-theme');
   const next=cur==='light'?'dark':'light';
@@ -1379,9 +346,12 @@ function toggleTheme(){
 }
 applyTheme(localStorage.getItem('aclab_theme')==='light'?'light':'dark');
 
+
 /* ===== Web Push notifications ===== */
 const VAPID_PUBLIC_KEY='BNKyIJE2ed7ZmDD2s5aNdmw56400S6rz-NoN0-HKPbVL9dis1gxXkPJY-ES0FapIb4PUpztXmL_j6PoD-phV8J0';
+
 function pushSupported(){ return ('serviceWorker' in navigator)&&('PushManager' in window)&&('Notification' in window); }
+
 function urlB64ToUint8Array(b64){
   const pad='='.repeat((4-b64.length%4)%4);
   const base64=(b64+pad).replace(/-/g,'+').replace(/_/g,'/');
@@ -1389,10 +359,12 @@ function urlB64ToUint8Array(b64){
   for(let i=0;i<raw.length;i++) arr[i]=raw.charCodeAt(i);
   return arr;
 }
+
 async function registerSW(){
   if(!('serviceWorker' in navigator)) return null;
   try{ return await navigator.serviceWorker.register('./sw.js'); }catch(e){ console.warn('SW register failed',e); return null; }
 }
+
 async function enableNotifications(){
   if(!pushSupported()){ toast('This browser does not support notifications.','warn'); return; }
   if(!VAPID_PUBLIC_KEY){ toast('Push is not configured yet (VAPID key missing).','warn',4200); return; }
@@ -1408,6 +380,7 @@ async function enableNotifications(){
     toast('Notifications enabled on this device','success');
   }catch(e){ console.error(e); toast('Could not enable notifications: '+(e.message||e),'error',4200); }
 }
+
 async function savePushSubscription(sub){
   const j=sub.toJSON();
   if(!(sb&&(await sb.auth.getSession()).data.session)) return;
@@ -1417,6 +390,7 @@ async function savePushSubscription(sub){
   },{onConflict:'endpoint'});
   if(error) console.warn('save subscription failed',error);
 }
+
 async function updateNotifyBtn(known){
   const btn=document.getElementById('notify-toggle'); if(!btn) return;
   let on=known;
@@ -1427,36 +401,7 @@ async function updateNotifyBtn(known){
   btn.title=on?'Notifications on for this device':'Enable notifications';
 }
 if(pushSupported()) registerSW();
-function fmtDateShort(iso){
-  if(!iso) return '';
-  const p=iso.split('-');
-  return p.length>=3?`${+p[1]}/${+p[2]}`:iso;
-}
 
-function catDef(plat){return PLATFORMS[plat]?.categories?.[0]?.v||'';}
-function catLbl(plat,v){
-  const c=PLATFORMS[plat]?.categories?.find(x=>x.v===v);
-  return c?c.l:v;
-}
-function catDisplay(r){
-  if(!r.category) return '';
-  let s=catLbl(r.platform,r.category);
-  if(r.subCategory) s+=' · '+r.subCategory;
-  return s;
-}
-function migrateRecords(list){
-  const typeMap={update:'acqua-fw',teststatus:'test-seq'};
-  return list.map(r=>{
-    let x={...r};
-    if(x.platform==='Chrome') x={...x,platform:'Google',category:x.category||'Chrome Audio'};
-    if(x.platform==='Other') x={...x,platform:'Google',category:x.category||''};
-    if(x.status==='pending') x={...x,status:'in-progress'};
-    if(typeMap[x.type]) x={...x,type:typeMap[x.type]};
-    if(recordStatus(x)==='closed'&&!x.closedAt) x.closedAt=x.updated||x.created||todayISO();
-    return x;
-  });
-}
-function recordStatus(r){return r?.status==='pending'?'in-progress':(r?.status||'in-progress');}
 function fillTypeFilter(){
   const sel=document.getElementById('q-type');
   if(!sel) return;
@@ -1468,6 +413,7 @@ function fillTypeFilter(){
   if([...sel.options].some(o=>o.value===prev)) sel.value=prev; else sel.value='';
   refreshFilterMenus();
 }
+
 function fillSampleFilter(){
   const sel=document.getElementById('q-sample');
   if(!sel) return;
@@ -1491,9 +437,7 @@ function fillSampleFilter(){
   if(list.length&&[...sel.options].some(o=>o.value===prev)) sel.value=prev; else sel.value='';
   refreshFilterMenus();   // options are built here, so the menu must be rebuilt after
 }
-function catHasChildren(plat,cat){
-  return !!PLATFORMS[plat]?.categories?.find(x=>x.v===cat)?.children?.length;
-}
+
 function fillCatFilter(){
   const sel=document.getElementById('q-cat');
   if(!sel) return;
@@ -1507,6 +451,7 @@ function fillCatFilter(){
   fillSubcatFilter();
   refreshFilterMenus();
 }
+
 function fillSubcatFilter(){
   const wrap=document.getElementById('q-subcat-wrap');
   const sel=document.getElementById('q-subcat');
@@ -1523,6 +468,7 @@ function fillSubcatFilter(){
   sel.innerHTML=opts;
   if([...sel.options].some(o=>o.value===prev)) sel.value=prev; else sel.value='';
 }
+
 function onCatFilterChange(){
   fillSubcatFilter();
   fillTypeFilter();
@@ -1530,6 +476,7 @@ function onCatFilterChange(){
   refreshFilterMenus();
   renderList();
 }
+
 function onTypeFilterChange(){
   const t=(document.getElementById('q-type')||{}).value||'';
   const s=document.getElementById('q-subtype-update');
@@ -1538,16 +485,7 @@ function onTypeFilterChange(){
   renderList();
 }
 
-/* ===== Category / Type filter menus =====
-   Native <select> cannot nest, so these two filters are custom menus with a
-   fly-out for the one level of children (Function/Cortana, and Update). The
-   hidden q-cat / q-subcat / q-type / q-subtype-update selects stay the source
-   of truth, so every existing filter/export path keeps reading them unchanged. */
-const UPDATE_SUBTYPES=[
-  {v:'spec',l:'Spec'},{v:'sequence',l:'Sequence'},
-  {v:'firmware',l:'Firmware'},{v:'test-tool',l:'Test Tool'}
-];
-function qv(id){ return (document.getElementById(id)||{}).value||''; }
+
 function filterMenuItem(label,active,onclick,children){
   const kids=children&&children.length
     ? `<div class="dd-sub">${children.map(c=>
@@ -1557,6 +495,7 @@ function filterMenuItem(label,active,onclick,children){
     <button type="button" class="${active?'active':''}" onclick="${onclick}">${esc(label)}${children&&children.length?'<i class="ti ti-chevron-right dd-arrow" aria-hidden="true"></i>':''}</button>
     ${kids}</div>`;
 }
+
 function renderCatMenu(){
   const menu=document.getElementById('q-cat-menu'), lbl=document.getElementById('q-cat-lbl');
   if(!menu) return;
@@ -1579,6 +518,7 @@ function renderCatMenu(){
   }
   const dd=document.getElementById('q-cat-dd'); if(dd) dd.classList.toggle('is-set',!!cur);
 }
+
 function renderTypeMenu(){
   const menu=document.getElementById('q-type-menu'), lbl=document.getElementById('q-type-lbl');
   if(!menu) return;
@@ -1600,6 +540,7 @@ function renderTypeMenu(){
   }
   const dd=document.getElementById('q-type-dd'); if(dd) dd.classList.toggle('is-set',!!cur);
 }
+
 // Single-level filters build their menu straight from the hidden select's options,
 // so every filter in the bar looks and behaves the same with no duplicated labels
 function renderSelectMenu(selId,ddId,menuId,lblId){
@@ -1613,17 +554,21 @@ function renderSelectMenu(selId,ddId,menuId,lblId){
   if(lbl) lbl.textContent=(opts.find(o=>o.value===cur)||opts[0]).textContent;
   const dd=document.getElementById(ddId); if(dd) dd.classList.toggle('is-set',!!cur);
 }
+
 function pickSelect(selId,val){
   const sel=document.getElementById(selId); if(!sel) return;
   sel.value=val;
   closeFilterMenus(); refreshFilterMenus(); renderList();
 }
+
 function refreshFilterMenus(){
   renderCatMenu(); renderTypeMenu();
   renderSelectMenu('q-sample','q-sample-dd','q-sample-menu','q-sample-lbl');
   renderSelectMenu('q-stat','q-stat-dd','q-stat-menu','q-stat-lbl');
 }
+
 function closeFilterMenus(){ document.querySelectorAll('.dropdown.open').forEach(d=>d.classList.remove('open')); }
+
 function pickCat(cat,sub){
   const c=document.getElementById('q-cat'); if(c) c.value=cat;
   const s=document.getElementById('q-subcat'); if(s) s.value=sub||'';
@@ -1635,6 +580,7 @@ function pickCat(cat,sub){
   refreshFilterMenus();
   renderList();
 }
+
 function pickType(type,sub){
   const t=document.getElementById('q-type'); if(t) t.value=type;
   const s=document.getElementById('q-subtype-update'); if(s) s.value=(type==='update'?(sub||''):'');
@@ -1643,114 +589,7 @@ function pickType(type,sub){
   renderList();
 }
 
-const STATUSES=[
-  {v:'in-progress',lbl:'In progress',cls:'b-inprog'},
-  {v:'closed',lbl:'Closed',cls:'b-closed'}
-];
-const STATUS_MAP=Object.fromEntries(STATUSES.map(s=>[s.v,s]));
-const STATUS_NEXT={
-  'in-progress':'closed',
-  'closed':'in-progress'
-};
-const STATUS_NEXT_LBL={
-  'in-progress':'→ Closed',
-  'closed':'↺ In progress'
-};
 
-const TYPES=[
-  {v:'issue',lbl:'ISSUE',cls:'b-issue'},
-  {v:'acqua-fw',lbl:'ACQUA FW Update',cls:'b-acqua-fw'},
-  {v:'test-seq',lbl:'Test SEQ Update',cls:'b-test-seq'},
-  {v:'spec',lbl:'Spec Update',cls:'b-spec'},
-  {v:'hw-cal',lbl:'Hardware Calibration/Maint.',cls:'b-hw-cal'}
-];
-const TYPE_MAP=Object.fromEntries(TYPES.map(t=>[t.v,t]));
-
-const TYPES_ALT=[
-  {v:'issue',lbl:'ISSUE',cls:'b-issue'},
-  {v:'note',lbl:'Note',cls:'b-spec'},
-  {v:'spec',lbl:'Spec Update',cls:'b-spec'},
-  {v:'hw-update',lbl:'Hardware Update',cls:'b-hw-cal'}
-];
-const TYPES_ALT_MAP=Object.fromEntries(TYPES_ALT.map(t=>[t.v,t]));
-
-const TYPES_AUDIO=[
-  {v:'note',lbl:'Note',cls:'b-spec'},
-  {v:'issue',lbl:'Issue',cls:'b-issue'},
-  {v:'update',lbl:'Update',cls:'b-test-seq'},
-  {v:'hw-cal',lbl:'Hardware Calibration/Maint.',cls:'b-hw-cal'}
-];
-const TYPES_AUDIO_MAP=Object.fromEntries(TYPES_AUDIO.map(t=>[t.v,t]));
-
-function getTypesForPlat(plat,cat){ return TYPES_AUDIO; }
-const TYPE_ICON={note:'ti-note',issue:'ti-alert-triangle',update:'ti-refresh','hw-cal':'ti-tool',
-  'acqua-fw':'ti-refresh','test-seq':'ti-list-check',spec:'ti-file-text','hw-update':'ti-tool'};
-// Login names come from the email local part; show them as names, without rewriting stored data
-function fmtUser(u){
-  return String(u||'').split(/[._-]+/).filter(Boolean)
-    .map(w=>w.charAt(0).toUpperCase()+w.slice(1)).join(' ')||String(u||'');
-}
-/* Closed items stop being listed after this many days, but are never deleted.
-   This is internal test-method history - "when did we change the sequence, and
-   why" is a question that gets asked years later, and a KPI tool built in 2027
-   can only count what still exists. Archiving is derived from closedAt rather
-   than stored: nothing to migrate, and no write traffic the moment an item
-   crosses the line. Hard deletion is an admin doing it on purpose. */
-
-const ARCHIVE_AFTER_DAYS=30;
-
-const CERT_LBL={'teams-cert':'Teams Cert','uc-cert':'UC Cert','internal':'Internal'};
-const CERT_CLS={'teams-cert':'b-teams-cert','uc-cert':'b-uc-cert','internal':'b-internal'};
-
-
-
-const PRODUCT_TYPES=[
-  {v:'shared-sp',l:'Shared Space - Speakerphone',group:'shared'},
-  {v:'shared-sb',l:'Shared Space - SoundBar',group:'shared'},
-  {v:'personal-sp',l:'Personal - Speakerphone',group:'personal'},
-  {v:'personal-hs',l:'Personal - Headset',group:'personal'},
-  // Laptop is deliberately absent: Microsoft does not certify it. Platform
-  // Tracking still lists one as a Sample Type, and that is fine — the two modules
-  // are independent and only ever borrowed each other's vocabulary for reference.
-  {v:'personal-dp',l:'Personal - Deskphone',group:'personal'},
-  {v:'zoom-meeting',l:'Zoom Meeting',group:'device'},
-  {v:'zoom-rooms',l:'Zoom Rooms',group:'device'},
-  // Lenovo and Chromebook only ever put a laptop on the bench. Named plainly
-  // rather than reusing the Teams entry, because each platform names the same
-  // device its own way — the reason Sample Types are per-platform too.
-  {v:'laptop',l:'Laptop',group:'device'},
-  {v:'other',l:'Other',group:'other'}
-];
-const PRODUCT_TYPE_MAP=Object.fromEntries(PRODUCT_TYPES.map(t=>[t.v,t]));
-/* Which product types each certification platform offers. PRODUCT_TYPES above stays
-   the full catalogue so a value stored under one platform still renders its label
-   after the project is moved to another — only the picker narrows.
-   Chrome Audio and Lenovo get no list at all: those two are kept purely as a record
-   of what was tested, so asking for a product type would be a required field with
-   nothing riding on it. */
-const PRODUCT_TYPES_BY_PLATFORM={
-  Teams:['shared-sp','shared-sb','personal-sp','personal-hs','personal-dp','other'],
-  Zoom:['zoom-meeting','zoom-rooms','other'],
-  Google:[],
-  Lenovo:[]
-};
-function productTypesFor(platform){
-  const keys=PRODUCT_TYPES_BY_PLATFORM[platform]||PRODUCT_TYPES_BY_PLATFORM.Teams;
-  return keys.map(k=>PRODUCT_TYPE_MAP[k]).filter(Boolean);
-}
-function usesProductType(platform){ return productTypesFor(platform).length>0; }
-
-/* Chromebook does not fit the Product Type dropdown the other platforms use: what
-   matters is the OS it runs and which transducers it has, so it gets its own pair
-   of fields hung off the platform rather than a product type. */
-const CHROME_OS=[{v:'chromeos',l:'Chrome OS'},{v:'alos',l:'ALOS'}];
-// Mic count is one answer, not three independent ones — a device cannot be both
-// single-mic and dual-mic — so it is its own field rather than three checkboxes.
-const CHROME_MIC=[{v:'mic1',l:'Single mic'},{v:'mic2',l:'Dual mic'},{v:'mic3',l:'Third mic'}];
-const CHROME_FEATURES=[
-  {k:'speaker',l:'Speaker'},{k:'hsIn',l:'Headset in'},{k:'hsOut',l:'Headset out'}
-];
-function platformUsesExtra(platform){ return platform==='Google'; }
 function platformExtraHtml(platform,p){
   if(platform!=='Google') return '';
   const f=p.chromeFeatures||{};
@@ -1767,136 +606,67 @@ function platformExtraHtml(platform,p){
       `<label class="chk-lbl"><input type="checkbox" id="pf-cf-${x.k}" ${f[x.k]?'checked':''}> ${x.l}</label>`
     ).join('')}</div>`;
 }
+
 function readChromeFields(){
   const o={chromeOs:segValue('pf-cros','chromeos'),chromeMic:segValue('pf-cmic','mic1'),chromeFeatures:{}};
   CHROME_FEATURES.forEach(x=>{o.chromeFeatures[x.k]=!!document.getElementById('pf-cf-'+x.k)?.checked;});
   return o;
 }
-function chromeSummary(p){
-  // A project saved before these fields existed has neither; claiming Chrome OS
-  // for it would be inventing data
-  if(!p.chromeOs&&!p.chromeMic&&!Object.values(p.chromeFeatures||{}).some(Boolean)) return '';
-  const os=(CHROME_OS.find(o=>o.v===(p.chromeOs||'chromeos'))||{}).l||'';
-  const mic=(CHROME_MIC.find(m=>m.v===(p.chromeMic||'mic1'))||{}).l||'';
-  const feats=CHROME_FEATURES.filter(x=>p.chromeFeatures?.[x.k]).map(x=>x.l);
-  return [os,mic,feats.join(', ')].filter(Boolean).join(' · ');
-}
-const TEST_DISTANCES=['1.5','2.3','3.5','4.5','7.5'];
-// hs:true marks the ones that only describe a headset, so a speakerphone is not
-// asked about its boom mic.
-const PERSONAL_FEATURES=[
-  {k:'boomMic',l:'Boom Mic',hs:true},{k:'ancButton',l:'ANC Button',hs:true},
-  {k:'superWideband',l:'Super Wideband'},{k:'openOfficeHeadset',l:'Open Office Headset',hs:true},
-  // Decides whether ASP is part of Function, on every Teams device
-  {k:'teamsButton',l:'Teams Button'}
-];
-// Earpiece count is its own field, not a feature checkbox: the two options are
-// mutually exclusive, and it has to stand alone to be filterable.
-const EARPIECE=[{v:'dual',l:'Dual'},{v:'mono',l:'Mono'}];
-// Speakerphones and SoundBars sometimes ship with their own OS. When they do there
-// is no connection mode to speak of, and the checklist comes from the OS instead.
-const BUILT_IN_OS=[{v:'',l:'None'},{v:'Windows',l:'Windows (MTRoW)'},{v:'Android',l:'Android (MTRoA)'}];
-const SELF_HOSTED_TYPES=['shared-sp','shared-sb','personal-sp'];
-const HEADSET_CONN=[
-  {v:'usb-wired',l:'USB Wired'},
-  {v:'usb-dongle',l:'USB Dongle'},
-  {v:'bt-classic',l:'Native Bluetooth(Classic)'},
-  {v:'bt-lea',l:'Native Bluetooth(LEA)'}
-];
-const HEADSET_CONN_MAP=Object.fromEntries(HEADSET_CONN.map(c=>[c.v,c]));
-// Backward-compatible: new projects use connectionTypes[], older ones had connectionType (string)
-function headsetConnValues(p){
-  if(Array.isArray(p&&p.connectionTypes)) return p.connectionTypes;
-  return (p&&p.connectionType)?[p.connectionType]:[];
-}
-function headsetConnLabels(p){
-  return headsetConnValues(p).map(v=>(HEADSET_CONN_MAP[v]||{}).l||v).filter(Boolean);
-}
+
 function connectionChecks(selected){
   const sel=new Set(selected||[]);
   return HEADSET_CONN.map(c=>
     `<label class="chk-lbl"><input type="checkbox" class="pf-conn-cb" value="${c.v}" ${sel.has(c.v)?'checked':''}> ${c.l}</label>`
   ).join('');
 }
+
 function readConnectionsFromForm(){
   return Array.from(document.querySelectorAll('.pf-conn-cb:checked')).map(c=>c.value);
 }
+
 function distanceOpts(sel){
   return '<option value="">— Select —</option>'+TEST_DISTANCES.map(d=>
     `<option value="${d}" ${sel===d?'selected':''}>${d}m</option>`
   ).join('');
 }
-function fmtDist(d){return d?(String(d).endsWith('m')?d:d+'m'):'';}
 
-/* ===== Note Sample Type (Platform Tracking) =====
-   清單由「平台 + 平台分類」決定，定義在 PLATFORMS 的 samples 欄位 */
-// 已停用、但可能存在於舊記錄的選項：只用於顯示名稱，不會再出現在表單
-const LEGACY_SAMPLE_TYPES=[
-  {v:'shared-deskphone',l:'Shared - Deskphone'}
-];
-// 所有出現過的 value -> label（徽章 / CSV / PDF 顯示舊記錄時查得到）
-const NOTE_SAMPLE_TYPE_MAP=(()=>{
-  const m={};
-  LEGACY_SAMPLE_TYPES.forEach(t=>{m[t.v]=t;});
-  PLAT_NAMES.forEach(p=>{
-    const cfg=PLATFORMS[p];
-    (cfg.samples||[]).forEach(t=>{m[t.v]=t;});
-    (cfg.categories||[]).forEach(c=>(c.samples||[]).forEach(t=>{m[t.v]=t;}));
-  });
-  return m;
-})();
-// 該「平台+分類」可選的清單：分類層優先，其次平台層；都沒有 = 不需要 Sample Type
-function sampleOptsFor(plat,cat){
-  const cfg=PLATFORMS[plat];
-  if(!cfg) return [];
-  const c=cfg.categories?.find(x=>x.v===cat);
-  if(c&&Array.isArray(c.samples)) return c.samples;
-  return Array.isArray(cfg.samples)?cfg.samples:[];
-}
-// 表單用：可選清單 + 已勾選但不在清單內的舊值（避免編輯舊記錄時遺失資料）
-function sampleTypesFor(plat,cat,selected){
-  const opts=sampleOptsFor(plat,cat);
-  const known=new Set(opts.map(t=>t.v));
-  const extra=(selected||[]).filter(v=>!known.has(v)).map(v=>NOTE_SAMPLE_TYPE_MAP[v]||{v,l:v});
-  return opts.concat(extra);
-}
 function noteSampleChecks(selected,plat,cat){
   const sel=new Set(selected||[]);
   return sampleTypesFor(plat,cat,selected).map(t=>
     `<label class="sample-chk"><input type="checkbox" class="f-sample-cb" value="${t.v}" ${sel.has(t.v)?'checked':''}><span>${esc(t.l)}</span></label>`
   ).join('');
 }
-// Backward-compatible: new records use sampleTypes[] , old records used sampleType (string)
-function recordSampleValues(r){
-  return Array.isArray(r.sampleTypes)?r.sampleTypes:(r.sampleType?[r.sampleType]:[]);
-}
-function recordSampleLabels(r){
-  return recordSampleValues(r).map(v=>(NOTE_SAMPLE_TYPE_MAP[v]&&NOTE_SAMPLE_TYPE_MAP[v].l)||v).filter(Boolean);
-}
 
 /* ===== Test Software list (shared, in-app manageable) ===== */
 const DEFAULT_TEST_SOFTWARE=['ACQUA','Soundcheck','LabBGN','3Pass','SPET','IADK'];
+
 let appConfig={testSoftware:DEFAULT_TEST_SOFTWARE.slice()};
+
 function testSoftwareList(){ return (appConfig.testSoftware&&appConfig.testSoftware.length)?appConfig.testSoftware:DEFAULT_TEST_SOFTWARE; }
+
 function softwareOpts(sel){
   return '<option value="">— Select test software —</option>'+
     testSoftwareList().map(s=>`<option value="${esc(s)}" ${sel===s?'selected':''}>${esc(s)}</option>`).join('')+
     `<option value="__other__" ${sel==='__other__'?'selected':''}>Other…</option>`;
 }
+
 function recordSoftwareLabel(r){
   if(!r.testSoftware) return '';
   return r.testSoftware==='__other__'?(r.testSoftwareOther||'Other'):r.testSoftware;
 }
+
 async function loadSettings(){
   try{
     const {data}=await sb.from('app_settings').select('data').eq('id','config').maybeSingle();
     if(data&&data.data&&Array.isArray(data.data.testSoftware)) appConfig={...appConfig,...data.data};
   }catch(e){ /* table may not exist yet — keep defaults */ }
 }
+
 async function saveSettings(){
   const {error}=await sb.from('app_settings').upsert({id:'config',data:appConfig,updated_at:nowISO(),updated_by:getCurrentUser()});
   if(error) throw error;
 }
+
 function manageTestSoftware(){
   const ov=document.createElement('div');
   ov.className='modal-overlay';
@@ -1934,6 +704,7 @@ function manageTestSoftware(){
   draw();
   requestAnimationFrame(()=>ov.classList.add('show'));
 }
+
 async function persistSettings(){
   // refresh any open software dropdown in the record form
   const sel=document.getElementById('f-software');
@@ -1943,29 +714,38 @@ async function persistSettings(){
   }catch(e){ console.error(e); toast('Could not sync the software list. Did you run aclab-settings-setup.sql?','error',5000); }
 }
 
+
 /* ===== Image attachments (Supabase Storage) ===== */
 const ATTACH_BUCKET='attachments';
+
 const TOTAL_IMG_BYTES=5*1024*1024; // 5MB total across all images in one record / log
+
 const MAX_IMG_COUNT=5;             // up to 5 images per record / log
+
 function imgPublicUrl(path){
   try{ return sb.storage.from(ATTACH_BUCKET).getPublicUrl(path).data.publicUrl; }catch(e){ return ''; }
 }
+
 // Delete a set of images {path} from Storage (best-effort; used when a record/log is removed)
 async function deleteStoredImages(images){
   const paths=(images||[]).map(im=>im&&im.path).filter(Boolean);
   if(!paths.length) return;
   try{ await sb.storage.from(ATTACH_BUCKET).remove(paths); }catch(e){ console.warn('Image cleanup failed',e); }
 }
+
 function imgItemBytes(im){ return im.kind==='new'?(im.file?.size||0):(im.size||0); }
+
 function currentImgBytes(){ return imgState.list.reduce((s,im)=>s+imgItemBytes(im),0); }
-function fmtMB(b){ return (b/1048576).toFixed(2)+'MB'; }
+
 // imgState.list items: {kind:'existing',path,name,size} | {kind:'new',file,name,url(objectURL)}
 let imgState={list:[],original:[]};
+
 function initImageUploader(existing){
   const arr=Array.isArray(existing)?existing:[];
   imgState={list:arr.map(im=>({kind:'existing',path:im.path,name:im.name||'image',size:im.size||0,disp:im.disp||'md'})),original:arr.slice()};
   renderImageUploader();
 }
+
 function renderImageUploader(){
   const wrap=document.getElementById('img-uploader');
   if(!wrap) return;
@@ -1989,6 +769,7 @@ function renderImageUploader(){
   </div>
   <div class="img-hint"><i class="ti ti-info-circle" aria-hidden="true"></i> Large photos are auto-compressed — but please avoid very large files. Up to ${MAX_IMG_COUNT} images · ${fmtMB(currentImgBytes())} / ${fmtMB(TOTAL_IMG_BYTES)} total used</div>`;
 }
+
 async function onPickImages(input){
   const files=Array.from(input.files||[]);
   input.value='';
@@ -2009,14 +790,18 @@ async function onPickImages(input){
   }
   renderImageUploader();
 }
+
 function setImgDisp(i,v){ if(imgState.list[i]) imgState.list[i].disp=v; }
+
 function removeUploadImage(i){
   const im=imgState.list[i];
   if(im&&im.kind==='new'&&im.url) URL.revokeObjectURL(im.url);
   imgState.list.splice(i,1);
   renderImageUploader();
 }
+
 function sanitizeImgName(n){ return String(n||'image').replace(/[^a-zA-Z0-9._-]/g,'_').slice(-60); }
+
 // Uploads new files, deletes removed existing ones, returns final images array [{path,name}]
 async function commitImages(scope){
   const finalList=[];
@@ -2032,7 +817,9 @@ async function commitImages(scope){
   if(removed.length){ try{ await sb.storage.from(ATTACH_BUCKET).remove(removed); }catch(e){ console.warn('Image cleanup failed',e); } }
   return finalList;
 }
+
 const CARD_THUMB_MAX=3;   // how many screenshots a list card previews before folding the rest
+
 // compact: fixed-size thumbnails for list cards. The full-size view (which honours each
 // image's S/M/L setting) is what the record view and the lightbox show.
 function imagesDisplayHtml(images,compact){
@@ -2052,6 +839,7 @@ function imagesDisplayHtml(images,compact){
       <img src="${url}" alt="${esc(im.name||'')}" loading="lazy">${more}</span>`;
   }).join('')+'</div>';
 }
+
 function openImageLightbox(url){
   if(!url) return;
   const ov=document.createElement('div');
@@ -2065,30 +853,42 @@ function openImageLightbox(url){
   document.addEventListener('keydown',onKey,true);
 }
 
+
 /* ===== File attachments (Excel / PDF / Word … — Supabase Storage) ===== */
 const MAX_FILE_BYTES=10*1024*1024;    // 10MB per file
+
 const TOTAL_FILE_BYTES=25*1024*1024;  // 25MB total across all files in one record / log
+
 const MAX_FILE_COUNT=10;
+
 const ALLOWED_FILE_EXTS=['pdf','xlsx','xls','docx','doc','pptx','ppt','csv','txt','zip'];
+
 function fileExt(name){ const m=String(name||'').toLowerCase().match(/\.([a-z0-9]+)$/); return m?m[1]:''; }
+
 function fileIcon(ext){
   return ({pdf:'ti-file-type-pdf',xlsx:'ti-file-type-xls',xls:'ti-file-type-xls',csv:'ti-file-type-csv',
     docx:'ti-file-type-doc',doc:'ti-file-type-doc',pptx:'ti-file-type-ppt',ppt:'ti-file-type-ppt',
     txt:'ti-file-type-txt',zip:'ti-file-type-zip'})[ext]||'ti-file';
 }
+
 function fileIconColor(ext){
   return ({pdf:'#f87171',xlsx:'#34d399',xls:'#34d399',csv:'#34d399',docx:'#60a5fa',doc:'#60a5fa',
     pptx:'#fb923c',ppt:'#fb923c',txt:'#9ca3af',zip:'#c4b5fd'})[ext]||'#9ca3af';
 }
+
 // fileState.list items: {kind:'existing',path,name,size,ext} | {kind:'new',file,name,size,ext}
 let fileState={list:[],original:[]};
+
 function initFileUploader(existing){
   const arr=Array.isArray(existing)?existing:[];
   fileState={list:arr.map(f=>({kind:'existing',path:f.path,name:f.name||'file',size:f.size||0,ext:f.ext||fileExt(f.name)})),original:arr.slice()};
   renderFileUploader();
 }
+
 function fileItemBytes(f){ return f.kind==='new'?(f.file?.size||0):(f.size||0); }
+
 function currentFileBytes(){ return fileState.list.reduce((s,f)=>s+fileItemBytes(f),0); }
+
 function renderFileUploader(){
   const wrap=document.getElementById('file-uploader');
   if(!wrap) return;
@@ -2107,6 +907,7 @@ function renderFileUploader(){
       <input type="file" accept="${ALLOWED_FILE_EXTS.map(e=>'.'+e).join(',')}" multiple hidden onchange="onPickFiles(this)"></label>`:''}
     <div class="img-hint">Up to ${MAX_FILE_COUNT} files · max ${fmtMB(MAX_FILE_BYTES)} each · ${fmtMB(currentFileBytes())} / ${fmtMB(TOTAL_FILE_BYTES)} total used · allowed: ${ALLOWED_FILE_EXTS.join(', ')}</div>`;
 }
+
 function onPickFiles(input){
   const files=Array.from(input.files||[]);
   input.value='';
@@ -2120,7 +921,9 @@ function onPickFiles(input){
   }
   renderFileUploader();
 }
+
 function removeUploadFile(i){ fileState.list.splice(i,1); renderFileUploader(); }
+
 // Uploads new files, deletes removed existing ones, returns final files array [{path,name,size,ext}]
 async function commitFiles(scope){
   const finalList=[];
@@ -2136,6 +939,7 @@ async function commitFiles(scope){
   if(removed.length){ try{ await sb.storage.from(ATTACH_BUCKET).remove(removed); }catch(e){ console.warn('File cleanup failed',e); } }
   return finalList;
 }
+
 function filesDisplayHtml(files){
   if(!Array.isArray(files)||!files.length) return '';
   return '<div class="rec-files">'+files.map(f=>{
@@ -2149,43 +953,7 @@ function filesDisplayHtml(files){
     </a>`;
   }).join('')+'</div>';
 }
-// Combined image + file asset paths for a record/log (used when deleting to clean Storage)
-function recordAssets(o){ return [...((o&&o.images)||[]),...((o&&o.files)||[])]; }
 
-function productTypeSummary(p){
-  if(!p) return '';
-  if(p.platform==='Google') return chromeSummary(p)||p.dut||'';
-  const t=PRODUCT_TYPE_MAP[p.productType];
-  if(!t) return p.dut||'';
-  if(SELF_HOSTED_TYPES.includes(p.productType)){
-    const parts=[t.l];
-    if(t.group==='shared'){
-      const mic=p.micDistanceM,spk=p.spkDistanceM;
-      if(mic||spk) parts[0]+=` (Mic ${fmtDist(mic)||'—'} / SPK ${fmtDist(spk)||'—'})`;
-    }
-    if(p.os) parts.push(p.os==='Windows'?'MTRoW':'MTRoA');
-    else{
-      const conns=headsetConnLabels(p);
-      if(conns.length) parts.push(conns.join(' + '));
-    }
-    const feats=PERSONAL_FEATURES.filter(f=>p.personalFeatures?.[f.k]).map(f=>f.l);
-    if(feats.length) parts.push(feats.join(', '));
-    return parts.join(' · ');
-  }
-  if(p.productType==='personal-hs'){
-    const parts=[t.l];
-    const conns=headsetConnLabels(p);
-    if(conns.length) parts.push(conns.join(' + '));
-    if(p.earpiece) parts.push((EARPIECE.find(e=>e.v===p.earpiece)||{}).l||p.earpiece);
-    const feats=PERSONAL_FEATURES.filter(f=>p.personalFeatures?.[f.k]).map(f=>f.l);
-    if(feats.length) parts.push(feats.join(', '));
-    return parts.join(' · ');
-  }
-  if(p.productType==='personal-dp') return t.l+' · MTRoA';
-  if(t.group==='personal') return t.l;
-  if(t.group==='other') return p.productTypeOther||p.dut||'Other';
-  return t.l;
-}
 // Only what this platform actually offers. A selection the new platform does not
 // have is dropped rather than carried across wearing a label saying so — the
 // product type has to be re-picked, which is the honest outcome of changing platform.
@@ -2194,11 +962,13 @@ function productTypeOpts(sel,platform){
     `<option value="${t.v}" ${sel===t.v?'selected':''}>${t.l}</option>`
   ).join('');
 }
+
 function readPersonalFeaturesFromForm(){
   const o={};
   PERSONAL_FEATURES.forEach(f=>{o[f.k]=!!document.getElementById('pf-f-'+f.k)?.checked;});
   return o;
 }
+
 function readProductTypeDraft(){
   const v=(document.getElementById('pf-type')||{}).value||'';
   const t=PRODUCT_TYPE_MAP[v];
@@ -2221,6 +991,7 @@ function readProductTypeDraft(){
   }
   return d;
 }
+
 function buildProductTypeExtra(p){
   const v=p.productType||'';
   const t=PRODUCT_TYPE_MAP[v];
@@ -2275,6 +1046,7 @@ function buildProductTypeExtra(p){
     <input type="text" id="pf-type-other" placeholder="Describe the product type" value="${esc(p.productTypeOther||p.dut||'')}">`;
   return '';
 }
+
 function featureChecksHtml(p,headsetOnly){
   const feats=p.personalFeatures||{};
   const list=headsetOnly===false?PERSONAL_FEATURES.filter(f=>!f.hs):PERSONAL_FEATURES;
@@ -2284,11 +1056,13 @@ function featureChecksHtml(p,headsetOnly){
         ${f.k==='teamsButton'?'onchange="onTeamsButtonChange(this)"':''}> ${f.l}</label>
     `).join('')}</div>`;
 }
+
 // Keep the two from contradicting each other: a Teams Button is a physical control
 function onTeamsButtonChange(cb){
   const ctl=document.getElementById('pf-controls');
   if(cb.checked&&ctl&&!ctl.value) ctl.value='1';
 }
+
 // A segmented control rather than a dropdown: two mutually exclusive options read
 // faster as buttons, and only one can ever be active.
 function segHtml(name,opts,sel){
@@ -2296,10 +1070,12 @@ function segHtml(name,opts,sel){
     `<label class="seg-btn"><input type="radio" name="${name}" value="${o.v}" ${sel===o.v?'checked':''}><span>${o.l}</span></label>`
   ).join('')}</div>`;
 }
+
 function segValue(name,dflt){
   const el=document.querySelector(`input[name="${name}"]:checked`);
   return el?el.value:dflt;
 }
+
 function onProductTypeChange(){
   const wrap=document.getElementById('pf-type-extra');
   if(!wrap) return;
@@ -2307,6 +1083,7 @@ function onProductTypeChange(){
   wrap.innerHTML=buildProductTypeExtra(draft);
   wrap.style.display=wrap.innerHTML?'block':'none';
 }
+
 function collectProductTypeFields(){
   const platform=(document.getElementById('pf-plat')||{}).value||'Teams';
   const v=(document.getElementById('pf-type')||{}).value||'';
@@ -2350,225 +1127,21 @@ function collectProductTypeFields(){
   return base;
 }
 
-const PHASES=[
-  {v:'debug',lbl:'Debug',cls:'b-debug'},
-  {v:'pretest',lbl:'Pre-test',cls:'b-pretest'},
-  {v:'qualification',lbl:'Qualification',cls:'b-qual'},
-  {v:'requal',lbl:'Re-Qualification',cls:'b-requal'}
-];
-const PHASE_MAP=Object.fromEntries(PHASES.map(p=>[p.v,p]));
-
-/* ===== Certification plans =====
-   Deliberately NOT derived from PLATFORMS. The certification checklist and the
-   Platform Tracking categories only look similar: Cortana belongs to a different
-   platform there, Loop Latency does not exist there at all, and Google needs one
-   of its six categories. Tying the two together would mean changing PLATFORMS —
-   and that would reach into every record already filed under it.
-
-   progress:true  → the project shows a percentage bar
-   derive         → checklist computed from the device rather than a fixed list
-   ref:true       → only records whether it was tested; pass/fail is not the point */
-const CERT_PLANS={
-  Teams:{progress:true,derive:teamsCertItems},
-  Zoom:{progress:true,items:[
-    {v:'audio',l:'Audio',group:'Audio'},
-    {v:'aio',l:'AIO (Function)',group:'Function'}
-  ]},
-  // No checklist: every log on a Chromebook project is Chrome Audio by definition,
-  // so a lone tick would record nothing. The entry itself stays — CERT_PLATFORMS is
-  // built from these keys, and removing it would drop Chromebook from the picker.
-  Google:{progress:false,items:[]},
-  Lenovo:{progress:false,items:[
-    {v:'lnv',l:'LNV',group:'LNV'},
-    {v:'hwf',l:'HWF',group:'HWF'}
-  ]}
-};
-// Groups where one log can only cover a single entry
-const CERT_SINGLE_GROUPS=['Audio'];
-/* Phases where a waiver means something. A failed debug run is just a failed
-   debug run — there is nothing for a customer to waive. */
-const CERT_PHASES=['qualification','requal'];
-const TEAMS_FN_SUB=[
-  {k:'hid',l:'HID',needsCtl:true},
-  {k:'asp',l:'ASP',needsBtn:true},
-  {k:'telemetry',l:'Telemetry'},
-  {k:'ucq',l:'UCQ'}
-];
-/* The Teams checklist is not a fixed list — it falls out of what the device is and
-   how it connects. Two rules drive most of it:
-     · USB carries no Audio or Cortana unless it is the only mode available
-     · a device with its own OS has no connection modes, so the OS decides instead */
-function teamsCertItems(p){
-  const t=p.productType||'', os=p.os||'';
-  const items=[];
-  const add=(v,l,group,ref)=>items.push({v,l,group,ref:!!ref});
-  const selfHosted=t==='personal-dp'||(SELF_HOSTED_TYPES.includes(t)&&os);
-
-  if(selfHosted){
-    // Deskphone is only ever certified on Android today
-    const android=t==='personal-dp'||os==='Android';
-    add('audio','Audio','Audio');
-    if(android){
-      add('loop-latency','Loop Latency','Loop Latency');
-    }else{
-      // MTRoW always tests HID, with or without physical controls. The controls
-      // flag is kept as device information rather than a gate here.
-      items.push({v:'fn:hid',l:'Function',group:'Function',ref:false,note:'HID'});
-      add('cortana','Cortana','Cortana',true);
-    }
-    return items;
-  }
-
-  const c=headsetConnValues(p);
-  const has={usb:c.includes('usb-wired'),dongle:c.includes('usb-dongle'),
-             nbt:c.includes('bt-classic'),lea:c.includes('bt-lea')};
-  const onlyUsb=has.usb&&!has.dongle&&!has.nbt&&!has.lea;
-  // Audio and Cortana turn out to follow the same rule, so derive the modes once
-  const modes=onlyUsb?[['usb','USB']]:[
-    has.dongle&&['dongle','Dongle'],has.nbt&&['nbt','NBT'],has.lea&&['lea','BT-LE']
-  ].filter(Boolean);
-
-  modes.forEach(([k,l])=>add('audio:'+k,`Audio (${l})`,'Audio'));
-
-  // Function is one item per mode, not one per sub-test: HID, ASP, Telemetry and
-  // UCQ are run together in practice, so splitting the percentage across them
-  // would only make the bar move in steps nobody works in.
-  const btn=!!(p.personalFeatures||{}).teamsButton;
-  // A headset always has something to press, so HID is a given there. A
-  // speakerphone or SoundBar might not, which is what the controls flag answers.
-  const askCtl=SELF_HOSTED_TYPES.includes(t);
-  // A Teams Button is itself a physical control, so it implies one is present —
-  // "no controls but has a Teams Button" is not a state a device can be in.
-  const ctl=!!p.hasControls||btn;
-  const sub=TEAMS_FN_SUB.filter(s=>
-    (!s.needsBtn||btn) && (!s.needsCtl||!askCtl||ctl)
-  ).map(s=>s.l).join(' / ');
-  [['usb','USB',has.usb],['dongle','Dongle',has.dongle]].forEach(([k,l,on])=>{
-    if(on) items.push({v:'fn:'+k,l:`Function (${l})`,group:'Function',ref:false,note:sub});
-  });
-  // Classic is only labelled as such when LE Audio sits beside it
-  if(has.nbt) add('fn:nbt','NBT Function'+(has.lea?' (Classic)':''),'Function');
-  if(has.lea) add('fn:lea','NBT Function (LE)','Function');
-
-  modes.forEach(([k,l])=>add('cortana:'+k,`Cortana (${l})`,'Cortana',true));
-  return items;
-}
-const CERT_PLATFORMS=Object.keys(CERT_PLANS);
-// Project Log talks about Chromebook where Platform Tracking says Google. Same key,
-// different label, so records filed under Google are unaffected.
-const CERT_PLAT_LABEL={Google:'Chromebook'};
-function certPlatLabel(k){ return CERT_PLAT_LABEL[k]||PLATFORMS[k]?.label||k; }
-const DEBUG_WEIGHT=0.2;   // Debug is worth 20%; the checklist splits the other 80%
-
-// Projects created before this feature carry no platform. They were all Teams, so
-// read them that way rather than rewriting stored rows.
-function projPlatform(p){ return (p&&p.platform)||'Teams'; }
-// OS belongs to the device, not the project: a headset has none, a Deskphone is
-// always Android, and only a self-hosted Speakerphone/SoundBar gets to choose.
-function projOS(p){
-  if(!p) return '';
-  if(p.productType==='personal-dp') return 'Android';
-  return SELF_HOSTED_TYPES.includes(p.productType)?(p.os||''):'';
-}
-function certItemsFor(p){
-  const plan=CERT_PLANS[projPlatform(p)];
-  if(!plan) return [];
-  return plan.derive?plan.derive(p):(plan.items||[]);
-}
-function certItemLabel(p,v){
-  return (certItemsFor(p).find(i=>i.v===v)||{}).l||v;
-}
-function hasProgressBar(p){
-  return !!(CERT_PLANS[projPlatform(p)]||{}).progress;
-}
-/* A checklist entry is satisfied by the logs themselves, so there is no separate
-   tick to keep in sync. A reference item counts once it has been tested at all;
-   everything else needs a passing log, which is what makes a failed qualification
-   simply not count until it is re-run. */
-// Newer logs cover several items at once; older ones stored a single certItem
-function logCertItems(l){
-  if(Array.isArray(l&&l.certItems)) return l.certItems;
-  return (l&&l.certItem)?[l.certItem]:[];
-}
-// A waived item counts as done. The failure is kept on the log rather than
-// rewritten to a pass, so the record still shows what actually happened and who
-// let it through.
-function logCounts(l){ return l.result==='pass'||l.waived===true; }
-function certItemDone(p,item){
-  return (p.logs||[]).some(l=>
-    logCertItems(l).includes(item.v) && (item.ref ? true : logCounts(l))
-  );
-}
-/* Some customers come straight to qualification and never debug at all. Rather
-   than ask up front — a project that fails qualification often goes back to
-   debug, and any answer given at the start would then be wrong — Debug only
-   counts once a debug log exists. Adding one later cannot pull the number down:
-   it contributes 20 while diluting the items by at most 20, so the total never
-   drops. */
-function certProgress(p){
-  const items=certItemsFor(p);
-  if(!items.length) return null;
-  const hasDebug=(p.logs||[]).some(l=>l.phase==='debug');
-  const debugW=hasDebug?DEBUG_WEIGHT:0;
-  const share=Math.round((1-debugW)/items.length*1000)/10;
-  // A closed project counts as finished whatever the logs say. Items do get
-  // missed in practice, and back-filling a checklist after the fact to make a
-  // bar reach 100% is busywork that teaches people to distrust the number.
-  if(p.status==='closed'){
-    return {pct:100,closed:true,hasDebug,debugDone:true,done:items.length,total:items.length,items,share};
-  }
-  const done=items.filter(i=>certItemDone(p,i));
-  const pct=debugW+done.length*(1-debugW)/items.length;
-  return {pct:Math.round(pct*100),closed:false,hasDebug,debugDone:hasDebug,done:done.length,total:items.length,items,share};
-}
 
 function getCurrentUser(){
   const em=currentLoginEmail||localStorage.getItem(LOGIN_EMAIL_KEY)||'';
   return em.includes('@')?em.split('@')[0]:em;
 }
+
 // Full address — getCurrentUser() is only the display name, so it must not be used as a key
 function getCurrentEmail(){
   return (currentLoginEmail||localStorage.getItem(LOGIN_EMAIL_KEY)||'').trim().toLowerCase();
 }
+
 function setCurrentLoginEmail(email){
   currentLoginEmail=(email||'').trim();
 }
-function daysSince(iso){
-  if(!iso) return 0;
-  return Math.floor((Date.now()-new Date(iso+'T00:00:00').getTime())/86400000);
-}
-function applyStatusOnRecord(r,status){
-  r.status=status;
-  r.updated=todayISO();
-  if(status==='closed'){
-    if(!r.closedAt) r.closedAt=todayISO();
-  }else{
-    delete r.closedAt;
-  }
-}
-/* closedAt is the real field; the other two are fallbacks for rows closed before
-   it existed. An item with no date at all reads as not archived - daysSince gives
-   0 for a missing date, and guessing "old" would hide it the moment it is closed. */
-function recordClosedAt(r){ return r.closedAt||r.updated||r.created||''; }
-function isRecordArchived(r){
-  return recordStatus(r)==='closed'&&daysSince(recordClosedAt(r))>=ARCHIVE_AFTER_DAYS;
-}
-/* Records get closedAt backfilled at load (see migrateRecords); projects never did,
-   so a project closed before the field existed has to be dated from something else.
 
-   Deliberately not p.updated: saveProjectRow and submitLog both stamp it with
-   today, so it means "last touched" and every log filed against a closed project
-   would push its archive date forward again. The newest log is when work actually
-   stopped, which is the question being asked. Falling back to created keeps a
-   closed project with no logs at all from sitting in the list forever. */
-function projectClosedAt(p){
-  if(p.closedAt) return p.closedAt;
-  const last=sortedLogs(p.logs)[0];
-  return (last&&last.date)||p.created||'';
-}
-function isProjectArchived(p){
-  return p.status==='closed'&&daysSince(projectClosedAt(p))>=ARCHIVE_AFTER_DAYS;
-}
 function applyRecordFilters(list){
   let d=[...list];
   const qs=(document.getElementById('q-s')||{}).value||'';
@@ -2587,12 +1160,15 @@ function applyRecordFilters(list){
   if(qsample) d=d.filter(r=>recordSampleValues(r).includes(qsample));
   return sortRecords(d);
 }
+
 let curSort='created-desc';
+
 function setSort(v){
   curSort=v;
   document.querySelectorAll('#sort-menu button').forEach(b=>b.classList.toggle('active',b.dataset.sort===v));
   renderList();
 }
+
 function sortRecords(list){
   const s=curSort||'created-desc';
   const arr=[...list];
@@ -2608,15 +1184,7 @@ function sortRecords(list){
   }
   return arr;
 }
-function legacyTypeLabel(type){
-  const map={update:'ACQUA FW Update',teststatus:'Test SEQ Update'};
-  return map[type]||type;
-}
-/* ===== Version history =====
-   A changelog, not snapshots: each entry records what changed when the record was
-   bumped to that version. Attachments are not kept per version — the record always
-   carries the current ones. versions[] holds v2 onwards; v1 is the original. */
-function recordVersionNo(r){ return 1+((r&&r.versions)||[]).length; }
+
 // Timeline, newest first, with the implicit v1 entry at the bottom
 function versionTimelineHtml(r){
   const vs=(r.versions||[]);
@@ -2643,6 +1211,7 @@ function versionTimelineHtml(r){
       </div>
     </li>`).join('')}</ol>`;
 }
+
 // One quiet classification line: platform in its own colour, then category › sub, then
 // the record type. Icons mark which is which so it does not read as a run-on sentence.
 function recordCrumbHtml(r,to){
@@ -2652,6 +1221,7 @@ function recordCrumbHtml(r,to){
   parts.push(`<span class="crumb-type"><i class="ti ${TYPE_ICON[r.type]||'ti-tag'}" aria-hidden="true"></i>${esc(to.lbl)}</span>`);
   return parts.join(' <span class="crumb-sep">·</span> ');
 }
+
 function recordCardHtml(r,opts={}){
   const pc=PLAT_COLOR[r.platform]||'other';
   const st=recordStatus(r);
@@ -2699,24 +1269,35 @@ function recordCardHtml(r,opts={}){
   </div>`;
 }
 
+
 let records=[], projects=[], curP='all', editId=null;
+
 let viewMode='platform', curProjectId=null, editProjId=null, editLogId=null;
+
 let labInstruments={}, curLab=null; // Lab Instruments state (keyed by lab id)
+
 let sb=null, currentLoginEmail='';
 
+
 const SUPABASE_URL='https://ygoywjqgatkwboepxaaz.supabase.co';
+
 const SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inlnb3l3anFnYXRrd2JvZXB4YWF6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk3NzQ0MTAsImV4cCI6MjA5NTM1MDQxMH0.cpnejjVh8s9mHQl1MwUAPQXl8tipUGJSWSuPO5cFmiw';
+
 const LOGIN_EMAIL_KEY='aclab_login_email';
+
 /* Only ever deleted now. The app used to keep the account password here in plain
    text so it could refill the field; the browser's own password manager does that
    properly, encrypted and behind the OS. purgeStoredPassword() clears it on every
    start so the ones already saved go away without anyone having to be told. */
 const LOGIN_PASS_KEY='aclab_login_pass';
+
 /* Named "creds" from when it also covered the password. Renaming it would reset
    the checkbox for everyone currently ticked, for a key no one ever sees — so the
    name stays and this comment explains it. It means: remember the email. */
 const REMEMBER_CREDS_KEY='aclab_remember_creds';
+
 let loginBusy=false;
+
 
 const authStorage={
   getItem(key){
@@ -2735,6 +1316,7 @@ const authStorage={
   }
 };
 
+
 function setLoginMsg(text,kind){
   const el=document.getElementById('login-err');
   if(!el) return;
@@ -2745,6 +1327,7 @@ function setLoginMsg(text,kind){
     el.className='login-err'+(kind==='ok'?' ok':kind==='busy'?' busy':' err');
   }
 }
+
 function loginErrorMessage(e){
   const msg=String(e?.message||e||'').toLowerCase();
   if(msg.includes('invalid login credentials')||msg.includes('invalid_credentials'))
@@ -2757,14 +1340,19 @@ function loginErrorMessage(e){
     return 'This account has been disabled. Please contact your admin.';
   return e?.message||String(e)||'Login failed';
 }
+
 function updateLoginFileWarn(){
   const el=document.getElementById('login-file-warn');
   if(!el) return;
   if(location.protocol==='file:'){
     el.style.display='block';
-    el.innerHTML='This page is opened as a local file (file://). Login may fail. Please run <b>aclab-start.bat</b> (or <b>aclab-start.vbs</b>) and open <b>http://127.0.0.1:8765/</b> instead.';
+    // Unreachable in practice - a module does not load over file:// at all, so the
+    // classic script in the login markup is what actually shows this. Kept as a
+    // backstop in case the page is ever served as a classic script again.
+    el.innerHTML='Opened as a local file (file://). Run <b>aclab-start.bat</b> and use <b>http://127.0.0.1:8765/</b> instead.';
   }else el.style.display='none';
 }
+
 async function testSupabaseConnection(){
   if(!sb){setLoginMsg('Cloud service is not available right now.','');return;}
   setLoginMsg('Testing connection…','busy');
@@ -2786,14 +1374,17 @@ async function testSupabaseConnection(){
   }
 }
 
+
 function parseStore(raw){
   const data=JSON.parse(raw);
   if(Array.isArray(data)) return {records:migrateRecords(data),projects:[]};
   return {records:migrateRecords(data.records||[]),projects:data.projects||[]};
 }
+
 function localBackup(){
   try{localStorage.setItem(STORAGE_KEY,JSON.stringify({records,projects}));}catch(e){}
 }
+
 function setSyncStatus(state,msg){
   const el=document.getElementById('sync-lbl');
   if(!el) return;
@@ -2801,12 +1392,13 @@ function setSyncStatus(state,msg){
   const map={loading:'Syncing…',saving:'Saving…',ok:'Synced',err:'Sync failed',offline:'Local backup only'};
   el.textContent=msg||(map[state]||'—');
 }
-function nowISO(){return new Date().toISOString();}
+
 function bumpId(id){
   const m=String(id||'').match(/^(.*?)(\d+)\s*$/);
   if(!m) return id+'-2';
   return m[1]+String(parseInt(m[2],10)+1).padStart(m[2].length,'0');
 }
+
 
 /* ---- Per-row cloud persistence (records / projects / logs) ---- */
 async function saveRecordRow(r,isNew){
@@ -2824,10 +1416,12 @@ async function saveRecordRow(r,isNew){
   const {error}=await sb.from('records').upsert(row());
   if(error) throw error;
 }
+
 async function removeRecordRow(id){
   const {error}=await sb.from('records').delete().eq('id',id);
   if(error) throw error;
 }
+
 // Lab Instruments: graceful load (table may not exist yet) + upsert one lab
 async function loadLabInstruments(){
   try{
@@ -2838,11 +1432,13 @@ async function loadLabInstruments(){
     labInstruments=m;
   }catch(e){ /* table may not exist yet — keep whatever we have */ }
 }
+
 async function saveLabRow(labId,obj){
   const clean={...obj}; delete clean.updatedBy;
   const {error}=await sb.from('lab_instruments').upsert({id:labId,data:clean,updated_at:nowISO(),updated_by:getCurrentUser()});
   if(error) throw error;
 }
+
 async function saveProjectRow(p,isNew){
   p.updated=todayISO(); p.updatedBy=getCurrentUser();
   const row=()=>{ const {logs,...pd}=p; return {id:p.id,data:pd,updated_at:nowISO(),updated_by:p.updatedBy}; };
@@ -2858,10 +1454,12 @@ async function saveProjectRow(p,isNew){
   const {error}=await sb.from('projects').upsert(row());
   if(error) throw error;
 }
+
 async function removeProjectRow(id){
   const {error}=await sb.from('projects').delete().eq('id',id); // logs cascade-delete in DB
   if(error) throw error;
 }
+
 async function saveLogRow(projId,l,isNew){
   l.updated=todayISO(); l.updatedBy=getCurrentUser();
   const row=()=>({project_id:projId,id:l.id,data:l,updated_at:nowISO(),updated_by:l.updatedBy});
@@ -2877,10 +1475,12 @@ async function saveLogRow(projId,l,isNew){
   const {error}=await sb.from('logs').upsert(row());
   if(error) throw error;
 }
+
 async function removeLogRow(projId,id){
   const {error}=await sb.from('logs').delete().eq('project_id',projId).eq('id',id);
   if(error) throw error;
 }
+
 // Bulk upsert everything (used by import + one-time migration)
 async function persistAll(){
   if(records.length){
@@ -2896,6 +1496,7 @@ async function persistAll(){
   }
   localBackup();
 }
+
 // One-time migration: split the old single-row snapshot into the new tables
 async function maybeMigrateSnapshot(){
   const [{count:rc},{count:pc}]=await Promise.all([
@@ -2922,6 +1523,7 @@ async function maybeMigrateSnapshot(){
   }
 }
 
+
 async function cloudLoad(){
   await maybeMigrateSnapshot();
   await loadSettings();
@@ -2941,14 +1543,18 @@ async function cloudLoad(){
   localBackup();
 }
 
+
 // Wrap an in-memory mutation's cloud write: local backup always, cloud best-effort
 /* ---- Offline write queue: retry writes that failed with no network ---- */
 let writeQueue=[];
 try{ writeQueue=JSON.parse(localStorage.getItem('aclab_write_queue')||'[]')||[]; }catch(e){ writeQueue=[]; }
+
 function persistQueue(){ try{ localStorage.setItem('aclab_write_queue',JSON.stringify(writeQueue)); }catch(e){} }
+
 function enqueueWrite(op){ if(op){ writeQueue.push(op); persistQueue(); } }
-function stripLogs(p){ const {logs,...pd}=p; return pd; }
+
 let _flushing=false;
+
 async function flushQueue(){
   if(_flushing||!writeQueue.length) return;
   if(!(sb&&(await sb.auth.getSession()).data.session)) return;
@@ -2971,6 +1577,7 @@ async function flushQueue(){
   _flushing=false;
   if(!writeQueue.length) setSyncStatus('ok');
 }
+
 async function afterMutation(writeFn,op){
   localBackup();
   try{
@@ -2992,6 +1599,7 @@ async function afterMutation(writeFn,op){
   }
 }
 window.addEventListener('online',()=>{ flushQueue(); });
+
 
 async function load(){
   try{
@@ -3019,8 +1627,10 @@ async function load(){
   render();
 }
 
+
 /* ---- Realtime: refresh when any user changes a row ---- */
 let _rtChannel=null, _rtTimer=null;
+
 function startRealtime(){
   if(_rtChannel||!sb) return;
   const bump=()=>{
@@ -3043,9 +1653,11 @@ function startRealtime(){
     .on('postgres_changes',{event:'*',schema:'public',table:'lab_instruments'},bump)
     .subscribe();
 }
+
 function stopRealtime(){
   if(_rtChannel){ try{ sb.removeChannel(_rtChannel); }catch(e){} _rtChannel=null; }
 }
+
 /* No button any more: the per-view and per-archive exports cover day to day, and
    two Export controls that did different things was the confusing part. This stays
    because it is the only "everything, including open work" dump left - run
@@ -3060,6 +1672,7 @@ function exportBackup(){
   URL.revokeObjectURL(a.href);
 }
 
+
 /* ===== JSON / PDF export =====
    Two shapes on purpose: JSON is the raw record for whatever ends up analysing it
    later, PDF is the one a person opens. Neither is derived from the other. */
@@ -3070,18 +1683,7 @@ function exportRecordsJSON(){
   downloadJson('aclab-records-'+scope+'-'+todayISO()+'.json',
     {kind:'records',scope,exportedAt:new Date().toISOString(),records:list});
 }
-/* Not downloadTextFile: that one prepends a BOM so Excel reads CSV as UTF-8, and a
-   BOM in front of JSON breaks JSON.parse and the json module in Python alike. */
-function downloadJson(name,obj){
-  const blob=new Blob([JSON.stringify(obj,null,2)],{type:'application/json'});
-  const a=document.createElement('a');
-  a.href=URL.createObjectURL(blob); a.download=name; a.click();
-  setTimeout(()=>URL.revokeObjectURL(a.href),1000);
-}
-function recordTypeLabel(r){
-  const to=TYPES_AUDIO_MAP[r.type]||TYPE_MAP[r.type]||TYPES_ALT_MAP[r.type];
-  return to?to.lbl:legacyTypeLabel(r.type);
-}
+
 /* Records currently matching the platform tab + filters, in every status but
    archived. Archived is not on screen here, and "Export the current view" that
    quietly includes it is how you end up with a file you cannot account for -
@@ -3097,10 +1699,12 @@ function recordsForExport(){
     .filter(r=>!qst||recordStatus(r)===qst);
   return applyRecordFilters(base);
 }
+
 function imagesReportHtml(images){
   if(!Array.isArray(images)||!images.length) return '';
   return '<div class="imgs">'+images.map(im=>`<img src="${imgPublicUrl(im.path)}" alt="">`).join('')+'</div>';
 }
+
 function openPrintReport(title,bodyHtml,footHtml){
   const html=`<!doctype html><html><head><meta charset="utf-8"><title>${esc(title)}</title>
   <style>
@@ -3120,12 +1724,14 @@ function openPrintReport(title,bodyHtml,footHtml){
   w.document.open(); w.document.write(html); w.document.close();
   w.onload=()=>{ setTimeout(()=>{ try{ w.focus(); w.print(); }catch(e){} },400); };
 }
+
 function exportRecordsPDF(){
   const list=recordsForExport();
   if(!list.length){ toast('No records to export in the current view.','warn'); return; }
   const scope=curP==='all'?'All Platforms':(PLATFORMS[curP]?.label||curP);
   openRecordsReport('Platform Tracking Report',list,`Scope: ${esc(scope)} &nbsp;·&nbsp; ${list.length} record(s)`);
 }
+
 /* The archive gets its own report rather than a filtered version of the one above:
    what it is is the whole point of the document, and a reader should not have to
    check a scope line to find out which pile they are holding. */
@@ -3136,6 +1742,7 @@ function exportArchivedPDF(){
   openRecordsReport('Platform Tracking — Archived Records',list,
     `Scope: ${esc(scope)} &nbsp;·&nbsp; ${list.length} record(s) &nbsp;·&nbsp; closed over ${ARCHIVE_AFTER_DAYS} days ago`);
 }
+
 function openRecordsReport(title,list,metaLine){
   const rows=list.map(r=>{
     const sampleLbls=r.type==='note'?recordSampleLabels(r):[];
@@ -3156,11 +1763,13 @@ function openRecordsReport(title,list,metaLine){
     <table><thead><tr><th>ID</th><th>Platform</th><th>Category</th><th>Type</th><th>Title / Details</th><th>Status</th></tr></thead><tbody>${rows}</tbody></table>`;
   openPrintReport(title,body,`Generated ${new Date().toLocaleString()} · ${list.length} record(s) · AudioTracker`);
 }
+
 function exportProjectPDF(id){
   const p=getProject(id||curProjectId); if(!p) return;
   openPrintReport(p.name+' — Test Log Report', projectReportBlock(p,'h1'),
     `Generated ${new Date().toLocaleString()} · ${(p.logs||[]).length} log(s) · AudioTracker`);
 }
+
 /* Every archived project in one document, each starting on its own page. The JSON
    beside it is the machine copy; this is the one that gets filed on the server and
    read by a person two years from now. */
@@ -3174,6 +1783,7 @@ function exportArchivedProjectsPDF(){
   openPrintReport('Project Log — Archived Projects',body,
     `Generated ${new Date().toLocaleString()} · ${d.length} project(s) · AudioTracker`);
 }
+
 function projectReportBlock(p,tag){
   const logs=sortedLogs(p.logs);
   const fwHist=[...new Set(logs.map(l=>l.fwVersion).filter(Boolean))].join(' → ');
@@ -3202,6 +1812,7 @@ function projectReportBlock(p,tag){
       <tbody>${rows}</tbody>
     </table>`;
 }
+
 function showLogin(){
   document.getElementById('login-screen').hidden=false;
   document.getElementById('app-main').hidden=true;
@@ -3221,6 +1832,7 @@ function showLogin(){
   setLoginMsg('','');
   updateLoginFileWarn();
 }
+
 function showApp(){
   document.getElementById('login-screen').hidden=true;
   document.getElementById('app-main').hidden=false;
@@ -3228,10 +1840,12 @@ function showApp(){
   updateAdminBtn();
 }
 
+
 /* ===== Account approval =====
    RLS is the real gate (see aclab-approval-setup.sql); these screens exist so an
    unapproved user gets a clear explanation instead of an empty, broken app. */
 let myApproval={approved:false,isAdmin:false,known:false};
+
 async function loadMyApproval(){
   myApproval={approved:false,isAdmin:false,known:false};
   if(!sb) return myApproval;
@@ -3249,12 +1863,14 @@ async function loadMyApproval(){
   }
   return myApproval;
 }
+
 // Record a pending request for a brand-new account (self-approval is blocked by RLS)
 async function requestApproval(email){
   if(!sb) return;
   try{ await sb.from('allowed_users').insert({email:(email||'').trim().toLowerCase()}); }
   catch(e){ /* already requested, or table not deployed — nothing to do */ }
 }
+
 function showPendingScreen(email){
   document.getElementById('app-main').hidden=true;
   document.getElementById('login-screen').hidden=false;
@@ -3264,6 +1880,7 @@ function showPendingScreen(email){
   const pc=document.getElementById('pending-card'); if(pc) pc.style.display='';
   const el=document.getElementById('pending-email'); if(el) el.textContent=email||getCurrentEmail()||'—';
 }
+
 async function recheckApproval(){
   const btn=document.getElementById('pending-refresh');
   const err=document.getElementById('pending-err');
@@ -3274,6 +1891,7 @@ async function recheckApproval(){
   if(err){ err.textContent='Still waiting for an administrator to approve this account.'; err.className='login-err'; }
   if(btn){btn.disabled=false;btn.innerHTML='<i class="ti ti-refresh" aria-hidden="true"></i> Check again';}
 }
+
 // Returns true when the app may be entered
 async function enterAppIfApproved(email){
   await loadMyApproval();
@@ -3282,6 +1900,7 @@ async function enterAppIfApproved(email){
   return false;
 }
 
+
 /* ---- Admin: approve / revoke accounts ---- */
 async function fetchAllowedUsers(){
   const {data,error}=await sb.from('allowed_users')
@@ -3289,6 +1908,7 @@ async function fetchAllowedUsers(){
   if(error) throw error;
   return data||[];
 }
+
 /* One field, two shapes. Everyone else is pinned to the account they signed in
    with, so the name on a record is a fact rather than something typed. The admin
    gets a picker instead, because filing on behalf of someone who is mid-test is a
@@ -3301,6 +1921,7 @@ async function fetchAllowedUsers(){
    up counting this. The stored value is the mail local-part, which is what
    getCurrentUser has always written, so nothing existing has to be rewritten. */
 let allowedUsersCache=null;
+
 /* Filing a note in Platform Tracking when it belonged in Project Log is a mistake
    the person who made it should be able to clear up themselves. So deletion is not
    simply admin-only: you may also delete something you filed, for a few days.
@@ -3314,13 +1935,16 @@ let allowedUsersCache=null;
    anyone signed in. It is here so a stale render or a mis-click cannot be the thing
    standing between fourteen people and a permanently deleted record. */
 const OWN_DELETE_DAYS=7;
+
 function ownedRecently(item){
   const me=getCurrentEmail();
   if(!me||!item||!item.createdBy||!item.created) return false;
   if(String(item.createdBy).trim().toLowerCase()!==me) return false;
   return daysSince(item.created)<=OWN_DELETE_DAYS;
 }
+
 function canDelete(item){ return myApproval.isAdmin||ownedRecently(item); }
+
 function requireDelete(item,what){
   if(canDelete(item)) return true;
   const me=getCurrentEmail();
@@ -3330,17 +1954,20 @@ function requireDelete(item,what){
     : `Only an admin, or whoever filed it, can delete this ${what}.`,'warn',4500);
   return false;
 }
+
 function requireAdmin(why){
   if(myApproval.isAdmin) return true;
   toast(why||'Admins only.','warn',4000);
   return false;
 }
+
 function allowedUserNames(){
   return (allowedUsersCache||[])
     .filter(u=>u.approved)
     .map(u=>String(u.email||'').split('@')[0].trim())
     .filter(Boolean);
 }
+
 function identityOptions(val){
   // A legacy free-text value is kept as its own option: dropping it would silently
   // reassign the record to whoever happens to sort first
@@ -3348,6 +1975,7 @@ function identityOptions(val){
   names.sort((a,b)=>fmtUser(a).localeCompare(fmtUser(b)));
   return names.map(n=>`<option value="${esc(n)}" ${n===val?'selected':''}>${esc(fmtUser(n))}</option>`).join('');
 }
+
 function identityFieldHtml(id,label,current){
   const val=String(current||getCurrentUser()||'').trim();
   if(!myApproval.isAdmin){
@@ -3357,12 +1985,14 @@ function identityFieldHtml(id,label,current){
   return `<label for="${id}">${label}</label>
     <select id="${id}" data-identity="1">${identityOptions(val)}</select>`;
 }
+
 function readIdentity(id,fallback){
   const el=document.getElementById(id);
   if(!el) return fallback;
   const v=String(el.tagName==='SELECT'?el.value:(el.dataset.val||'')).trim();
   return v||fallback;
 }
+
 /* The list normally arrives with updateAdminBtn at startup. If a form opens before
    that lands, the select still holds the right value and simply has fewer names in
    it, so this fills them in afterwards rather than blocking the form on a fetch. */
@@ -3373,6 +2003,7 @@ async function ensureAllowedUsers(){
     sel.innerHTML=identityOptions(sel.value);
   });
 }
+
 async function updateAdminBtn(){
   const btn=document.getElementById('admin-users-btn');
   if(!btn) return;
@@ -3387,6 +2018,7 @@ async function updateAdminBtn(){
     btn.title=pending?(pending+' account(s) waiting for approval'):'Approve accounts';
   }catch(e){}
 }
+
 function manageUsers(){
   if(!myApproval.isAdmin) return;
   const ov=document.createElement('div');
@@ -3456,6 +2088,7 @@ function manageUsers(){
   };
   draw();
 }
+
 async function doLogin(){
   if(loginBusy) return;
   if(!sb){setLoginMsg('System not ready. Please refresh the page.','');return;}
@@ -3496,6 +2129,7 @@ async function doLogin(){
     if(btn){btn.disabled=false;btn.textContent='Sign In';}
   }
 }
+
 async function doLogout(){
   localStorage.removeItem('aclab_login_at');
   sessionStorage.removeItem('aclab_login_at');
@@ -3504,15 +2138,19 @@ async function doLogout(){
   showLogin();
 }
 
+
 // ========== 註冊流程 ==========
 const ALLOWED_EMAIL_DOMAIN='@pal-labs.com';
+
 let regEmail='';
+
 function setRegMsg(text,kind){
   const el=document.getElementById('reg-err');
   if(!el) return;
   el.textContent=text||'';
   el.className=text?('login-err'+(kind==='ok'?' ok':kind==='busy'?' busy':' err')):'login-err';
 }
+
 function showRegister(){
   document.querySelector('#login-screen .login-card').style.display='none';
   document.getElementById('register-card').style.display='';
@@ -3522,11 +2160,13 @@ function showRegister(){
   document.getElementById('reg-step-pass').style.display='none';
   setRegMsg('','');
 }
+
 function showLoginPanel(){
   document.getElementById('register-card').style.display='none';
   const pc=document.getElementById('pending-card'); if(pc) pc.style.display='none';
   document.querySelector('#login-screen .login-card').style.display='';
 }
+
 async function sendRegisterOTP(){
   if(!sb){setRegMsg('System not ready. Please refresh.','');return;}
   const email=(document.getElementById('reg-email')||{}).value.trim().toLowerCase();
@@ -3554,6 +2194,7 @@ async function sendRegisterOTP(){
     if(btn){btn.disabled=false;btn.textContent='Send Verification Code';}
   }
 }
+
 async function verifyRegisterOTP(){
   if(!sb){setRegMsg('System not ready. Please refresh.','');return;}
   const code=(document.getElementById('reg-otp')||{}).value.trim();
@@ -3578,6 +2219,7 @@ async function verifyRegisterOTP(){
     if(btn){btn.disabled=false;btn.textContent='Verify Code';}
   }
 }
+
 async function completeRegister(){
   if(!sb){setRegMsg('System not ready. Please refresh.','');return;}
   const p1=(document.getElementById('reg-pass')||{}).value||'';
@@ -3609,6 +2251,7 @@ async function completeRegister(){
     if(btn){btn.disabled=false;btn.textContent='Complete Registration';}
   }
 }
+
 async function initApp(){
   purgeStoredPassword();   // before anything else, so a failure later still clears it
   if(!window.supabase){toast('Failed to load Supabase JS. Please check your connection to cdn.jsdelivr.net.','error',5000);return;}
@@ -3643,9 +2286,13 @@ async function initApp(){
   });
   initHistoryGuard();
 }
+
 const SESSION_MAX_MIN=8*60;        // 關閉分頁後多久內免重新登入
+
 const IDLE_TIMEOUT_MS=20*60*1000;  // 20 分鐘閒置登出
+
 let idleTimer=null;
+
 function resetIdleTimer(){
   clearTimeout(idleTimer);
   const _ts=Date.now().toString();
@@ -3658,12 +2305,14 @@ function resetIdleTimer(){
     sessionStorage.removeItem('aclab_login_at');
   },IDLE_TIMEOUT_MS);
 }
+
 function startIdleTimer(){
   ['mousemove','keydown','click','scroll','touchstart'].forEach(e=>{
     document.addEventListener(e,resetIdleTimer,{passive:true});
   });
   resetIdleTimer();
 }
+
 
 
 function initSwipeBack(){
@@ -3709,18 +2358,21 @@ function initSwipeBack(){
     }
   },{passive:true});
 }
+
 function onRememberToggle(checked){
   try{
     localStorage.setItem(REMEMBER_CREDS_KEY,checked?'1':'0');
     if(!checked) localStorage.removeItem(LOGIN_EMAIL_KEY);
   }catch(e){}
 }
+
 /* Runs on every start, whatever the checkbox says: the point is to remove what
    earlier versions saved, and those users have no reason to know it is there. */
 function purgeStoredPassword(){
   try{ localStorage.removeItem(LOGIN_PASS_KEY); }catch(e){}
   try{ sessionStorage.removeItem(LOGIN_PASS_KEY); }catch(e){}
 }
+
 
 function switchMode(m){
   viewMode=m;
@@ -3735,26 +2387,35 @@ function switchMode(m){
   else renderProjectView();
 }
 
+
 /* ===== Lab Instruments view ===== */
 let _labEdit=null, _labParsed=null;   // _labEdit = {index, isNew} — the single row currently being edited
+
 let _labReorder=false, _labOrderDraft=null, _labGroupsDraft=null, _labDragFrom=null;   // reorder mode works on a draft until Done
+
 let _labCatEdit=null;   // {mode:'new'} | {mode:'rename', name} — inline category editor
+
 /* Categories are per lab and free-form. The lab's `groups` array is the authoritative
    list, so a category can exist while still empty; an item's `group` just names one. */
 const DEFAULT_LAB_GROUPS=['Teams','Chrome Audio'];
+
 function labItemGroup(it){ return ((it&&it.group)||'').trim(); }
+
 // Authoritative category list for a lab (defaults apply only when none was ever stored)
 function labGroupList(d){
   const out=Array.isArray(d&&d.groups)?d.groups.slice():DEFAULT_LAB_GROUPS.slice();
   ((d&&d.items)||[]).forEach(it=>{ const g=labItemGroup(it); if(g&&!out.includes(g)) out.push(g); });
   return out;
 }
+
 function labGroupsOf(items,order){
   const out=(order||[]).slice();
   (items||[]).forEach(it=>{ const g=labItemGroup(it); if(g&&!out.includes(g)) out.push(g); });
   return out;
 }
+
 function labIndexesIn(items,g){ return (items||[]).map((_,i)=>i).filter(i=>labItemGroup(items[i])===g); }
+
 // Flat items array rebuilt so it is stored grouped, in the display order
 function labNormalizeOrder(items,order){
   const out=[];
@@ -3762,17 +2423,23 @@ function labNormalizeOrder(items,order){
   labIndexesIn(items,'').forEach(i=>out.push(items[i]));
   return out;
 }
+
 function labData(id){ return labInstruments[id]||{items:[],verifiedAt:null}; }
+
 // Last time any instrument version actually changed (max of item changedAt) — informational, never drives the light
 function labLastChanged(d){ const ds=(d.items||[]).map(i=>i.changedAt).filter(Boolean).sort(); return ds.length?ds[ds.length-1]:null; }
+
 function renderLabView(){
   const host=document.getElementById('view-lab');
   if(!host) return;
   if(curLab && LABS.some(l=>l.id===curLab)) renderLabDetail(host);
   else { curLab=null; renderLabList(host); }
 }
+
 function openLab(id){ curLab=id; _labEdit=null; _labCatEdit=null; _labParsed=null; _labReorder=false; _labOrderDraft=null; renderLabView(); }
+
 function labBack(){ curLab=null; _labEdit=null; _labCatEdit=null; _labParsed=null; _labReorder=false; _labOrderDraft=null; renderLabView(); }
+
 function renderLabList(host){
   const cards=LABS.map(l=>{
     const d=labData(l.id), f=labFreshness(d.verifiedAt), n=(d.items||[]).length, chg=labLastChanged(d);
@@ -3792,6 +2459,7 @@ function renderLabList(host){
     </div>
     <div class="lab-grid">${cards}</div>`;
 }
+
 function renderLabDetail(host){
   const meta=LABS.find(l=>l.id===curLab)||{id:curLab,note:''};
   const d=labData(curLab), f=labFreshness(d.verifiedAt), chg=labLastChanged(d);
@@ -3833,6 +2501,7 @@ function renderLabDetail(host){
     :(_labEdit?document.getElementById(_labEdit.isNew?'lab-edit-name':'lab-edit-value'):null);
   if(focusEl){ focusEl.focus(); if(focusEl.setSelectionRange) focusEl.setSelectionRange(focusEl.value.length,focusEl.value.length); }
 }
+
 // Renders the table body: one section per category, uncategorised items last.
 // Headers are hidden entirely when a lab uses no categories at all.
 function labSectionsHtml(items,order){
@@ -3857,6 +2526,7 @@ function labSectionsHtml(items,order){
   section('',labIndexesIn(items,''),-1);
   return html;
 }
+
 function labGroupHeadHtml(label,gi,total){
   const q=String(label).replace(/\\/g,'\\\\').replace(/'/g,"\\'");
   const busy=!!(_labEdit||_labCatEdit);
@@ -3878,6 +2548,7 @@ function labGroupHeadHtml(label,gi,total){
     <span class="lab-group-name">${label?esc(label):'Uncategorized'}</span>${actions}
   </div>`;
 }
+
 // Inline editor used both for creating and for renaming a category
 function labCatEditHtml(current){
   return `<div class="lab-group-head editing">
@@ -3889,6 +2560,7 @@ function labCatEditHtml(current){
     </span>
   </div>`;
 }
+
 function labRowHtml(it,i){
   if(_labEdit && !_labEdit.isNew && _labEdit.index===i) return labEditRowHtml(it);
   const dis=_labEdit?' disabled':'';
@@ -3903,6 +2575,7 @@ function labRowHtml(it,i){
     </span>
   </div>`;
 }
+
 function labEditRowHtml(it){
   const d=labData(curLab);
   const opts=labGroupsOf(d.items||[],d.groups||[]).map(g=>`<option value="${esc(g)}"></option>`).join('');
@@ -3918,6 +2591,7 @@ function labEditRowHtml(it){
     </span>
   </div>`;
 }
+
 /* ---- Reorder mode: explicit, so nothing can be dragged by accident ---- */
 function labReorderRowHtml(it,i,isFirst,isLast){
   return `<div class="lab-tr lab-tr-reorder" id="labrow-${i}"
@@ -3933,6 +2607,7 @@ function labReorderRowHtml(it,i,isFirst,isLast){
     </span>
   </div>`;
 }
+
 function labStartReorder(){
   if(_labEdit) return;
   const d=labData(curLab);
@@ -3940,7 +2615,9 @@ function labStartReorder(){
   _labGroupsDraft=labGroupsOf(_labOrderDraft,d.groups||[]);
   _labReorder=true; renderLabView();
 }
+
 function labCancelReorder(){ _labReorder=false; _labOrderDraft=null; _labGroupsDraft=null; _labDragFrom=null; renderLabView(); }
+
 // Items only move within their own category — changing category is done by editing the row
 function labMoveRow(i,dir){
   const arr=_labOrderDraft; if(!arr||!arr[i]) return;
@@ -3950,6 +2627,7 @@ function labMoveRow(i,dir){
   const t=arr[i]; arr[i]=arr[target]; arr[target]=t;
   renderLabView();
 }
+
 function labMoveGroup(name,dir){
   if(!_labGroupsDraft) return;
   const i=_labGroupsDraft.indexOf(name), j=i+dir;
@@ -3957,10 +2635,14 @@ function labMoveGroup(name,dir){
   const t=_labGroupsDraft[i]; _labGroupsDraft[i]=_labGroupsDraft[j]; _labGroupsDraft[j]=t;
   renderLabView();
 }
+
 // Only the grip arms the row for dragging, so grabbing text never starts a drag
 function labGripDown(i){ const el=document.getElementById('labrow-'+i); if(el) el.draggable=true; }
+
 function labGripUp(i){ const el=document.getElementById('labrow-'+i); if(el) el.draggable=false; }
+
 function labDragStart(e,i){ _labDragFrom=i; try{ e.dataTransfer.effectAllowed='move'; e.dataTransfer.setData('text/plain',String(i)); }catch(err){} }
+
 function labDragOver(e,i){
   if(_labDragFrom===null||_labDragFrom===undefined) return;
   e.preventDefault();
@@ -3969,6 +2651,7 @@ function labDragOver(e,i){
   const el=document.getElementById('labrow-'+i);
   if(el&&i!==_labDragFrom) el.classList.add(i<_labDragFrom?'drop-above':'drop-below');
 }
+
 function labDrop(e,i){
   e.preventDefault();
   const from=_labDragFrom;
@@ -3980,6 +2663,7 @@ function labDrop(e,i){
   _labDragFrom=null;
   renderLabView();
 }
+
 // Dropping onto a section header files the item at the end of that category (works for empty ones)
 function labDropOnGroup(e,g){
   e.preventDefault();
@@ -3992,8 +2676,10 @@ function labDropOnGroup(e,g){
   _labDragFrom=null;
   renderLabView();
 }
+
 function labDragEnd(e,i){ const el=document.getElementById('labrow-'+i); if(el) el.draggable=false; _labDragFrom=null;
   document.querySelectorAll('.lab-tr-reorder.drop-above,.lab-tr-reorder.drop-below').forEach(el2=>el2.classList.remove('drop-above','drop-below')); }
+
 async function labSaveReorder(){
   const d=labData(curLab);
   const groups=(_labGroupsDraft||[]).slice();
@@ -4007,12 +2693,17 @@ async function labSaveReorder(){
   toast('Order saved','success');
 }
 
+
 function labEditRow(i){ if(_labEdit||_labCatEdit||_labReorder) return; _labEdit={index:i,isNew:false}; renderLabView(); }
+
 function labAddInstrument(group){ if(_labEdit||_labCatEdit) return; _labEdit={index:(labData(curLab).items||[]).length,isNew:true,group:group||''}; renderLabView(); }
+
 function labRowCancel(){ _labEdit=null; renderLabView(); }
+
 
 /* ---- Move an existing instrument straight into another category ---- */
 function closeLabMenu(){ const m=document.getElementById('lab-move-menu'); if(m) m.remove(); }
+
 function labMoveMenu(btn,i){
   closeLabMenu();
   if(_labEdit||_labCatEdit||_labReorder) return;
@@ -4030,6 +2721,7 @@ function labMoveMenu(btn,i){
   m.querySelectorAll('button').forEach(b=>b.onclick=e=>{ e.stopPropagation(); closeLabMenu(); if(b.dataset.g!==cur) labMoveToCategory(i,b.dataset.g); });
   setTimeout(()=>document.addEventListener('click',closeLabMenu,{once:true}),0);
 }
+
 async function labMoveToCategory(i,group){
   const d=labData(curLab);
   const items=(d.items||[]).map((it,idx)=>idx===i?{...it,group:group||''}:{...it});
@@ -4043,10 +2735,14 @@ async function labMoveToCategory(i,group){
   toast('Moved to '+(group||'Uncategorized'),'success');
 }
 
+
 /* ---- Categories: created up front, so instruments can be filed into them ---- */
 function labAddCategory(){ if(_labEdit||_labCatEdit) return; _labCatEdit={mode:'new'}; renderLabView(); }
+
 function labRenameCategory(g){ if(_labEdit||_labCatEdit) return; _labCatEdit={mode:'rename',name:g}; renderLabView(); }
+
 function labCatCancel(){ _labCatEdit=null; renderLabView(); }
+
 async function labCatSave(){
   const inp=document.getElementById('lab-cat-input'); if(!inp||!_labCatEdit) return;
   const name=(inp.value||'').trim();
@@ -4067,6 +2763,7 @@ async function labCatSave(){
   await afterMutation(()=>saveLabRow(curLab,obj),{k:'saveLab',labId:curLab,data:obj});
   toast(mode==='new'?'Category added':'Category renamed','success');
 }
+
 async function labDeleteCategory(g){
   const d=labData(curLab);
   const n=labIndexesIn(d.items||[],g).length;
@@ -4081,6 +2778,7 @@ async function labDeleteCategory(g){
   await afterMutation(()=>saveLabRow(curLab,obj),{k:'saveLab',labId:curLab,data:obj});
   toast('Category deleted','success');
 }
+
 async function labRowSave(){
   const nameEl=document.getElementById('lab-edit-name'), valEl=document.getElementById('lab-edit-value');
   if(!nameEl||!valEl) return;
@@ -4106,6 +2804,7 @@ async function labRowSave(){
   await afterMutation(()=>saveLabRow(curLab,obj),{k:'saveLab',labId:curLab,data:obj});
   toast(isNew?'Instrument added':'Instrument updated','success');
 }
+
 async function labDeleteRow(i){
   const it=(labData(curLab).items||[])[i]; if(!it) return;
   const ok=await confirmModal('Delete "'+(it.name||'this item')+'" from '+curLab+'?',{danger:true,okText:'Delete',title:'Delete instrument'});
@@ -4117,6 +2816,7 @@ async function labDeleteRow(i){
   await afterMutation(()=>saveLabRow(curLab,obj),{k:'saveLab',labId:curLab,data:obj});
   toast('Instrument deleted','success');
 }
+
 async function labVerify(){
   const ok=await confirmModal('Confirm '+curLab+' is still correct with no changes? This records today as the last-checked date.',{title:'Mark as checked',okText:'Yes, still current'});
   if(!ok) return;
@@ -4127,6 +2827,7 @@ async function labVerify(){
   await afterMutation(()=>saveLabRow(curLab,obj),{k:'saveLab',labId:curLab,data:obj});
   toast('Marked as checked today','success');
 }
+
 function labPasteHtml(){
   return `<div class="lab-paste">
     <div class="lab-paste-h"><i class="ti ti-clipboard-text" aria-hidden="true"></i> First-time setup — paste your instrument list</div>
@@ -4138,6 +2839,7 @@ function labPasteHtml(){
     <div id="lab-parse-out">${_labParsed?labParsedHtml():''}</div>
   </div>`;
 }
+
 function labParsePreview(){
   const txt=(document.getElementById('lab-paste-txt')||{}).value||'';
   const cur=labData(curLab).items||[];
@@ -4159,11 +2861,13 @@ function labParsePreview(){
   const out=document.getElementById('lab-parse-out');
   if(out) out.innerHTML=labParsedHtml();
 }
+
 function labMatchItem(items,name){
   const norm=s=>String(s||'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
   const k=norm(name), kw=k.split(' ')[0];
   return items.find(it=>{ const n=norm(it.name); return n===k||n.startsWith(k)||k.startsWith(n)||(kw.length>=3&&n.split(' ')[0]===kw); })||null;
 }
+
 function labParsedHtml(){
   if(!_labParsed) return '';
   if(!_labParsed.length) return '<div class="lab-empty" style="margin-top:10px">No "name: value" lines detected.</div>';
@@ -4179,6 +2883,7 @@ function labParsedHtml(){
     <button class="btn primary" onclick="labApplyParsed()" style="margin-top:10px"><i class="ti ti-arrow-down-to-arc" aria-hidden="true"></i> Apply to list &amp; save</button>
   </div>`;
 }
+
 async function labApplyParsed(){
   if(!_labParsed||!_labParsed.length) return;
   const impGroup=((document.getElementById('lab-paste-group')||{}).value||'').trim();
@@ -4202,6 +2907,7 @@ async function labApplyParsed(){
   toast('Applied report to lab instruments','success');
 }
 
+
 function switchP(el){
   document.querySelectorAll('.ptab').forEach(t=>{t.className='ptab';});
   const p=el.dataset.p;
@@ -4212,11 +2918,13 @@ function switchP(el){
   render();
 }
 
+
 function genId(plat){
   const pfx=PLAT_PFX[plat]||'XX';
   const n=records.filter(r=>r.platform===plat).length+1;
   return pfx+'-'+String(n).padStart(3,'0');
 }
+
 
 function filtered(){
   const base=curP==='all'?records:records.filter(r=>r.platform===curP);
@@ -4231,12 +2939,16 @@ function filtered(){
   }));
   return d;
 }
+
 function closedPool(){
   const base=curP==='all'?records:records.filter(r=>r.platform===curP);
   return applyRecordFilters(base.filter(r=>recordStatus(r)==='closed'));
 }
+
 function filteredClosed(){ return closedPool().filter(r=>!isRecordArchived(r)); }
+
 function filteredArchived(){ return closedPool().filter(isRecordArchived); }
+
 
 function onStatCardClick(status){
   const sel=document.getElementById('q-stat');
@@ -4247,6 +2959,7 @@ function onStatCardClick(status){
   renderDashboard();
   renderList();
 }
+
 function renderList(){
   const d=filtered();
   const el=document.getElementById('list-area');
@@ -4259,6 +2972,7 @@ function renderList(){
   renderBatchBar();
   markClampedDescriptions();
 }
+
 // Only promise "there is more" when the text is genuinely cut off
 function markClampedDescriptions(){
   document.querySelectorAll('.desc-clamp').forEach(d=>{
@@ -4266,6 +2980,7 @@ function markClampedDescriptions(){
     if(hint&&hint.classList.contains('desc-more')) hint.hidden=(d.scrollHeight<=d.clientHeight+1);
   });
 }
+
 function renderClosedArchive(){
   const wrap=document.getElementById('closed-archive');
   const el=document.getElementById('closed-list-area');
@@ -4282,6 +2997,7 @@ function renderClosedArchive(){
   if(hintEl) hintEl.textContent=`${d.length} closed record(s) · moves to Archived after ${ARCHIVE_AFTER_DAYS} days`;
   el.innerHTML=d.map(r=>recordCardHtml(r,{archive:true})).join('');
 }
+
 /* Hiding, not access control: the rows stay readable through the API, and this is
    internal notice material rather than anything customer-facing. What it buys is
    that fourteen other people are not scrolling past work that finished months ago. */
@@ -4296,6 +3012,7 @@ function renderArchivedSection(){
   if(hintEl) hintEl.textContent=`${d.length} record(s) closed over ${ARCHIVE_AFTER_DAYS} days ago · admin only · nothing here is deleted automatically`;
   el.innerHTML=d.map(r=>recordCardHtml(r,{archive:true})).join('');
 }
+
 /* Deliberately not chained to the export. openPrintReport only opens a print
    dialog - if the PDF is cancelled at the save step the app never finds out, so a
    flow that deleted "once exported" would be resting on something it cannot check.
@@ -4318,6 +3035,7 @@ async function clearArchivedRecords(){
   render();
   toast(`${ids.size} archived record(s) deleted`,'success');
 }
+
 async function clearArchivedProjects(){
   if(!requireAdmin()) return;
   const d=archivedProjects();
@@ -4337,6 +3055,7 @@ async function clearArchivedProjects(){
   renderProjectView();
   toast(`${ids.size} archived project(s) deleted`,'success');
 }
+
 function exportArchived(){
   const d=filteredArchived();
   if(!d.length){ toast('Nothing archived to export.','warn'); return; }
@@ -4344,17 +3063,13 @@ function exportArchived(){
     {kind:'records',archivedAfterDays:ARCHIVE_AFTER_DAYS,exportedAt:new Date().toISOString(),records:d});
 }
 
+
 function render(){
   if(viewMode==='platform'){renderDashboard();renderList();}
   else renderProjectView();
 }
 
-function closeDaysOf(r){
-  const end=r.closedAt||r.updated;
-  if(!r.created||!end) return null;
-  const d=Math.round((new Date(end)-new Date(r.created))/86400000);
-  return d>=0?d:null;
-}
+
 // A single slim strip rather than a panel: the counts double as the status filter,
 // which is what the old stat cards were actually used for.
 function renderDashboard(){
@@ -4384,10 +3099,14 @@ function renderDashboard(){
   </div>`;
 }
 
+
 /* ===== Debounced search ===== */
 let _searchTimer=null, _projSearchTimer=null;
+
 function onSearchInput(){ clearTimeout(_searchTimer); _searchTimer=setTimeout(renderList,250); }
+
 function onProjSearchInput(){ clearTimeout(_projSearchTimer); _projSearchTimer=setTimeout(renderProjectListContent,250); }
+
 
 /* ===== Duplicate a record as a new one ===== */
 function duplicateRecord(id){
@@ -4405,17 +3124,23 @@ function duplicateRecord(id){
   toast('Duplicated — edit the title and save as a new record','info');
 }
 
+
 /* ===== Batch selection & actions ===== */
 let selectedIds=new Set(), selectionMode=false;
+
 function toggleSelectionMode(){
   selectionMode=!selectionMode;
   if(!selectionMode) selectedIds.clear();
   const btn=document.getElementById('select-toggle'); if(btn) btn.classList.toggle('active',selectionMode);
   render();
 }
+
 function exitSelectionMode(){ selectionMode=false; selectedIds.clear(); const btn=document.getElementById('select-toggle'); if(btn) btn.classList.remove('active'); render(); }
+
 function toggleSelect(id,on){ if(on) selectedIds.add(id); else selectedIds.delete(id); const c=document.querySelector(`.record .rec-select[onclick*="'${id}'"]`); if(c) c.closest('.record').classList.toggle('selected',on); renderBatchBar(); }
+
 function clearSelection(){ selectedIds.clear(); render(); }
+
 function renderBatchBar(){
   const bar=document.getElementById('batch-bar'); if(!bar) return;
   if(!selectionMode){ bar.hidden=true; bar.innerHTML=''; return; }
@@ -4426,6 +3151,7 @@ function renderBatchBar(){
     ${myApproval.isAdmin?`<button class="btn btn-danger-text" onclick="batchDelete()"><i class="ti ti-trash" aria-hidden="true"></i> Delete</button>`:''}`:''}
     <button class="btn" onclick="exitSelectionMode()"><i class="ti ti-x" aria-hidden="true"></i> Done</button>`;
 }
+
 async function batchClose(){
   const ids=[...selectedIds];
   const targets=records.filter(r=>ids.includes(r.id)&&recordStatus(r)!=='closed');
@@ -4434,6 +3160,7 @@ async function batchClose(){
   await afterMutation(async()=>{ for(const r of targets) await saveRecordRow(r,false); });
   selectedIds.clear(); render(); toast(targets.length+' record(s) closed','success');
 }
+
 async function batchDelete(){
   if(!requireAdmin('Only an admin can delete in bulk. A record you filed yourself can be deleted from its own card.')) return;
   const ids=[...selectedIds];
@@ -4445,8 +3172,10 @@ async function batchDelete(){
   selectedIds.clear(); render(); toast(targets.length+' record(s) deleted','success');
 }
 
+
 /* ===== Client-side image compression (keeps images legible) ===== */
 function loadImageEl(file){ return new Promise((res,rej)=>{ const img=new Image(); img.onload=()=>{URL.revokeObjectURL(img.src);res(img);}; img.onerror=rej; img.src=URL.createObjectURL(file); }); }
+
 async function compressImage(file){
   if(!/^image\/(jpeg|png|webp)$/.test(file.type)) return file;   // skip gif/svg/unknown
   if(file.size < 400*1024) return file;                          // already small
@@ -4463,6 +3192,7 @@ async function compressImage(file){
   }catch(e){ return file; }
 }
 
+
 /* ===== Skeleton loading placeholders ===== */
 function skeletonCards(n){
   return '<div class="skel-wrap">'+Array.from({length:n||4}).map(()=>
@@ -4470,10 +3200,14 @@ function skeletonCards(n){
   ).join('')+'</div>';
 }
 
+
 /* ===== Keyboard shortcuts ===== */
 function isTyping(el){ return el && (el.tagName==='INPUT'||el.tagName==='TEXTAREA'||el.tagName==='SELECT'||el.isContentEditable); }
+
 function focusSearch(){ const el=viewMode==='project'?document.getElementById('pq-s'):document.getElementById('q-s'); if(el&&el.offsetParent!==null){ el.focus(); if(el.select) el.select(); } }
+
 function newForContext(){ if(viewMode==='project'){ if(curProjectId) showLogForm(); else showProjectForm(); } else showForm(); }
+
 function showShortcuts(){
   if(document.getElementById('shortcuts-modal')) return;
   const ov=document.createElement('div'); ov.className='modal-overlay'; ov.id='shortcuts-modal';
@@ -4511,16 +3245,19 @@ document.addEventListener('keydown',e=>{
   else if(e.key==='?'){ e.preventDefault(); showShortcuts(); }
 });
 
+
 function showForm(){
   editId=null;
   renderForm({});
 }
+
 function editRecord(id){
   editId=id;
   const r=records.find(x=>x.id===id);
   renderForm(r||{});
   document.getElementById('form-area').scrollIntoView({behavior:'smooth',block:'nearest'});
 }
+
 /* Record detail — opened by clicking a card. Keeps the list itself uncluttered:
    version history and the full details live here rather than on every card. */
 function openRecordDetail(id){
@@ -4577,6 +3314,7 @@ function openRecordDetail(id){
   document.addEventListener('keydown',onKey);
   requestAnimationFrame(()=>ov.classList.add('show'));
 }
+
 // Show the "what changed" note only when saving as a new version
 function onSaveModeChange(){
   const mode=(document.querySelector('input[name="save-mode"]:checked')||{}).value||'update';
@@ -4587,6 +3325,7 @@ function onSaveModeChange(){
   if(mode==='version'){ const n=document.getElementById('f-vernote'); if(n) n.focus(); }
 }
 
+
 function catOptsHtml(plat,selCat,selSub){
   const cfg=PLATFORMS[plat];
   if(!cfg||!cfg.categories.length) return '<option value="">— No subcategory —</option>';
@@ -4595,11 +3334,13 @@ function catOptsHtml(plat,selCat,selSub){
     return `<option value="${c.v}" ${sel}>${c.l}</option>`;
   }).join('');
 }
+
 function subcatOptsHtml(plat,cat,selSub){
   const c=PLATFORMS[plat]?.categories?.find(x=>x.v===cat);
   if(!c?.children) return '';
   return c.children.map(ch=>`<option value="${ch.v}" ${(selSub||'')===ch.v?'selected':''}>${ch.l}</option>`).join('');
 }
+
 
 // userChanged=true 代表是使用者自己動了平台/分類（而非 renderForm 初始化），
 // 這時才把不屬於新平台/分類的舊勾選清掉
@@ -4615,6 +3356,7 @@ function onPlatChange(userChanged){
   }
   onCatChange(userChanged);
 }
+
 // 依目前表單的 平台 / 分類 / 記錄類型 重建 Sample Type 區塊
 function refreshSampleChecks(dropStale){
   const wrap=document.getElementById('f-sample-wrap');
@@ -4633,6 +3375,7 @@ function refreshSampleChecks(dropStale){
   // 該平台/分類沒有樣品類型時（如 Lenovo、Talk Analysis Suite）整段隱藏
   wrap.style.display=(type==='note'&&list.length)?'block':'none';
 }
+
 function onCatChange(userChanged){
   const plat=document.getElementById('f-plat')?.value||'Teams';
   const cat=document.getElementById('f-cat')?.value||'';
@@ -4654,6 +3397,7 @@ function onCatChange(userChanged){
   }
   refreshSampleChecks(userChanged);
 }
+
 
 function renderForm(r){
   const plat=r.platform||'Teams';
@@ -4793,6 +3537,7 @@ function renderForm(r){
   initFileUploader(r.files);
 }
 
+
 function onTypeChange(){
   const t=(document.getElementById('f-type')||{}).value;
   const fw=document.getElementById('fw-wrap');
@@ -4802,6 +3547,7 @@ function onTypeChange(){
   refreshSampleChecks();
   onSubtypeChange();
 }
+
 function onSubtypeChange(){
   const t=(document.getElementById('f-type')||{}).value;
   const st=(document.getElementById('f-subtype')||{}).value;
@@ -4811,11 +3557,13 @@ function onSubtypeChange(){
   if(!show){ const ow=document.getElementById('f-software-other-wrap'); if(ow) ow.style.display='none'; }
   else onSoftwareChange();
 }
+
 function onSoftwareChange(){
   const v=(document.getElementById('f-software')||{}).value;
   const ow=document.getElementById('f-software-other-wrap');
   if(ow) ow.style.display=(v==='__other__')?'block':'none';
 }
+
 
 async function submitForm(){
   const titleEl = document.getElementById('f-title');
@@ -4894,7 +3642,9 @@ async function submitForm(){
   toast(savedVersion?('Saved as v'+newVerNo):(isNew?'Record added':'Record updated'),'success');
 }
 
+
 function cancelForm(){document.getElementById('form-area').innerHTML='';editId=null;}
+
 
 async function cycleStatus(id){
   const r=records.find(x=>x.id===id);
@@ -4903,6 +3653,7 @@ async function cycleStatus(id){
   applyStatusOnRecord(r, STATUS_NEXT[st]||'in-progress');
   await afterMutation(()=>saveRecordRow(r,false),{k:'saveRecord',data:r}); render();
 }
+
 async function delRecord(id){
   if(!requireDelete(records.find(r=>r.id===id),'record')) return;
   if(!(await confirmModal('This record and its screenshots will be permanently deleted.',{title:'Delete record?',okText:'Delete',danger:true}))) return;
@@ -4914,32 +3665,18 @@ async function delRecord(id){
   toast('Record deleted','success');
 }
 
+
 function genProjectId(){
   const n=projects.length+1;
   return 'PRJ-'+String(n).padStart(3,'0');
 }
+
 function genLogId(proj){
   const n=(proj.logs||[]).length+1;
   return 'LOG-'+String(n).padStart(3,'0');
 }
+
 function getProject(id){return projects.find(p=>p.id===id);}
-function sortedLogs(logs){
-  return [...(logs||[])].sort((a,b)=>new Date(b.date)-new Date(a.date)||(b.id||'').localeCompare(a.id||''));
-}
-/* Qualification is supposed to run on one unit, so more than one PAL ID across
-   those logs is worth surfacing. Debug is exempt — swapping units while debugging
-   is normal. The stored key stays sampleNo; renaming it would strand anything
-   already filed under the old name for nothing but tidiness. */
-function qualSampleClash(proj){
-  const nos=[...new Set((proj.logs||[])
-    .filter(l=>(l.phase==='qualification'||l.phase==='requal')&&l.sampleNo)
-    .map(l=>l.sampleNo.trim()))];
-  return nos.length>1?nos:null;
-}
-function latestFw(proj){
-  const l=sortedLogs(proj.logs).find(x=>x.fwVersion);
-  return l?l.fwVersion:'';
-}
 
 function renderProjectView(){
   if(curProjectId) renderProjectDetail();
@@ -4947,18 +3684,22 @@ function renderProjectView(){
   checkProjectDeleteReminders();
 }
 
+
 function setProjToolbar(mode){
   const list=document.getElementById('proj-tb-list');
   const detail=document.getElementById('proj-tb-detail');
   if(list) list.hidden=(mode!=='list');
   if(detail) detail.hidden=(mode!=='detail');
 }
+
 function onProjSearch(){renderProjectListContent();}
+
 function closeProjectFromCard(id){
   const p=getProject(id);
   if(!p) return;
   showProjectCloseModal(p);
 }
+
 async function reopenProject(id){
   const p=getProject(id);
   if(!p) return;
@@ -4968,6 +3709,7 @@ async function reopenProject(id){
   await afterMutation(()=>saveProjectRow(p,false),{k:'saveProject',data:stripLogs(p)});
   if(curProjectId===id) renderProjectDetail(); else renderProjectListContent();
 }
+
 function showProjectCloseModal(p){
   const modal=document.createElement('div');
   modal.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;display:flex;align-items:center;justify-content:center;';
@@ -4998,6 +3740,7 @@ function showProjectCloseModal(p){
     };
   });
 }
+
 function checkProjectDeleteReminders(){
   // Only the admin can act on this, and the dialog offers Delete All - putting it
   // in front of fourteen other people is how history gets lost by accident
@@ -5024,6 +3767,7 @@ function checkProjectDeleteReminders(){
   modal.querySelector('#pdr-extend').onclick=async()=>{due.forEach(p=>{p.deleteAfter=isoMonthsAhead(6);});document.body.removeChild(modal);await afterMutation(async()=>{for(const p of due) await saveProjectRow(p,false);});renderProjectListContent();};
   modal.querySelector('#pdr-delete').onclick=async()=>{const ids=new Set(due.map(p=>p.id));const imgs=due.flatMap(p=>(p.logs||[]).flatMap(l=>recordAssets(l)));projects=projects.filter(p=>!ids.has(p.id));document.body.removeChild(modal);await afterMutation(async()=>{for(const id of ids) await removeProjectRow(id); await deleteStoredImages(imgs);});renderProjectView();};
 }
+
 function backToProjectList(){
   curProjectId=null;
   document.getElementById('proj-form-area').innerHTML='';
@@ -5040,6 +3784,7 @@ window.addEventListener('popstate',function(e){
     history.pushState({aclab:'list-guard'},'');
   }
 });
+
 // 確保頁面一載入時就有一個基底歷史紀錄（防止第一次右滑關閉頁面）
 function initHistoryGuard(){
   if(!history.state||!history.state.aclab){
@@ -5047,12 +3792,13 @@ function initHistoryGuard(){
     history.pushState({aclab:'list-guard'},'');
   }
 }
-const GAUGE_SEGS=24;
+
 // Ramp the filled ticks from deep to bright so the leading edge reads as "now"
 function gaugeMix(k){
   const a=[13,120,90], b=[74,222,128];
   return '#'+a.map((v,i)=>Math.round(v+(b[i]-v)*k).toString(16).padStart(2,'0')).join('');
 }
+
 function certGaugeHtml(p,size,pulse){
   const pr=hasProgressBar(p)?certProgress(p):null;
   if(!pr) return '';
@@ -5077,6 +3823,7 @@ function certGaugeHtml(p,size,pulse){
       data-pct="${pr.pct}">0<small>%</small></div>
   </div>`;
 }
+
 /* The number counts up once per render. data-done stops a re-render of the same
    list (a filter change, say) from replaying it on cards already on screen. */
 function animateCertGauges(root){
@@ -5095,6 +3842,7 @@ function animateCertGauges(root){
     requestAnimationFrame(step);
   });
 }
+
 function certListHtml(p){
   const pr=hasProgressBar(p)?certProgress(p):null;
   if(!pr) return '';
@@ -5112,16 +3860,19 @@ function certListHtml(p){
   </div>
   ${pr.closed?'<div style="font-size:12px;color:var(--text-secondary);margin-top:8px"><i class="ti ti-lock" aria-hidden="true"></i> Closed — counted as complete</div>':''}`;
 }
+
 function renderProjectList(){
   curProjectId=null;
   setProjToolbar('list');
   renderProjPlatRow();
   renderProjectListContent();
 }
+
 /* Coloured toggles rather than a dropdown: there are only four platforms, each
    already has a colour elsewhere in the app, and a filter you can see the state
    of beats one you have to open. */
 let projPlatFilter='';
+
 function setProjPlatFilter(k){
   // Not a toggle: "All" is already the way to clear, so clicking the active pill
   // again bouncing back to All was a second, unsignposted way to do the same thing
@@ -5129,6 +3880,7 @@ function setProjPlatFilter(k){
   renderProjPlatRow();
   renderProjectListContent();
 }
+
 function renderProjPlatRow(){
   const row=document.getElementById('pq-plat-row');
   if(!row) return;
@@ -5139,6 +3891,7 @@ function renderProjPlatRow(){
     +CERT_PLATFORMS.map(k=>`<button type="button" class="plat-pill b-${PLAT_COLOR[k]||'cat'}${projPlatFilter===k?' on':''}"
         onclick="setProjPlatFilter('${k}')">${esc(certPlatLabel(k))} <span class="pill-n">${counts[k]||0}</span></button>`).join('');
 }
+
 /* The list, the two export buttons and the clear button all read this, so what a
    button acts on is always what is on screen above it. */
 function projectPool(){
@@ -5151,7 +3904,9 @@ function projectPool(){
   if(projPlatFilter) list=list.filter(p=>projPlatform(p)===projPlatFilter);
   return list;
 }
+
 function archivedProjects(){ return projectPool().filter(isProjectArchived); }
+
 function renderProjectListContent(){
   const q=(document.getElementById('pq-s')||{}).value||'';
   const fPlat=projPlatFilter;
@@ -5221,6 +3976,7 @@ function renderProjectListContent(){
     </div>`:'');
   animateCertGauges(el);
 }
+
 /* Logs travel with the project here. A project without its logs answers no
    question worth asking later, and logs are where the per-engineer detail lives. */
 function exportArchivedProjects(){
@@ -5230,6 +3986,7 @@ function exportArchivedProjects(){
     {kind:'projects',archivedAfterDays:ARCHIVE_AFTER_DAYS,exportedAt:new Date().toISOString(),projects:d});
 }
 
+
 function openProject(id){
   curProjectId=id;
   document.getElementById('proj-form-area').innerHTML='';
@@ -5237,6 +3994,7 @@ function openProject(id){
   history.pushState({aclab:'project',id:id},'',' ');
   renderProjectDetail();
 }
+
 
 function renderProjectDetail(){
   const p=getProject(curProjectId);
@@ -5322,6 +4080,7 @@ function renderProjectDetail(){
   animateCertGauges(document.getElementById('proj-content'));
 }
 
+
 function showProjectForm(id){
   editProjId=id||null;
   const p=id?getProject(id):{};
@@ -5363,6 +4122,7 @@ function showProjectForm(id){
   onCertPlatformChange();
   document.getElementById('proj-form-area').scrollIntoView({behavior:'smooth',block:'nearest'});
 }
+
 // Only Teams splits its checklist by OS, so the field is hidden for the others
 // rather than sitting there collecting a value nothing reads.
 function onCertPlatformChange(){
@@ -5380,8 +4140,10 @@ function onCertPlatformChange(){
   sel.innerHTML=uses?productTypeOpts(cur,platform):'';
   if(sel.value!==cur) onProductTypeChange();
 }
+
 // Fields that belong to the platform itself, not to a product type
 let chromeDraft=null;
+
 function renderPlatformExtra(){
   const box=document.getElementById('pf-plat-extra');
   if(!box) return;
@@ -5392,6 +4154,7 @@ function renderPlatformExtra(){
   box.innerHTML=platformExtraHtml(platform,chromeDraft||{});
   box.style.display=box.innerHTML?'':'none';
 }
+
 
 async function submitProject(){
   const name=(document.getElementById('pf-name')||{}).value||'';
@@ -5425,6 +4188,7 @@ async function submitProject(){
   renderProjectView();
   toast(isNew?'Project created':'Project updated','success');
 }
+
 
 function showLogForm(logId){
   editLogId=logId||null;
@@ -5496,6 +4260,7 @@ function showLogForm(logId){
   onCertItemChange();
   document.getElementById('proj-form-area').scrollIntoView({behavior:'smooth',block:'nearest'});
 }
+
 /* Several items often get covered in one sitting — USB and Dongle Function on the
    same day, for instance — so this is a multi-select grouped the way the checklist
    reads, not a single dropdown. */
@@ -5521,9 +4286,11 @@ function certItemChecksHtml(p,selected){
         ).join('')}</div>
       </div>`;}).join('')}</div>`;
 }
+
 function readCertItemsFromForm(){
   return Array.from(document.querySelectorAll('.lf-item-cb:checked')).map(c=>c.value);
 }
+
 // A reference item only records that it was tested, so pass/fail is only asked for
 // when something in the selection actually depends on it.
 function onCertItemChange(cb){
@@ -5539,6 +4306,7 @@ function onCertItemChange(cb){
   const picked=readCertItemsFromForm();
   wrap.style.display=certItemsFor(p).some(i=>picked.includes(i.v)&&!i.ref)?'':'none';
 }
+
 
 async function submitLog(){
   const p=getProject(curProjectId);
@@ -5598,10 +4366,12 @@ async function submitLog(){
   toast(isNew?'Log added':'Log updated','success');
 }
 
+
 function cancelProjForm(){
   document.getElementById('proj-form-area').innerHTML='';
   editProjId=null; editLogId=null;
 }
+
 
 /* A waiver is the customer accepting a failure, so it is recorded on the failing
    log rather than turning it into a pass — the log still says it failed, and who
@@ -5623,6 +4393,7 @@ async function toggleWaive(logId){
   toast(l.waived?'Waived — counts as passed':'Waiver removed','success');
 }
 
+
 async function delLog(logId){
   if(!(await confirmModal('This log entry and its screenshots will be permanently deleted.',{title:'Delete log?',okText:'Delete',danger:true}))) return;
   const p=getProject(curProjectId);
@@ -5633,6 +4404,7 @@ async function delLog(logId){
   renderProjectDetail();
   toast('Log deleted','success');
 }
+
 
 async function delProject(id){
   const pid=id||curProjectId;
@@ -5648,6 +4420,7 @@ async function delProject(id){
   renderProjectList();
   toast('Project deleted','success');
 }
+
 
 /* ===== Self-check =====
    Type runSelfCheck() in the console. Covers the certification rules, which are
@@ -5851,6 +4624,78 @@ function runSelfCheck(){
   console.log(`Self-check: ${pass} ok, ${fail} failed\n`+out.join('\n'));
   return {pass,fail};
 }
+
+/* Inline on* attributes resolve against window, and a module has its own scope.
+   Everything declared here is published, rather than a hand-picked list: before
+   the split this was a classic script, where every top-level function is already
+   a window property, so this is what the markup has always been calling. A list
+   would have to be right about handlers that are built as strings at run time -
+   the filter menus pass "pickCat(...)" around as an argument - and the first one
+   was not. Scaffolding: entries go as each view moves to delegated listeners. */
+Object.assign(window, {
+  afterMutation, allowedUserNames, animateCertGauges, applyRecordFilters, applyStatusOnRecord,
+  applyTheme, archivedProjects, backToProjectList, batchClose, batchDelete,
+  buildProductTypeExtra, bumpId, canDelete, cancelForm, cancelProjForm, catDef, catDisplay,
+  catHasChildren, catLbl, catOptsHtml, certGaugeHtml, certItemChecksHtml, certItemDone,
+  certItemLabel, certItemsFor, certListHtml, certPlatLabel, certProgress,
+  checkProjectDeleteReminders, clearArchivedProjects, clearArchivedRecords, clearSelection,
+  closeDaysOf, closeFilterMenus, closeLabMenu, closeProjectFromCard, closedPool, cloudLoad,
+  collectProductTypeFields, commitFiles, commitImages, completeRegister, compressImage,
+  confirmModal, connectionChecks, currentFileBytes, currentImgBytes, cycleStatus, daysSince,
+  delLog, delProject, delRecord, deleteStoredImages, distanceOpts, doLogin, doLogout,
+  downloadJson, duplicateRecord, editRecord, enableNotifications, enqueueWrite,
+  ensureAllowedUsers, enterAppIfApproved, esc, exitSelectionMode, exportArchived,
+  exportArchivedPDF, exportArchivedProjects, exportArchivedProjectsPDF, exportBackup,
+  exportProjectPDF, exportRecordsJSON, exportRecordsPDF, extractVersion, featureChecksHtml,
+  fetchAllowedUsers, fileExt, fileIcon, fileIconColor, fileItemBytes, filesDisplayHtml,
+  fillCatFilter, fillSampleFilter, fillSubcatFilter, fillTypeFilter, filterMenuItem, filtered,
+  filteredArchived, filteredClosed, flushQueue, fmtDateShort, fmtMB, fmtUser, focusSearch,
+  gaugeMix, genId, genLogId, genProjectId, getCurrentEmail, getCurrentUser, getProject,
+  getTypesForPlat, hasProgressBar, headsetConnValues, identityFieldHtml, identityOptions,
+  imagesDisplayHtml, imagesReportHtml, imgItemBytes, imgPublicUrl, initApp, initFileUploader,
+  initHistoryGuard, initImageUploader, initSwipeBack, isProjectArchived, isRecordArchived,
+  isTyping, isoDaysAgo, isoMonthsAhead, labAddCategory, labAddInstrument, labApplyParsed,
+  labBack, labCancelReorder, labCatCancel, labCatEditHtml, labCatSave, labData,
+  labDeleteCategory, labDeleteRow, labDragEnd, labDragOver, labDragStart, labDrop,
+  labDropOnGroup, labEditRow, labEditRowHtml, labFreshness, labGripDown, labGripUp,
+  labGroupHeadHtml, labGroupList, labGroupsOf, labIndexesIn, labItemGroup, labLastChanged,
+  labMatchItem, labMoveGroup, labMoveMenu, labMoveRow, labMoveToCategory, labNormalizeOrder,
+  labParsePreview, labParsedHtml, labPasteHtml, labRenameCategory, labReorderRowHtml,
+  labRowCancel, labRowHtml, labRowSave, labSaveReorder, labSectionsHtml, labStartReorder,
+  labVerify, latestFw, legacyTypeLabel, load, loadImageEl, loadLabInstruments, loadMyApproval,
+  loadSettings, localBackup, logCertItems, loginErrorMessage, manageTestSoftware, manageUsers,
+  markClampedDescriptions, maybeMigrateSnapshot, migrateRecords, newForContext,
+  noteSampleChecks, nowISO, onCatChange, onCatFilterChange, onCertItemChange,
+  onCertPlatformChange, onPickFiles, onPickImages, onPlatChange, onProductTypeChange,
+  onProjSearch, onProjSearchInput, onRememberToggle, onSaveModeChange, onSearchInput,
+  onSoftwareChange, onStatCardClick, onSubtypeChange, onTeamsButtonChange, onTypeChange,
+  onTypeFilterChange, openImageLightbox, openLab, openPrintReport, openProject,
+  openRecordDetail, openRecordsReport, ownedRecently, parseStore, persistAll, persistQueue,
+  persistSettings, pickCat, pickSelect, pickType, platformExtraHtml, platformUsesExtra,
+  productTypeOpts, productTypeSummary, productTypesFor, projOS, projPlatform, projectPool,
+  projectReportBlock, purgeStoredPassword, pushSupported, qualSampleClash, qv,
+  readCertItemsFromForm, readChromeFields, readConnectionsFromForm, readIdentity,
+  readPersonalFeaturesFromForm, readProductTypeDraft, recheckApproval, recordAssets,
+  recordCardHtml, recordClosedAt, recordCrumbHtml, recordSampleLabels, recordSampleValues,
+  recordSoftwareLabel, recordStatus, recordTypeLabel, recordVersionNo, recordsForExport,
+  refreshFilterMenus, refreshSampleChecks, registerSW, removeLogRow, removeProjectRow,
+  removeRecordRow, removeUploadFile, removeUploadImage, render, renderArchivedSection,
+  renderBatchBar, renderCatMenu, renderClosedArchive, renderDashboard, renderFileUploader,
+  renderForm, renderImageUploader, renderLabDetail, renderLabList, renderLabView, renderList,
+  renderPlatformExtra, renderProjPlatRow, renderProjectDetail, renderProjectList,
+  renderProjectListContent, renderProjectView, renderSelectMenu, renderTypeMenu, reopenProject,
+  requestApproval, requireAdmin, requireDelete, resetIdleTimer, runSelfCheck, sampleOptsFor,
+  sampleTypesFor, sanitizeImgName, saveLabRow, saveLogRow, saveProjectRow, savePushSubscription,
+  saveRecordRow, saveSettings, segHtml, segValue, sendRegisterOTP, setCurrentLoginEmail,
+  setImgDisp, setLoginMsg, setProjPlatFilter, setProjToolbar, setRegMsg, setSort, setSyncStatus,
+  showApp, showForm, showLogForm, showLogin, showLoginPanel, showPendingScreen,
+  showProjectCloseModal, showProjectForm, showRegister, showShortcuts, skeletonCards,
+  softwareOpts, sortRecords, sortedLogs, startIdleTimer, startRealtime, stopRealtime, stripLogs,
+  subcatOptsHtml, submitForm, submitLog, submitProject, switchMode, switchP, testSoftwareList,
+  testSupabaseConnection, toast, todayISO, toggleDropdown, toggleSelect, toggleSelectionMode,
+  toggleTheme, toggleWaive, updateAdminBtn, updateLoginFileWarn, updateNotifyBtn,
+  urlB64ToUint8Array, usesProductType, verifyRegisterOTP, versionTimelineHtml
+});
 
 initApp();
 </script>
