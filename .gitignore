@@ -8,7 +8,6 @@ SupaBase.txt
 
 # === Local-only, not needed in the public repo ===
 memory/
-Old/
 .claude/
 網頁圖標.png
 # Lists this system's open weaknesses and where they are. This repo is public.
