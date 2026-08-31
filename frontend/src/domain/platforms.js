@@ -271,11 +271,16 @@ function recordTypeLabel(r){
   return to?to.lbl:legacyTypeLabel(r.type);
 }
 
+/* What the lab starts with before app_settings is read. It lives in the domain
+   layer so the shared state can seed appConfig from it without state.js having
+   to reach into a view. */
+const DEFAULT_TEST_SOFTWARE=['ACQUA','Soundcheck','LabBGN','3Pass','SPET','IADK'];
+
 /* Everything this module declares. These are internal modules rather than a public
    API, so exporting the lot removes a whole class of "forgot to export it" error;
    the import side is generated too, and over-importing costs nothing. */
 export {
-  CERT_CLS, CERT_LBL, LABS, LEGACY_SAMPLE_TYPES, NOTE_SAMPLE_TYPE_MAP, PLATFORMS, PLAT_COLOR,
+  DEFAULT_TEST_SOFTWARE, CERT_CLS, CERT_LBL, LABS, LEGACY_SAMPLE_TYPES, NOTE_SAMPLE_TYPE_MAP, PLATFORMS, PLAT_COLOR,
   PLAT_NAMES, PLAT_PFX, STATUSES, STATUS_MAP, STATUS_NEXT, STATUS_NEXT_LBL, TYPES, TYPES_ALT,
   TYPES_ALT_MAP, TYPES_AUDIO, TYPES_AUDIO_MAP, TYPE_ICON, TYPE_MAP, UPDATE_SUBTYPES, catDef,
   catDisplay, catHasChildren, catLbl, getTypesForPlat, legacyTypeLabel, recordSampleLabels,

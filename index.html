@@ -266,9 +266,10 @@
 <script type="module">
 import { ARCHIVE_AFTER_DAYS, applyStatusOnRecord, closeDaysOf, isProjectArchived, isRecordArchived, recordClosedAt, recordStatus } from './frontend/src/domain/archive.js';
 import { CERT_PHASES, CERT_PLATFORMS, CERT_SINGLE_GROUPS, GAUGE_SEGS, PHASES, PHASE_MAP, certItemDone, certItemLabel, certItemsFor, certPlatLabel, certProgress, hasProgressBar, latestFw, logCertItems, projOS, projPlatform, qualSampleClash, sortedLogs } from './frontend/src/domain/certification.js';
-import { CERT_CLS, CERT_LBL, LABS, PLATFORMS, PLAT_COLOR, PLAT_NAMES, PLAT_PFX, STATUSES, STATUS_MAP, STATUS_NEXT, TYPES_ALT_MAP, TYPES_AUDIO_MAP, TYPE_ICON, TYPE_MAP, UPDATE_SUBTYPES, catDef, catDisplay, catHasChildren, catLbl, getTypesForPlat, legacyTypeLabel, recordSampleLabels, recordSampleValues, recordTypeLabel, sampleOptsFor, sampleTypesFor } from './frontend/src/domain/platforms.js';
+import { CERT_CLS, CERT_LBL, DEFAULT_TEST_SOFTWARE, LABS, PLATFORMS, PLAT_COLOR, PLAT_NAMES, PLAT_PFX, STATUSES, STATUS_MAP, STATUS_NEXT, TYPES_ALT_MAP, TYPES_AUDIO_MAP, TYPE_ICON, TYPE_MAP, UPDATE_SUBTYPES, catDef, catDisplay, catHasChildren, catLbl, getTypesForPlat, legacyTypeLabel, recordSampleLabels, recordSampleValues, recordTypeLabel, sampleOptsFor, sampleTypesFor } from './frontend/src/domain/platforms.js';
 import { BUILT_IN_OS, CHROME_FEATURES, CHROME_MIC, CHROME_OS, EARPIECE, HEADSET_CONN, PERSONAL_FEATURES, PRODUCT_TYPE_MAP, SELF_HOSTED_TYPES, TEST_DISTANCES, headsetConnValues, platformUsesExtra, productTypeSummary, productTypesFor, usesProductType } from './frontend/src/domain/products.js';
 import { STORAGE_KEY, migrateRecords, recordAssets, recordVersionNo, stripLogs } from './frontend/src/domain/records.js';
+import { appConfig, curP, curProjectId, currentLoginEmail, fileState, imgState, labInstruments, projects, records, sb, setAppConfig, setCurP, setCurProjectId, setCurrentLoginEmailValue, setFileState, setImgState, setLabInstruments, setProjects, setRecords, setSb, setViewMode, viewMode } from './frontend/src/state.js';
 import { daysSince, fmtDateShort, isoDaysAgo, isoMonthsAhead, nowISO, todayISO } from './frontend/src/utils/dates.js';
 import { downloadJson } from './frontend/src/utils/download.js';
 import { esc, extractVersion, fmtMB, fmtUser, qv } from './frontend/src/utils/format.js';
@@ -638,9 +639,7 @@ function noteSampleChecks(selected,plat,cat){
 }
 
 /* ===== Test Software list (shared, in-app manageable) ===== */
-const DEFAULT_TEST_SOFTWARE=['ACQUA','Soundcheck','LabBGN','3Pass','SPET','IADK'];
 
-let appConfig={testSoftware:DEFAULT_TEST_SOFTWARE.slice()};
 
 function testSoftwareList(){ return (appConfig.testSoftware&&appConfig.testSoftware.length)?appConfig.testSoftware:DEFAULT_TEST_SOFTWARE; }
 
@@ -658,7 +657,7 @@ function recordSoftwareLabel(r){
 async function loadSettings(){
   try{
     const {data}=await sb.from('app_settings').select('data').eq('id','config').maybeSingle();
-    if(data&&data.data&&Array.isArray(data.data.testSoftware)) appConfig={...appConfig,...data.data};
+    if(data&&data.data&&Array.isArray(data.data.testSoftware)) setAppConfig({...appConfig,...data.data});
   }catch(e){ /* table may not exist yet — keep defaults */ }
 }
 
@@ -738,11 +737,10 @@ function imgItemBytes(im){ return im.kind==='new'?(im.file?.size||0):(im.size||0
 function currentImgBytes(){ return imgState.list.reduce((s,im)=>s+imgItemBytes(im),0); }
 
 // imgState.list items: {kind:'existing',path,name,size} | {kind:'new',file,name,url(objectURL)}
-let imgState={list:[],original:[]};
 
 function initImageUploader(existing){
   const arr=Array.isArray(existing)?existing:[];
-  imgState={list:arr.map(im=>({kind:'existing',path:im.path,name:im.name||'image',size:im.size||0,disp:im.disp||'md'})),original:arr.slice()};
+  setImgState({list:arr.map(im=>({kind:'existing',path:im.path,name:im.name||'image',size:im.size||0,disp:im.disp||'md'})),original:arr.slice()});
   renderImageUploader();
 }
 
@@ -877,11 +875,10 @@ function fileIconColor(ext){
 }
 
 // fileState.list items: {kind:'existing',path,name,size,ext} | {kind:'new',file,name,size,ext}
-let fileState={list:[],original:[]};
 
 function initFileUploader(existing){
   const arr=Array.isArray(existing)?existing:[];
-  fileState={list:arr.map(f=>({kind:'existing',path:f.path,name:f.name||'file',size:f.size||0,ext:f.ext||fileExt(f.name)})),original:arr.slice()};
+  setFileState({list:arr.map(f=>({kind:'existing',path:f.path,name:f.name||'file',size:f.size||0,ext:f.ext||fileExt(f.name)})),original:arr.slice()});
   renderFileUploader();
 }
 
@@ -1139,7 +1136,7 @@ function getCurrentEmail(){
 }
 
 function setCurrentLoginEmail(email){
-  currentLoginEmail=(email||'').trim();
+  setCurrentLoginEmailValue((email||'').trim());
 }
 
 function applyRecordFilters(list){
@@ -1270,13 +1267,13 @@ function recordCardHtml(r,opts={}){
 }
 
 
-let records=[], projects=[], curP='all', editId=null;
+let editId=null;
 
-let viewMode='platform', curProjectId=null, editProjId=null, editLogId=null;
+let editProjId=null, editLogId=null;
 
-let labInstruments={}, curLab=null; // Lab Instruments state (keyed by lab id)
+let curLab=null; // Lab Instruments state (keyed by lab id)
 
-let sb=null, currentLoginEmail='';
+
 
 
 const SUPABASE_URL='https://ygoywjqgatkwboepxaaz.supabase.co';
@@ -1429,7 +1426,7 @@ async function loadLabInstruments(){
     if(error) throw error;
     const m={};
     (data||[]).forEach(row=>{ m[row.id]={...(row.data||{}),updatedBy:row.updated_by}; });
-    labInstruments=m;
+    setLabInstruments(m);
   }catch(e){ /* table may not exist yet — keep whatever we have */ }
 }
 
@@ -1536,10 +1533,10 @@ async function cloudLoad(){
   if(recRes.error) throw recRes.error;
   if(projRes.error) throw projRes.error;
   if(logRes.error) throw logRes.error;
-  records=migrateRecords((recRes.data||[]).map(row=>({...row.data,id:row.id,updatedBy:row.updated_by})));
+  setRecords(migrateRecords((recRes.data||[]).map(row=>({...row.data,id:row.id,updatedBy:row.updated_by}))));
   const logsByProj={};
   (logRes.data||[]).forEach(row=>{(logsByProj[row.project_id]=logsByProj[row.project_id]||[]).push({...row.data,id:row.id,updatedBy:row.updated_by});});
-  projects=(projRes.data||[]).map(row=>({...row.data,id:row.id,updatedBy:row.updated_by,logs:logsByProj[row.id]||[]}));
+  setProjects((projRes.data||[]).map(row=>({...row.data,id:row.id,updatedBy:row.updated_by,logs:logsByProj[row.id]||[]})));
   localBackup();
 }
 
@@ -1614,10 +1611,10 @@ async function load(){
     const local=localStorage.getItem(STORAGE_KEY);
     if(local){
       const s=parseStore(local);
-      records=s.records; projects=s.projects;
+      setRecords(s.records); setProjects(s.projects);
       setSyncStatus('offline','Offline: loaded local backup');
     }else{
-      records=[]; projects=[];
+      setRecords([]); setProjects([]);
       setSyncStatus('err',e.message||'Load failed');
     }
   }
@@ -2255,9 +2252,9 @@ async function completeRegister(){
 async function initApp(){
   purgeStoredPassword();   // before anything else, so a failure later still clears it
   if(!window.supabase){toast('Failed to load Supabase JS. Please check your connection to cdn.jsdelivr.net.','error',5000);return;}
-  sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY,{
+  setSb(window.supabase.createClient(SUPABASE_URL,SUPABASE_ANON_KEY,{
     auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:false,storage:authStorage}
-  });
+  }));
   updateLoginFileWarn();
   const _d=new Date();const _days=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];document.getElementById('date-lbl').textContent=_d.toLocaleDateString('en-US',{month:'short',day:'numeric'})+' '+_days[_d.getDay()];
   /* Reopening within SESSION_MAX_MIN skips the login screen. The idle timer only
@@ -2268,7 +2265,7 @@ async function initApp(){
     const savedAt=parseInt(localStorage.getItem('aclab_login_at')||sessionStorage.getItem('aclab_login_at')||'0');
     const elapsed=(Date.now()-savedAt)/1000/60;
     if(session&&savedAt>0&&elapsed<SESSION_MAX_MIN){
-      currentLoginEmail=session.user.email;
+      setCurrentLoginEmailValue(session.user.email);
       enterAppIfApproved(currentLoginEmail).then(ok=>{
         if(!ok) return;
         showApp();
@@ -2375,7 +2372,7 @@ function purgeStoredPassword(){
 
 
 function switchMode(m){
-  viewMode=m;
+  setViewMode(m);
   document.querySelectorAll('.mode-tab').forEach(t=>{
     t.classList.toggle('active',t.dataset.mode===m);
   });
@@ -2912,7 +2909,7 @@ function switchP(el){
   document.querySelectorAll('.ptab').forEach(t=>{t.className='ptab';});
   const p=el.dataset.p;
   el.classList.add(p=='all'?'p-all':'p-'+PLAT_COLOR[p]);
-  curP=p;
+  setCurP(p);
   fillCatFilter();
   fillSampleFilter();
   render();
@@ -3027,7 +3024,7 @@ async function clearArchivedRecords(){
       +`Export them first if you have not — this cannot be undone.`,
       {title:'Clear archived records?',okText:'Delete permanently',danger:true}))) return;
   const ids=new Set(d.map(r=>r.id));
-  records=records.filter(r=>!ids.has(r.id));
+  setRecords(records.filter(r=>!ids.has(r.id)));
   await afterMutation(async()=>{
     for(const id of ids) await removeRecordRow(id);
     await deleteStoredImages(imgs);
@@ -3047,7 +3044,7 @@ async function clearArchivedProjects(){
       +`Export them first if you have not — this cannot be undone.`,
       {title:'Clear archived projects?',okText:'Delete permanently',danger:true}))) return;
   const ids=new Set(d.map(p=>p.id));
-  projects=projects.filter(p=>!ids.has(p.id));
+  setProjects(projects.filter(p=>!ids.has(p.id)));
   await afterMutation(async()=>{
     for(const id of ids) await removeProjectRow(id);
     await deleteStoredImages(imgs);
@@ -3167,7 +3164,7 @@ async function batchDelete(){
   if(!ids.length) return;
   if(!(await confirmModal(ids.length+' record(s) and their screenshots will be permanently deleted.',{title:'Delete '+ids.length+' records?',okText:'Delete',danger:true}))) return;
   const targets=records.filter(r=>ids.includes(r.id));
-  records=records.filter(r=>!ids.includes(r.id));
+  setRecords(records.filter(r=>!ids.includes(r.id)));
   await afterMutation(async()=>{ for(const r of targets){ await removeRecordRow(r.id); await deleteStoredImages(recordAssets(r)); } });
   selectedIds.clear(); render(); toast(targets.length+' record(s) deleted','success');
 }
@@ -3658,7 +3655,7 @@ async function delRecord(id){
   if(!requireDelete(records.find(r=>r.id===id),'record')) return;
   if(!(await confirmModal('This record and its screenshots will be permanently deleted.',{title:'Delete record?',okText:'Delete',danger:true}))) return;
   const rec=records.find(r=>r.id===id);
-  records=records.filter(r=>r.id!==id);
+  setRecords(records.filter(r=>r.id!==id));
   selectedIds.delete(id);
   await afterMutation(async()=>{ await removeRecordRow(id); await deleteStoredImages(recordAssets(rec)); },{k:'removeRecord',id});
   render();
@@ -3765,11 +3762,11 @@ function checkProjectDeleteReminders(){
   document.body.appendChild(modal);
   modal.querySelector('#pdr-keep').onclick=async()=>{due.forEach(p=>{delete p.deleteAfter;});document.body.removeChild(modal);await afterMutation(async()=>{for(const p of due) await saveProjectRow(p,false);});};
   modal.querySelector('#pdr-extend').onclick=async()=>{due.forEach(p=>{p.deleteAfter=isoMonthsAhead(6);});document.body.removeChild(modal);await afterMutation(async()=>{for(const p of due) await saveProjectRow(p,false);});renderProjectListContent();};
-  modal.querySelector('#pdr-delete').onclick=async()=>{const ids=new Set(due.map(p=>p.id));const imgs=due.flatMap(p=>(p.logs||[]).flatMap(l=>recordAssets(l)));projects=projects.filter(p=>!ids.has(p.id));document.body.removeChild(modal);await afterMutation(async()=>{for(const id of ids) await removeProjectRow(id); await deleteStoredImages(imgs);});renderProjectView();};
+  modal.querySelector('#pdr-delete').onclick=async()=>{const ids=new Set(due.map(p=>p.id));const imgs=due.flatMap(p=>(p.logs||[]).flatMap(l=>recordAssets(l)));setProjects(projects.filter(p=>!ids.has(p.id)));document.body.removeChild(modal);await afterMutation(async()=>{for(const id of ids) await removeProjectRow(id); await deleteStoredImages(imgs);});renderProjectView();};
 }
 
 function backToProjectList(){
-  curProjectId=null;
+  setCurProjectId(null);
   document.getElementById('proj-form-area').innerHTML='';
   setProjToolbar('list');
   renderProjectListContent();
@@ -3862,7 +3859,7 @@ function certListHtml(p){
 }
 
 function renderProjectList(){
-  curProjectId=null;
+  setCurProjectId(null);
   setProjToolbar('list');
   renderProjPlatRow();
   renderProjectListContent();
@@ -3988,7 +3985,7 @@ function exportArchivedProjects(){
 
 
 function openProject(id){
-  curProjectId=id;
+  setCurProjectId(id);
   document.getElementById('proj-form-area').innerHTML='';
   // 推假歷史，讓 Android/iOS 的返回手勢觸發 popstate 而非關閉頁面
   history.pushState({aclab:'project',id:id},'',' ');
@@ -3998,7 +3995,7 @@ function openProject(id){
 
 function renderProjectDetail(){
   const p=getProject(curProjectId);
-  if(!p){curProjectId=null;renderProjectList();return;}
+  if(!p){setCurProjectId(null);renderProjectList();return;}
   const logs=sortedLogs(p.logs);
   setProjToolbar('detail');
 
@@ -4184,7 +4181,7 @@ async function submitProject(){
   editProjId=null;
   document.getElementById('proj-form-area').innerHTML='';
   if(target) await afterMutation(()=>saveProjectRow(target,isNew),{k:'saveProject',data:stripLogs(target)});
-  if(isNew&&target) curProjectId=target.id;
+  if(isNew&&target) setCurProjectId(target.id);
   renderProjectView();
   toast(isNew?'Project created':'Project updated','success');
 }
@@ -4413,8 +4410,8 @@ async function delProject(id){
   if(!(await confirmModal('Deleting this project will also permanently delete all its logs and screenshots.',{title:'Delete project?',okText:'Delete',danger:true}))) return;
   const proj=getProject(pid);
   const imgs=((proj&&proj.logs)||[]).flatMap(l=>recordAssets(l));
-  projects=projects.filter(p=>p.id!==pid);
-  curProjectId=null;
+  setProjects(projects.filter(p=>p.id!==pid));
+  setCurProjectId(null);
   document.getElementById('proj-form-area').innerHTML='';
   await afterMutation(async()=>{ await removeProjectRow(pid); await deleteStoredImages(imgs); },{k:'removeProject',id:pid});
   renderProjectList();
@@ -4579,7 +4576,7 @@ function runSelfCheck(){
 
   // --- Who may delete -------------------------------------------------------
   const savedEmail=currentLoginEmail;
-  currentLoginEmail='alex.kim@example.com';
+  setCurrentLoginEmailValue('alex.kim@example.com');
   const savedAdmin=myApproval;
   myApproval={approved:true,isAdmin:false,known:true};
   const mine=(d,by)=>({createdBy:by===undefined?'alex.kim@example.com':by,created:ago(d)});
@@ -4602,7 +4599,7 @@ function runSelfCheck(){
   eq('an admin may delete anything, including legacy rows',
      [canDelete(mine(999,'someone.else@example.com')), canDelete({})], [true,true]);
   myApproval=savedAdmin;
-  currentLoginEmail=savedEmail;
+  setCurrentLoginEmailValue(savedEmail);
 
   // --- Identity -------------------------------------------------------------
   // The picker must never silently reassign a record to somebody else
