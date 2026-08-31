@@ -264,12 +264,20 @@
 </div>
 
 <script type="module">
+import { confirmModal, toast, toggleDropdown } from './frontend/src/components/ui.js';
 import { ARCHIVE_AFTER_DAYS, applyStatusOnRecord, closeDaysOf, isProjectArchived, isRecordArchived, recordClosedAt, recordStatus } from './frontend/src/domain/archive.js';
 import { CERT_PHASES, CERT_PLATFORMS, CERT_SINGLE_GROUPS, GAUGE_SEGS, PHASES, PHASE_MAP, certItemDone, certItemLabel, certItemsFor, certPlatLabel, certProgress, hasProgressBar, latestFw, logCertItems, projOS, projPlatform, qualSampleClash, sortedLogs } from './frontend/src/domain/certification.js';
-import { CERT_CLS, CERT_LBL, DEFAULT_TEST_SOFTWARE, LABS, PLATFORMS, PLAT_COLOR, PLAT_NAMES, PLAT_PFX, STATUSES, STATUS_MAP, STATUS_NEXT, TYPES_ALT_MAP, TYPES_AUDIO_MAP, TYPE_ICON, TYPE_MAP, UPDATE_SUBTYPES, catDef, catDisplay, catHasChildren, catLbl, getTypesForPlat, legacyTypeLabel, recordSampleLabels, recordSampleValues, recordTypeLabel, sampleOptsFor, sampleTypesFor } from './frontend/src/domain/platforms.js';
+import { CERT_CLS, CERT_LBL, LABS, PLATFORMS, PLAT_COLOR, PLAT_NAMES, PLAT_PFX, STATUSES, STATUS_MAP, STATUS_NEXT, TYPES_ALT_MAP, TYPES_AUDIO_MAP, TYPE_ICON, TYPE_MAP, UPDATE_SUBTYPES, catDef, catDisplay, catHasChildren, catLbl, getTypesForPlat, legacyTypeLabel, recordSampleLabels, recordSampleValues, recordTypeLabel, sampleOptsFor, sampleTypesFor } from './frontend/src/domain/platforms.js';
 import { BUILT_IN_OS, CHROME_FEATURES, CHROME_MIC, CHROME_OS, EARPIECE, HEADSET_CONN, PERSONAL_FEATURES, PRODUCT_TYPE_MAP, SELF_HOSTED_TYPES, TEST_DISTANCES, headsetConnValues, platformUsesExtra, productTypeSummary, productTypesFor, usesProductType } from './frontend/src/domain/products.js';
-import { STORAGE_KEY, migrateRecords, recordAssets, recordVersionNo, stripLogs } from './frontend/src/domain/records.js';
-import { appConfig, curP, curProjectId, currentLoginEmail, fileState, imgState, labInstruments, projects, records, sb, setAppConfig, setCurP, setCurProjectId, setCurrentLoginEmailValue, setFileState, setImgState, setLabInstruments, setProjects, setRecords, setSb, setViewMode, viewMode } from './frontend/src/state.js';
+import { migrateRecords, recordAssets, recordVersionNo, stripLogs } from './frontend/src/domain/records.js';
+import { recordSoftwareLabel, softwareOpts, testSoftwareList } from './frontend/src/domain/software.js';
+import { LOGIN_EMAIL_KEY, REMEMBER_CREDS_KEY, getCurrentEmail, getCurrentUser, purgeStoredPassword, setCurrentLoginEmail } from './frontend/src/services/auth.js';
+import { afterMutation, cloudLoad, enqueueWrite, flushQueue, load, loadLabInstruments, loadSettings, localBackup, maybeMigrateSnapshot, parseStore, persistAll, persistQueue, persistSettings, removeLogRow, removeProjectRow, removeRecordRow, saveLabRow, saveLogRow, saveProjectRow, saveRecordRow, saveSettings, startRealtime, stopRealtime } from './frontend/src/services/db.js';
+import { setLoadingPlaceholder, setRedraw } from './frontend/src/services/hooks.js';
+import { enableNotifications, pushSupported, registerSW, savePushSubscription, updateNotifyBtn, urlB64ToUint8Array } from './frontend/src/services/push.js';
+import { ALLOWED_FILE_EXTS, CARD_THUMB_MAX, MAX_FILE_BYTES, MAX_FILE_COUNT, MAX_IMG_COUNT, TOTAL_FILE_BYTES, TOTAL_IMG_BYTES, commitFiles, commitImages, compressImage, deleteStoredImages, fileExt, fileIcon, fileIconColor, imgPublicUrl, loadImageEl, sanitizeImgName } from './frontend/src/services/storage.js';
+import { SUPABASE_ANON_KEY, SUPABASE_URL, authStorage, bumpId, setSyncStatus } from './frontend/src/services/supabase.js';
+import { appConfig, curP, curProjectId, currentLoginEmail, fileState, imgState, labInstruments, projects, records, sb, setCurP, setCurProjectId, setCurrentLoginEmailValue, setFileState, setImgState, setProjects, setRecords, setSb, setViewMode, viewMode } from './frontend/src/state.js';
 import { daysSince, fmtDateShort, isoDaysAgo, isoMonthsAhead, nowISO, todayISO } from './frontend/src/utils/dates.js';
 import { downloadJson } from './frontend/src/utils/download.js';
 import { esc, extractVersion, fmtMB, fmtUser, qv } from './frontend/src/utils/format.js';
@@ -282,54 +290,6 @@ function labFreshness(iso){
 }
 
 
-/* ===== Toast notifications + custom confirm dialog ===== */
-function toast(msg,type,ms){
-  type=type||'info'; ms=ms||3200;
-  let host=document.getElementById('toast-host');
-  if(!host){ host=document.createElement('div'); host.id='toast-host'; document.body.appendChild(host); }
-  const el=document.createElement('div');
-  el.className='toast toast-'+type;
-  const icon={info:'ti-info-circle',success:'ti-circle-check',warn:'ti-alert-triangle',error:'ti-alert-circle'}[type]||'ti-info-circle';
-  el.innerHTML=`<i class="ti ${icon}" aria-hidden="true"></i><span>${esc(msg)}</span>`;
-  host.appendChild(el);
-  requestAnimationFrame(()=>el.classList.add('show'));
-  setTimeout(()=>{ el.classList.remove('show'); setTimeout(()=>el.remove(),260); }, ms);
-}
-
-function confirmModal(message,opts){
-  opts=opts||{};
-  return new Promise(resolve=>{
-    const ov=document.createElement('div');
-    ov.className='modal-overlay';
-    const danger=!!opts.danger;
-    ov.innerHTML=`<div class="modal-card" role="dialog" aria-modal="true">
-      <div class="modal-title">${esc(opts.title||(danger?'Confirm deletion':'Please confirm'))}</div>
-      <div class="modal-msg">${esc(message)}</div>
-      <div class="modal-actions">
-        <button class="btn" data-act="cancel">${esc(opts.cancelText||'Cancel')}</button>
-        <button class="btn ${danger?'danger-solid':'primary'}" data-act="ok">${esc(opts.okText||'OK')}</button>
-      </div>
-    </div>`;
-    document.body.appendChild(ov);
-    const close=val=>{ ov.classList.remove('show'); setTimeout(()=>ov.remove(),200); document.removeEventListener('keydown',onKey); resolve(val); };
-    function onKey(e){ if(e.key==='Escape') close(false); else if(e.key==='Enter') close(true); }
-    ov.addEventListener('click',e=>{ if(e.target===ov) close(false); });
-    ov.querySelector('[data-act=cancel]').onclick=()=>close(false);
-    ov.querySelector('[data-act=ok]').onclick=()=>close(true);
-    document.addEventListener('keydown',onKey);
-    requestAnimationFrame(()=>{ ov.classList.add('show'); ov.querySelector('[data-act=ok]').focus(); });
-  });
-}
-
-function toggleDropdown(e,btn){
-  e.stopPropagation();
-  const dd=btn.closest('.dropdown');
-  const wasOpen=dd.classList.contains('open');
-  document.querySelectorAll('.dropdown.open').forEach(d=>d.classList.remove('open'));
-  if(!wasOpen) dd.classList.add('open');
-}
-document.addEventListener('click',()=>document.querySelectorAll('.dropdown.open').forEach(d=>d.classList.remove('open')));
-
 
 /* ===== Light / dark theme ===== */
 function applyTheme(t){
@@ -338,6 +298,7 @@ function applyTheme(t){
   const btn=document.getElementById('theme-toggle');
   if(btn){ btn.innerHTML=`<i class="ti ti-${dark?'moon':'sun'}" aria-hidden="true"></i>`; btn.title=dark?'Switch to light mode':'Switch to dark mode'; }
 }
+
 
 function toggleTheme(){
   const cur=document.documentElement.getAttribute('data-theme');
@@ -348,60 +309,6 @@ function toggleTheme(){
 applyTheme(localStorage.getItem('aclab_theme')==='light'?'light':'dark');
 
 
-/* ===== Web Push notifications ===== */
-const VAPID_PUBLIC_KEY='BNKyIJE2ed7ZmDD2s5aNdmw56400S6rz-NoN0-HKPbVL9dis1gxXkPJY-ES0FapIb4PUpztXmL_j6PoD-phV8J0';
-
-function pushSupported(){ return ('serviceWorker' in navigator)&&('PushManager' in window)&&('Notification' in window); }
-
-function urlB64ToUint8Array(b64){
-  const pad='='.repeat((4-b64.length%4)%4);
-  const base64=(b64+pad).replace(/-/g,'+').replace(/_/g,'/');
-  const raw=atob(base64), arr=new Uint8Array(raw.length);
-  for(let i=0;i<raw.length;i++) arr[i]=raw.charCodeAt(i);
-  return arr;
-}
-
-async function registerSW(){
-  if(!('serviceWorker' in navigator)) return null;
-  try{ return await navigator.serviceWorker.register('./sw.js'); }catch(e){ console.warn('SW register failed',e); return null; }
-}
-
-async function enableNotifications(){
-  if(!pushSupported()){ toast('This browser does not support notifications.','warn'); return; }
-  if(!VAPID_PUBLIC_KEY){ toast('Push is not configured yet (VAPID key missing).','warn',4200); return; }
-  const reg=await registerSW();
-  if(!reg){ toast('Could not start the notification service.','error'); return; }
-  const perm=await Notification.requestPermission();
-  if(perm!=='granted'){ toast('Notifications are blocked. Allow them in your browser settings.','warn',4200); return; }
-  try{
-    let sub=await reg.pushManager.getSubscription();
-    if(!sub) sub=await reg.pushManager.subscribe({userVisibleOnly:true,applicationServerKey:urlB64ToUint8Array(VAPID_PUBLIC_KEY)});
-    await savePushSubscription(sub);
-    updateNotifyBtn(true);
-    toast('Notifications enabled on this device','success');
-  }catch(e){ console.error(e); toast('Could not enable notifications: '+(e.message||e),'error',4200); }
-}
-
-async function savePushSubscription(sub){
-  const j=sub.toJSON();
-  if(!(sb&&(await sb.auth.getSession()).data.session)) return;
-  const {error}=await sb.from('push_subscriptions').upsert({
-    endpoint:j.endpoint, p256dh:j.keys.p256dh, auth:j.keys.auth,
-    user_email:currentLoginEmail||getCurrentUser(), updated_at:new Date().toISOString()
-  },{onConflict:'endpoint'});
-  if(error) console.warn('save subscription failed',error);
-}
-
-async function updateNotifyBtn(known){
-  const btn=document.getElementById('notify-toggle'); if(!btn) return;
-  let on=known;
-  if(known===undefined){
-    try{ const reg=await navigator.serviceWorker.getRegistration(); const sub=reg&&await reg.pushManager.getSubscription(); on=!!sub&&Notification.permission==='granted'; }catch(e){ on=false; }
-  }
-  btn.classList.toggle('active',!!on);
-  btn.title=on?'Notifications on for this device':'Enable notifications';
-}
-if(pushSupported()) registerSW();
 
 function fillTypeFilter(){
   const sel=document.getElementById('q-type');
@@ -414,6 +321,7 @@ function fillTypeFilter(){
   if([...sel.options].some(o=>o.value===prev)) sel.value=prev; else sel.value='';
   refreshFilterMenus();
 }
+
 
 function fillSampleFilter(){
   const sel=document.getElementById('q-sample');
@@ -439,6 +347,7 @@ function fillSampleFilter(){
   refreshFilterMenus();   // options are built here, so the menu must be rebuilt after
 }
 
+
 function fillCatFilter(){
   const sel=document.getElementById('q-cat');
   if(!sel) return;
@@ -452,6 +361,7 @@ function fillCatFilter(){
   fillSubcatFilter();
   refreshFilterMenus();
 }
+
 
 function fillSubcatFilter(){
   const wrap=document.getElementById('q-subcat-wrap');
@@ -470,6 +380,7 @@ function fillSubcatFilter(){
   if([...sel.options].some(o=>o.value===prev)) sel.value=prev; else sel.value='';
 }
 
+
 function onCatFilterChange(){
   fillSubcatFilter();
   fillTypeFilter();
@@ -478,6 +389,7 @@ function onCatFilterChange(){
   renderList();
 }
 
+
 function onTypeFilterChange(){
   const t=(document.getElementById('q-type')||{}).value||'';
   const s=document.getElementById('q-subtype-update');
@@ -485,6 +397,7 @@ function onTypeFilterChange(){
   refreshFilterMenus();
   renderList();
 }
+
 
 
 function filterMenuItem(label,active,onclick,children){
@@ -496,6 +409,7 @@ function filterMenuItem(label,active,onclick,children){
     <button type="button" class="${active?'active':''}" onclick="${onclick}">${esc(label)}${children&&children.length?'<i class="ti ti-chevron-right dd-arrow" aria-hidden="true"></i>':''}</button>
     ${kids}</div>`;
 }
+
 
 function renderCatMenu(){
   const menu=document.getElementById('q-cat-menu'), lbl=document.getElementById('q-cat-lbl');
@@ -520,6 +434,7 @@ function renderCatMenu(){
   const dd=document.getElementById('q-cat-dd'); if(dd) dd.classList.toggle('is-set',!!cur);
 }
 
+
 function renderTypeMenu(){
   const menu=document.getElementById('q-type-menu'), lbl=document.getElementById('q-type-lbl');
   if(!menu) return;
@@ -542,6 +457,7 @@ function renderTypeMenu(){
   const dd=document.getElementById('q-type-dd'); if(dd) dd.classList.toggle('is-set',!!cur);
 }
 
+
 // Single-level filters build their menu straight from the hidden select's options,
 // so every filter in the bar looks and behaves the same with no duplicated labels
 function renderSelectMenu(selId,ddId,menuId,lblId){
@@ -556,11 +472,13 @@ function renderSelectMenu(selId,ddId,menuId,lblId){
   const dd=document.getElementById(ddId); if(dd) dd.classList.toggle('is-set',!!cur);
 }
 
+
 function pickSelect(selId,val){
   const sel=document.getElementById(selId); if(!sel) return;
   sel.value=val;
   closeFilterMenus(); refreshFilterMenus(); renderList();
 }
+
 
 function refreshFilterMenus(){
   renderCatMenu(); renderTypeMenu();
@@ -568,7 +486,9 @@ function refreshFilterMenus(){
   renderSelectMenu('q-stat','q-stat-dd','q-stat-menu','q-stat-lbl');
 }
 
+
 function closeFilterMenus(){ document.querySelectorAll('.dropdown.open').forEach(d=>d.classList.remove('open')); }
+
 
 function pickCat(cat,sub){
   const c=document.getElementById('q-cat'); if(c) c.value=cat;
@@ -582,6 +502,7 @@ function pickCat(cat,sub){
   renderList();
 }
 
+
 function pickType(type,sub){
   const t=document.getElementById('q-type'); if(t) t.value=type;
   const s=document.getElementById('q-subtype-update'); if(s) s.value=(type==='update'?(sub||''):'');
@@ -589,6 +510,7 @@ function pickType(type,sub){
   refreshFilterMenus();
   renderList();
 }
+
 
 
 function platformExtraHtml(platform,p){
@@ -608,11 +530,13 @@ function platformExtraHtml(platform,p){
     ).join('')}</div>`;
 }
 
+
 function readChromeFields(){
   const o={chromeOs:segValue('pf-cros','chromeos'),chromeMic:segValue('pf-cmic','mic1'),chromeFeatures:{}};
   CHROME_FEATURES.forEach(x=>{o.chromeFeatures[x.k]=!!document.getElementById('pf-cf-'+x.k)?.checked;});
   return o;
 }
+
 
 function connectionChecks(selected){
   const sel=new Set(selected||[]);
@@ -621,15 +545,18 @@ function connectionChecks(selected){
   ).join('');
 }
 
+
 function readConnectionsFromForm(){
   return Array.from(document.querySelectorAll('.pf-conn-cb:checked')).map(c=>c.value);
 }
+
 
 function distanceOpts(sel){
   return '<option value="">— Select —</option>'+TEST_DISTANCES.map(d=>
     `<option value="${d}" ${sel===d?'selected':''}>${d}m</option>`
   ).join('');
 }
+
 
 function noteSampleChecks(selected,plat,cat){
   const sel=new Set(selected||[]);
@@ -641,30 +568,6 @@ function noteSampleChecks(selected,plat,cat){
 /* ===== Test Software list (shared, in-app manageable) ===== */
 
 
-function testSoftwareList(){ return (appConfig.testSoftware&&appConfig.testSoftware.length)?appConfig.testSoftware:DEFAULT_TEST_SOFTWARE; }
-
-function softwareOpts(sel){
-  return '<option value="">— Select test software —</option>'+
-    testSoftwareList().map(s=>`<option value="${esc(s)}" ${sel===s?'selected':''}>${esc(s)}</option>`).join('')+
-    `<option value="__other__" ${sel==='__other__'?'selected':''}>Other…</option>`;
-}
-
-function recordSoftwareLabel(r){
-  if(!r.testSoftware) return '';
-  return r.testSoftware==='__other__'?(r.testSoftwareOther||'Other'):r.testSoftware;
-}
-
-async function loadSettings(){
-  try{
-    const {data}=await sb.from('app_settings').select('data').eq('id','config').maybeSingle();
-    if(data&&data.data&&Array.isArray(data.data.testSoftware)) setAppConfig({...appConfig,...data.data});
-  }catch(e){ /* table may not exist yet — keep defaults */ }
-}
-
-async function saveSettings(){
-  const {error}=await sb.from('app_settings').upsert({id:'config',data:appConfig,updated_at:nowISO(),updated_by:getCurrentUser()});
-  if(error) throw error;
-}
 
 function manageTestSoftware(){
   const ov=document.createElement('div');
@@ -704,45 +607,21 @@ function manageTestSoftware(){
   requestAnimationFrame(()=>ov.classList.add('show'));
 }
 
-async function persistSettings(){
-  // refresh any open software dropdown in the record form
-  const sel=document.getElementById('f-software');
-  if(sel){ const cur=sel.value; sel.innerHTML=softwareOpts(cur); }
-  try{
-    if(sb&&(await sb.auth.getSession()).data.session){ await saveSettings(); setSyncStatus('ok'); }
-  }catch(e){ console.error(e); toast('Could not sync the software list. Did you run aclab-settings-setup.sql?','error',5000); }
-}
-
-
-/* ===== Image attachments (Supabase Storage) ===== */
-const ATTACH_BUCKET='attachments';
-
-const TOTAL_IMG_BYTES=5*1024*1024; // 5MB total across all images in one record / log
-
-const MAX_IMG_COUNT=5;             // up to 5 images per record / log
-
-function imgPublicUrl(path){
-  try{ return sb.storage.from(ATTACH_BUCKET).getPublicUrl(path).data.publicUrl; }catch(e){ return ''; }
-}
-
-// Delete a set of images {path} from Storage (best-effort; used when a record/log is removed)
-async function deleteStoredImages(images){
-  const paths=(images||[]).map(im=>im&&im.path).filter(Boolean);
-  if(!paths.length) return;
-  try{ await sb.storage.from(ATTACH_BUCKET).remove(paths); }catch(e){ console.warn('Image cleanup failed',e); }
-}
 
 function imgItemBytes(im){ return im.kind==='new'?(im.file?.size||0):(im.size||0); }
+
 
 function currentImgBytes(){ return imgState.list.reduce((s,im)=>s+imgItemBytes(im),0); }
 
 // imgState.list items: {kind:'existing',path,name,size} | {kind:'new',file,name,url(objectURL)}
+
 
 function initImageUploader(existing){
   const arr=Array.isArray(existing)?existing:[];
   setImgState({list:arr.map(im=>({kind:'existing',path:im.path,name:im.name||'image',size:im.size||0,disp:im.disp||'md'})),original:arr.slice()});
   renderImageUploader();
 }
+
 
 function renderImageUploader(){
   const wrap=document.getElementById('img-uploader');
@@ -768,6 +647,7 @@ function renderImageUploader(){
   <div class="img-hint"><i class="ti ti-info-circle" aria-hidden="true"></i> Large photos are auto-compressed — but please avoid very large files. Up to ${MAX_IMG_COUNT} images · ${fmtMB(currentImgBytes())} / ${fmtMB(TOTAL_IMG_BYTES)} total used</div>`;
 }
 
+
 async function onPickImages(input){
   const files=Array.from(input.files||[]);
   input.value='';
@@ -789,7 +669,9 @@ async function onPickImages(input){
   renderImageUploader();
 }
 
+
 function setImgDisp(i,v){ if(imgState.list[i]) imgState.list[i].disp=v; }
+
 
 function removeUploadImage(i){
   const im=imgState.list[i];
@@ -798,25 +680,6 @@ function removeUploadImage(i){
   renderImageUploader();
 }
 
-function sanitizeImgName(n){ return String(n||'image').replace(/[^a-zA-Z0-9._-]/g,'_').slice(-60); }
-
-// Uploads new files, deletes removed existing ones, returns final images array [{path,name}]
-async function commitImages(scope){
-  const finalList=[];
-  for(const im of imgState.list){
-    if(im.kind==='existing'){ finalList.push({path:im.path,name:im.name,size:im.size||0,disp:im.disp||'md'}); continue; }
-    const path=`${scope}/${Date.now()}-${Math.random().toString(36).slice(2,8)}-${sanitizeImgName(im.name)}`;
-    const {error}=await sb.storage.from(ATTACH_BUCKET).upload(path,im.file,{contentType:im.file.type,upsert:false});
-    if(error) throw new Error('Image upload failed: '+(error.message||error));
-    finalList.push({path,name:im.name,size:im.file.size,disp:im.disp||'md'});
-  }
-  const kept=new Set(finalList.map(f=>f.path));
-  const removed=(imgState.original||[]).filter(im=>!kept.has(im.path)).map(im=>im.path);
-  if(removed.length){ try{ await sb.storage.from(ATTACH_BUCKET).remove(removed); }catch(e){ console.warn('Image cleanup failed',e); } }
-  return finalList;
-}
-
-const CARD_THUMB_MAX=3;   // how many screenshots a list card previews before folding the rest
 
 // compact: fixed-size thumbnails for list cards. The full-size view (which honours each
 // image's S/M/L setting) is what the record view and the lightbox show.
@@ -838,6 +701,7 @@ function imagesDisplayHtml(images,compact){
   }).join('')+'</div>';
 }
 
+
 function openImageLightbox(url){
   if(!url) return;
   const ov=document.createElement('div');
@@ -852,29 +716,6 @@ function openImageLightbox(url){
 }
 
 
-/* ===== File attachments (Excel / PDF / Word … — Supabase Storage) ===== */
-const MAX_FILE_BYTES=10*1024*1024;    // 10MB per file
-
-const TOTAL_FILE_BYTES=25*1024*1024;  // 25MB total across all files in one record / log
-
-const MAX_FILE_COUNT=10;
-
-const ALLOWED_FILE_EXTS=['pdf','xlsx','xls','docx','doc','pptx','ppt','csv','txt','zip'];
-
-function fileExt(name){ const m=String(name||'').toLowerCase().match(/\.([a-z0-9]+)$/); return m?m[1]:''; }
-
-function fileIcon(ext){
-  return ({pdf:'ti-file-type-pdf',xlsx:'ti-file-type-xls',xls:'ti-file-type-xls',csv:'ti-file-type-csv',
-    docx:'ti-file-type-doc',doc:'ti-file-type-doc',pptx:'ti-file-type-ppt',ppt:'ti-file-type-ppt',
-    txt:'ti-file-type-txt',zip:'ti-file-type-zip'})[ext]||'ti-file';
-}
-
-function fileIconColor(ext){
-  return ({pdf:'#f87171',xlsx:'#34d399',xls:'#34d399',csv:'#34d399',docx:'#60a5fa',doc:'#60a5fa',
-    pptx:'#fb923c',ppt:'#fb923c',txt:'#9ca3af',zip:'#c4b5fd'})[ext]||'#9ca3af';
-}
-
-// fileState.list items: {kind:'existing',path,name,size,ext} | {kind:'new',file,name,size,ext}
 
 function initFileUploader(existing){
   const arr=Array.isArray(existing)?existing:[];
@@ -882,9 +723,12 @@ function initFileUploader(existing){
   renderFileUploader();
 }
 
+
 function fileItemBytes(f){ return f.kind==='new'?(f.file?.size||0):(f.size||0); }
 
+
 function currentFileBytes(){ return fileState.list.reduce((s,f)=>s+fileItemBytes(f),0); }
+
 
 function renderFileUploader(){
   const wrap=document.getElementById('file-uploader');
@@ -905,6 +749,7 @@ function renderFileUploader(){
     <div class="img-hint">Up to ${MAX_FILE_COUNT} files · max ${fmtMB(MAX_FILE_BYTES)} each · ${fmtMB(currentFileBytes())} / ${fmtMB(TOTAL_FILE_BYTES)} total used · allowed: ${ALLOWED_FILE_EXTS.join(', ')}</div>`;
 }
 
+
 function onPickFiles(input){
   const files=Array.from(input.files||[]);
   input.value='';
@@ -919,23 +764,9 @@ function onPickFiles(input){
   renderFileUploader();
 }
 
+
 function removeUploadFile(i){ fileState.list.splice(i,1); renderFileUploader(); }
 
-// Uploads new files, deletes removed existing ones, returns final files array [{path,name,size,ext}]
-async function commitFiles(scope){
-  const finalList=[];
-  for(const f of fileState.list){
-    if(f.kind==='existing'){ finalList.push({path:f.path,name:f.name,size:f.size||0,ext:f.ext||fileExt(f.name)}); continue; }
-    const path=`${scope}/files/${Date.now()}-${Math.random().toString(36).slice(2,8)}-${sanitizeImgName(f.name)}`;
-    const {error}=await sb.storage.from(ATTACH_BUCKET).upload(path,f.file,{contentType:f.file.type||'application/octet-stream',upsert:false});
-    if(error) throw new Error('File upload failed: '+(error.message||error));
-    finalList.push({path,name:f.name,size:f.file.size,ext:f.ext||fileExt(f.name)});
-  }
-  const kept=new Set(finalList.map(f=>f.path));
-  const removed=(fileState.original||[]).filter(f=>!kept.has(f.path)).map(f=>f.path);
-  if(removed.length){ try{ await sb.storage.from(ATTACH_BUCKET).remove(removed); }catch(e){ console.warn('File cleanup failed',e); } }
-  return finalList;
-}
 
 function filesDisplayHtml(files){
   if(!Array.isArray(files)||!files.length) return '';
@@ -951,6 +782,7 @@ function filesDisplayHtml(files){
   }).join('')+'</div>';
 }
 
+
 // Only what this platform actually offers. A selection the new platform does not
 // have is dropped rather than carried across wearing a label saying so — the
 // product type has to be re-picked, which is the honest outcome of changing platform.
@@ -960,11 +792,13 @@ function productTypeOpts(sel,platform){
   ).join('');
 }
 
+
 function readPersonalFeaturesFromForm(){
   const o={};
   PERSONAL_FEATURES.forEach(f=>{o[f.k]=!!document.getElementById('pf-f-'+f.k)?.checked;});
   return o;
 }
+
 
 function readProductTypeDraft(){
   const v=(document.getElementById('pf-type')||{}).value||'';
@@ -988,6 +822,7 @@ function readProductTypeDraft(){
   }
   return d;
 }
+
 
 function buildProductTypeExtra(p){
   const v=p.productType||'';
@@ -1044,6 +879,7 @@ function buildProductTypeExtra(p){
   return '';
 }
 
+
 function featureChecksHtml(p,headsetOnly){
   const feats=p.personalFeatures||{};
   const list=headsetOnly===false?PERSONAL_FEATURES.filter(f=>!f.hs):PERSONAL_FEATURES;
@@ -1054,11 +890,13 @@ function featureChecksHtml(p,headsetOnly){
     `).join('')}</div>`;
 }
 
+
 // Keep the two from contradicting each other: a Teams Button is a physical control
 function onTeamsButtonChange(cb){
   const ctl=document.getElementById('pf-controls');
   if(cb.checked&&ctl&&!ctl.value) ctl.value='1';
 }
+
 
 // A segmented control rather than a dropdown: two mutually exclusive options read
 // faster as buttons, and only one can ever be active.
@@ -1068,10 +906,12 @@ function segHtml(name,opts,sel){
   ).join('')}</div>`;
 }
 
+
 function segValue(name,dflt){
   const el=document.querySelector(`input[name="${name}"]:checked`);
   return el?el.value:dflt;
 }
+
 
 function onProductTypeChange(){
   const wrap=document.getElementById('pf-type-extra');
@@ -1080,6 +920,7 @@ function onProductTypeChange(){
   wrap.innerHTML=buildProductTypeExtra(draft);
   wrap.style.display=wrap.innerHTML?'block':'none';
 }
+
 
 function collectProductTypeFields(){
   const platform=(document.getElementById('pf-plat')||{}).value||'Teams';
@@ -1125,19 +966,6 @@ function collectProductTypeFields(){
 }
 
 
-function getCurrentUser(){
-  const em=currentLoginEmail||localStorage.getItem(LOGIN_EMAIL_KEY)||'';
-  return em.includes('@')?em.split('@')[0]:em;
-}
-
-// Full address — getCurrentUser() is only the display name, so it must not be used as a key
-function getCurrentEmail(){
-  return (currentLoginEmail||localStorage.getItem(LOGIN_EMAIL_KEY)||'').trim().toLowerCase();
-}
-
-function setCurrentLoginEmail(email){
-  setCurrentLoginEmailValue((email||'').trim());
-}
 
 function applyRecordFilters(list){
   let d=[...list];
@@ -1158,13 +986,16 @@ function applyRecordFilters(list){
   return sortRecords(d);
 }
 
+
 let curSort='created-desc';
+
 
 function setSort(v){
   curSort=v;
   document.querySelectorAll('#sort-menu button').forEach(b=>b.classList.toggle('active',b.dataset.sort===v));
   renderList();
 }
+
 
 function sortRecords(list){
   const s=curSort||'created-desc';
@@ -1181,6 +1012,7 @@ function sortRecords(list){
   }
   return arr;
 }
+
 
 // Timeline, newest first, with the implicit v1 entry at the bottom
 function versionTimelineHtml(r){
@@ -1209,6 +1041,7 @@ function versionTimelineHtml(r){
     </li>`).join('')}</ol>`;
 }
 
+
 // One quiet classification line: platform in its own colour, then category › sub, then
 // the record type. Icons mark which is which so it does not read as a run-on sentence.
 function recordCrumbHtml(r,to){
@@ -1218,6 +1051,7 @@ function recordCrumbHtml(r,to){
   parts.push(`<span class="crumb-type"><i class="ti ${TYPE_ICON[r.type]||'ti-tag'}" aria-hidden="true"></i>${esc(to.lbl)}</span>`);
   return parts.join(' <span class="crumb-sep">·</span> ');
 }
+
 
 function recordCardHtml(r,opts={}){
   const pc=PLAT_COLOR[r.platform]||'other';
@@ -1267,51 +1101,21 @@ function recordCardHtml(r,opts={}){
 }
 
 
+
 let editId=null;
 
+
 let editProjId=null, editLogId=null;
+
 
 let curLab=null; // Lab Instruments state (keyed by lab id)
 
 
 
 
-const SUPABASE_URL='https://ygoywjqgatkwboepxaaz.supabase.co';
-
-const SUPABASE_ANON_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Inlnb3l3anFnYXRrd2JvZXB4YWF6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzk3NzQ0MTAsImV4cCI6MjA5NTM1MDQxMH0.cpnejjVh8s9mHQl1MwUAPQXl8tipUGJSWSuPO5cFmiw';
-
-const LOGIN_EMAIL_KEY='aclab_login_email';
-
-/* Only ever deleted now. The app used to keep the account password here in plain
-   text so it could refill the field; the browser's own password manager does that
-   properly, encrypted and behind the OS. purgeStoredPassword() clears it on every
-   start so the ones already saved go away without anyone having to be told. */
-const LOGIN_PASS_KEY='aclab_login_pass';
-
-/* Named "creds" from when it also covered the password. Renaming it would reset
-   the checkbox for everyone currently ticked, for a key no one ever sees — so the
-   name stays and this comment explains it. It means: remember the email. */
-const REMEMBER_CREDS_KEY='aclab_remember_creds';
 
 let loginBusy=false;
 
-
-const authStorage={
-  getItem(key){
-    try{return localStorage.getItem(key);}catch(e){}
-    try{return sessionStorage.getItem(key);}catch(e){}
-    return null;
-  },
-  setItem(key,val){
-    try{localStorage.setItem(key,val);return;}catch(e){}
-    try{sessionStorage.setItem(key,val);}catch(e){}
-    throw new Error('Browser cannot save login state. Please disable private/InPrivate mode or allow this site to use local storage.');
-  },
-  removeItem(key){
-    try{localStorage.removeItem(key);}catch(e){}
-    try{sessionStorage.removeItem(key);}catch(e){}
-  }
-};
 
 
 function setLoginMsg(text,kind){
@@ -1324,6 +1128,7 @@ function setLoginMsg(text,kind){
     el.className='login-err'+(kind==='ok'?' ok':kind==='busy'?' busy':' err');
   }
 }
+
 
 function loginErrorMessage(e){
   const msg=String(e?.message||e||'').toLowerCase();
@@ -1338,6 +1143,7 @@ function loginErrorMessage(e){
   return e?.message||String(e)||'Login failed';
 }
 
+
 function updateLoginFileWarn(){
   const el=document.getElementById('login-file-warn');
   if(!el) return;
@@ -1349,6 +1155,7 @@ function updateLoginFileWarn(){
     el.innerHTML='Opened as a local file (file://). Run <b>aclab-start.bat</b> and use <b>http://127.0.0.1:8765/</b> instead.';
   }else el.style.display='none';
 }
+
 
 async function testSupabaseConnection(){
   if(!sb){setLoginMsg('Cloud service is not available right now.','');return;}
@@ -1372,288 +1179,6 @@ async function testSupabaseConnection(){
 }
 
 
-function parseStore(raw){
-  const data=JSON.parse(raw);
-  if(Array.isArray(data)) return {records:migrateRecords(data),projects:[]};
-  return {records:migrateRecords(data.records||[]),projects:data.projects||[]};
-}
-
-function localBackup(){
-  try{localStorage.setItem(STORAGE_KEY,JSON.stringify({records,projects}));}catch(e){}
-}
-
-function setSyncStatus(state,msg){
-  const el=document.getElementById('sync-lbl');
-  if(!el) return;
-  el.className=state==='ok'?'ok':state==='err'?'err':'';
-  const map={loading:'Syncing…',saving:'Saving…',ok:'Synced',err:'Sync failed',offline:'Local backup only'};
-  el.textContent=msg||(map[state]||'—');
-}
-
-function bumpId(id){
-  const m=String(id||'').match(/^(.*?)(\d+)\s*$/);
-  if(!m) return id+'-2';
-  return m[1]+String(parseInt(m[2],10)+1).padStart(m[2].length,'0');
-}
-
-
-/* ---- Per-row cloud persistence (records / projects / logs) ---- */
-async function saveRecordRow(r,isNew){
-  r.updated=todayISO(); r.updatedBy=getCurrentUser();
-  const row=()=>({id:r.id,data:r,updated_at:nowISO(),updated_by:r.updatedBy});
-  if(isNew){
-    for(let t=0;t<30;t++){
-      const {error}=await sb.from('records').insert(row());
-      if(!error) return;
-      if(error.code==='23505'){ r.id=bumpId(r.id); continue; } // ID taken -> next number
-      throw error;
-    }
-    throw new Error('Could not allocate a unique record ID.');
-  }
-  const {error}=await sb.from('records').upsert(row());
-  if(error) throw error;
-}
-
-async function removeRecordRow(id){
-  const {error}=await sb.from('records').delete().eq('id',id);
-  if(error) throw error;
-}
-
-// Lab Instruments: graceful load (table may not exist yet) + upsert one lab
-async function loadLabInstruments(){
-  try{
-    const {data,error}=await sb.from('lab_instruments').select('id,data,updated_by');
-    if(error) throw error;
-    const m={};
-    (data||[]).forEach(row=>{ m[row.id]={...(row.data||{}),updatedBy:row.updated_by}; });
-    setLabInstruments(m);
-  }catch(e){ /* table may not exist yet — keep whatever we have */ }
-}
-
-async function saveLabRow(labId,obj){
-  const clean={...obj}; delete clean.updatedBy;
-  const {error}=await sb.from('lab_instruments').upsert({id:labId,data:clean,updated_at:nowISO(),updated_by:getCurrentUser()});
-  if(error) throw error;
-}
-
-async function saveProjectRow(p,isNew){
-  p.updated=todayISO(); p.updatedBy=getCurrentUser();
-  const row=()=>{ const {logs,...pd}=p; return {id:p.id,data:pd,updated_at:nowISO(),updated_by:p.updatedBy}; };
-  if(isNew){
-    for(let t=0;t<30;t++){
-      const {error}=await sb.from('projects').insert(row());
-      if(!error) return;
-      if(error.code==='23505'){ p.id=bumpId(p.id); continue; }
-      throw error;
-    }
-    throw new Error('Could not allocate a unique project ID.');
-  }
-  const {error}=await sb.from('projects').upsert(row());
-  if(error) throw error;
-}
-
-async function removeProjectRow(id){
-  const {error}=await sb.from('projects').delete().eq('id',id); // logs cascade-delete in DB
-  if(error) throw error;
-}
-
-async function saveLogRow(projId,l,isNew){
-  l.updated=todayISO(); l.updatedBy=getCurrentUser();
-  const row=()=>({project_id:projId,id:l.id,data:l,updated_at:nowISO(),updated_by:l.updatedBy});
-  if(isNew){
-    for(let t=0;t<30;t++){
-      const {error}=await sb.from('logs').insert(row());
-      if(!error) return;
-      if(error.code==='23505'){ l.id=bumpId(l.id); continue; }
-      throw error;
-    }
-    throw new Error('Could not allocate a unique log ID.');
-  }
-  const {error}=await sb.from('logs').upsert(row());
-  if(error) throw error;
-}
-
-async function removeLogRow(projId,id){
-  const {error}=await sb.from('logs').delete().eq('project_id',projId).eq('id',id);
-  if(error) throw error;
-}
-
-// Bulk upsert everything (used by import + one-time migration)
-async function persistAll(){
-  if(records.length){
-    const rows=records.map(r=>({id:r.id,data:r,updated_at:nowISO(),updated_by:r.updatedBy||getCurrentUser()}));
-    const {error}=await sb.from('records').upsert(rows); if(error) throw error;
-  }
-  if(projects.length){
-    const prows=projects.map(p=>{const {logs,...pd}=p; return {id:p.id,data:pd,updated_at:nowISO(),updated_by:p.updatedBy||getCurrentUser()};});
-    const {error}=await sb.from('projects').upsert(prows); if(error) throw error;
-    const lrows=[];
-    projects.forEach(p=>(p.logs||[]).forEach(l=>lrows.push({project_id:p.id,id:l.id,data:l,updated_at:nowISO(),updated_by:l.updatedBy||getCurrentUser()})));
-    if(lrows.length){ const {error:le}=await sb.from('logs').upsert(lrows); if(le) throw le; }
-  }
-  localBackup();
-}
-
-// One-time migration: split the old single-row snapshot into the new tables
-async function maybeMigrateSnapshot(){
-  const [{count:rc},{count:pc}]=await Promise.all([
-    sb.from('records').select('id',{count:'exact',head:true}),
-    sb.from('projects').select('id',{count:'exact',head:true})
-  ]).then(a=>a.map(x=>({count:x.count||0})));
-  if(rc>0||pc>0) return; // already has normalized data
-  const {data}=await sb.from('app_snapshot').select('records,projects').eq('id','main').maybeSingle();
-  if(!data) return;
-  const oldRecords=migrateRecords(data.records||[]);
-  const oldProjects=data.projects||[];
-  if(!oldRecords.length&&!oldProjects.length) return;
-  setSyncStatus('loading','Migrating data…');
-  if(oldRecords.length){
-    const rows=oldRecords.map(r=>({id:r.id,data:r,updated_at:nowISO(),updated_by:null}));
-    const {error}=await sb.from('records').upsert(rows); if(error) throw error;
-  }
-  if(oldProjects.length){
-    const prows=oldProjects.map(p=>{const {logs,...pd}=p; return {id:p.id,data:pd,updated_at:nowISO(),updated_by:null};});
-    const {error}=await sb.from('projects').upsert(prows); if(error) throw error;
-    const lrows=[];
-    oldProjects.forEach(p=>(p.logs||[]).forEach(l=>lrows.push({project_id:p.id,id:l.id,data:l,updated_at:nowISO(),updated_by:null})));
-    if(lrows.length){ const {error:le}=await sb.from('logs').upsert(lrows); if(le) throw le; }
-  }
-}
-
-
-async function cloudLoad(){
-  await maybeMigrateSnapshot();
-  await loadSettings();
-  await loadLabInstruments();
-  const [recRes,projRes,logRes]=await Promise.all([
-    sb.from('records').select('id,data,updated_by'),
-    sb.from('projects').select('id,data,updated_by'),
-    sb.from('logs').select('project_id,id,data,updated_by')
-  ]);
-  if(recRes.error) throw recRes.error;
-  if(projRes.error) throw projRes.error;
-  if(logRes.error) throw logRes.error;
-  setRecords(migrateRecords((recRes.data||[]).map(row=>({...row.data,id:row.id,updatedBy:row.updated_by}))));
-  const logsByProj={};
-  (logRes.data||[]).forEach(row=>{(logsByProj[row.project_id]=logsByProj[row.project_id]||[]).push({...row.data,id:row.id,updatedBy:row.updated_by});});
-  setProjects((projRes.data||[]).map(row=>({...row.data,id:row.id,updatedBy:row.updated_by,logs:logsByProj[row.id]||[]})));
-  localBackup();
-}
-
-
-// Wrap an in-memory mutation's cloud write: local backup always, cloud best-effort
-/* ---- Offline write queue: retry writes that failed with no network ---- */
-let writeQueue=[];
-try{ writeQueue=JSON.parse(localStorage.getItem('aclab_write_queue')||'[]')||[]; }catch(e){ writeQueue=[]; }
-
-function persistQueue(){ try{ localStorage.setItem('aclab_write_queue',JSON.stringify(writeQueue)); }catch(e){} }
-
-function enqueueWrite(op){ if(op){ writeQueue.push(op); persistQueue(); } }
-
-let _flushing=false;
-
-async function flushQueue(){
-  if(_flushing||!writeQueue.length) return;
-  if(!(sb&&(await sb.auth.getSession()).data.session)) return;
-  _flushing=true;
-  try{
-    while(writeQueue.length){
-      const op=writeQueue[0], uid=getCurrentUser();
-      let error=null;
-      if(op.k==='saveRecord'){ ({error}=await sb.from('records').upsert({id:op.data.id,data:op.data,updated_at:nowISO(),updated_by:op.data.updatedBy||uid})); }
-      else if(op.k==='removeRecord'){ ({error}=await sb.from('records').delete().eq('id',op.id)); }
-      else if(op.k==='saveProject'){ ({error}=await sb.from('projects').upsert({id:op.data.id,data:op.data,updated_at:nowISO(),updated_by:op.data.updatedBy||uid})); }
-      else if(op.k==='removeProject'){ await sb.from('logs').delete().eq('project_id',op.id); ({error}=await sb.from('projects').delete().eq('id',op.id)); }
-      else if(op.k==='saveLog'){ ({error}=await sb.from('logs').upsert({project_id:op.projId,id:op.data.id,data:op.data,updated_at:nowISO(),updated_by:op.data.updatedBy||uid})); }
-      else if(op.k==='removeLog'){ ({error}=await sb.from('logs').delete().eq('project_id',op.projId).eq('id',op.id)); }
-      else if(op.k==='saveLab'){ ({error}=await sb.from('lab_instruments').upsert({id:op.labId,data:op.data,updated_at:nowISO(),updated_by:uid})); }
-      if(error){ console.warn('Queue flush paused; will retry',error); break; }
-      writeQueue.shift(); persistQueue();
-    }
-  }catch(e){ console.warn('Queue flush error',e); }
-  _flushing=false;
-  if(!writeQueue.length) setSyncStatus('ok');
-}
-
-async function afterMutation(writeFn,op){
-  localBackup();
-  try{
-    setSyncStatus('saving');
-    if(sb&&(await sb.auth.getSession()).data.session){
-      await writeFn();
-      await flushQueue();
-      localBackup();
-      setSyncStatus(writeQueue.length?'offline':'ok', writeQueue.length?('Syncing '+writeQueue.length+' pending…'):undefined);
-    }else{
-      enqueueWrite(op);
-      localBackup();
-      setSyncStatus('offline', op?('Offline — '+writeQueue.length+' change(s) will sync when online'):'Local backup only');
-    }
-  }catch(e){
-    console.error(e);
-    enqueueWrite(op);
-    setSyncStatus('err', op?('Offline — '+writeQueue.length+' change(s) will sync when online'):'Saved locally, cloud failed');
-  }
-}
-window.addEventListener('online',()=>{ flushQueue(); });
-
-
-async function load(){
-  try{
-    setSyncStatus('loading');
-    const la=document.getElementById('list-area'); if(la&&!records.length) la.innerHTML=skeletonCards(4);
-    await cloudLoad();
-    setSyncStatus('ok');
-    startRealtime();
-    flushQueue();
-  }catch(e){
-    console.error(e);
-    const local=localStorage.getItem(STORAGE_KEY);
-    if(local){
-      const s=parseStore(local);
-      setRecords(s.records); setProjects(s.projects);
-      setSyncStatus('offline','Offline: loaded local backup');
-    }else{
-      setRecords([]); setProjects([]);
-      setSyncStatus('err',e.message||'Load failed');
-    }
-  }
-  fillCatFilter();
-  fillTypeFilter();
-  fillSampleFilter();
-  render();
-}
-
-
-/* ---- Realtime: refresh when any user changes a row ---- */
-let _rtChannel=null, _rtTimer=null;
-
-function startRealtime(){
-  if(_rtChannel||!sb) return;
-  const bump=()=>{
-    clearTimeout(_rtTimer);
-    _rtTimer=setTimeout(async()=>{
-      try{
-        await cloudLoad();
-        if(viewMode==='project') renderProjectView();
-        else if(viewMode==='lab') renderLabView();
-        else { fillCatFilter(); fillTypeFilter(); fillSampleFilter(); render(); }
-        setSyncStatus('ok');
-      }catch(e){ console.error(e); }
-    },600);
-  };
-  _rtChannel=sb.channel('aclab-sync')
-    .on('postgres_changes',{event:'*',schema:'public',table:'records'},bump)
-    .on('postgres_changes',{event:'*',schema:'public',table:'projects'},bump)
-    .on('postgres_changes',{event:'*',schema:'public',table:'logs'},bump)
-    .on('postgres_changes',{event:'*',schema:'public',table:'app_settings'},bump)
-    .on('postgres_changes',{event:'*',schema:'public',table:'lab_instruments'},bump)
-    .subscribe();
-}
-
-function stopRealtime(){
-  if(_rtChannel){ try{ sb.removeChannel(_rtChannel); }catch(e){} _rtChannel=null; }
-}
 
 /* No button any more: the per-view and per-archive exports cover day to day, and
    two Export controls that did different things was the confusing part. This stays
@@ -1670,6 +1195,7 @@ function exportBackup(){
 }
 
 
+
 /* ===== JSON / PDF export =====
    Two shapes on purpose: JSON is the raw record for whatever ends up analysing it
    later, PDF is the one a person opens. Neither is derived from the other. */
@@ -1680,6 +1206,7 @@ function exportRecordsJSON(){
   downloadJson('aclab-records-'+scope+'-'+todayISO()+'.json',
     {kind:'records',scope,exportedAt:new Date().toISOString(),records:list});
 }
+
 
 /* Records currently matching the platform tab + filters, in every status but
    archived. Archived is not on screen here, and "Export the current view" that
@@ -1697,10 +1224,12 @@ function recordsForExport(){
   return applyRecordFilters(base);
 }
 
+
 function imagesReportHtml(images){
   if(!Array.isArray(images)||!images.length) return '';
   return '<div class="imgs">'+images.map(im=>`<img src="${imgPublicUrl(im.path)}" alt="">`).join('')+'</div>';
 }
+
 
 function openPrintReport(title,bodyHtml,footHtml){
   const html=`<!doctype html><html><head><meta charset="utf-8"><title>${esc(title)}</title>
@@ -1722,12 +1251,14 @@ function openPrintReport(title,bodyHtml,footHtml){
   w.onload=()=>{ setTimeout(()=>{ try{ w.focus(); w.print(); }catch(e){} },400); };
 }
 
+
 function exportRecordsPDF(){
   const list=recordsForExport();
   if(!list.length){ toast('No records to export in the current view.','warn'); return; }
   const scope=curP==='all'?'All Platforms':(PLATFORMS[curP]?.label||curP);
   openRecordsReport('Platform Tracking Report',list,`Scope: ${esc(scope)} &nbsp;·&nbsp; ${list.length} record(s)`);
 }
+
 
 /* The archive gets its own report rather than a filtered version of the one above:
    what it is is the whole point of the document, and a reader should not have to
@@ -1739,6 +1270,7 @@ function exportArchivedPDF(){
   openRecordsReport('Platform Tracking — Archived Records',list,
     `Scope: ${esc(scope)} &nbsp;·&nbsp; ${list.length} record(s) &nbsp;·&nbsp; closed over ${ARCHIVE_AFTER_DAYS} days ago`);
 }
+
 
 function openRecordsReport(title,list,metaLine){
   const rows=list.map(r=>{
@@ -1761,11 +1293,13 @@ function openRecordsReport(title,list,metaLine){
   openPrintReport(title,body,`Generated ${new Date().toLocaleString()} · ${list.length} record(s) · AudioTracker`);
 }
 
+
 function exportProjectPDF(id){
   const p=getProject(id||curProjectId); if(!p) return;
   openPrintReport(p.name+' — Test Log Report', projectReportBlock(p,'h1'),
     `Generated ${new Date().toLocaleString()} · ${(p.logs||[]).length} log(s) · AudioTracker`);
 }
+
 
 /* Every archived project in one document, each starting on its own page. The JSON
    beside it is the machine copy; this is the one that gets filed on the server and
@@ -1780,6 +1314,7 @@ function exportArchivedProjectsPDF(){
   openPrintReport('Project Log — Archived Projects',body,
     `Generated ${new Date().toLocaleString()} · ${d.length} project(s) · AudioTracker`);
 }
+
 
 function projectReportBlock(p,tag){
   const logs=sortedLogs(p.logs);
@@ -1810,6 +1345,7 @@ function projectReportBlock(p,tag){
     </table>`;
 }
 
+
 function showLogin(){
   document.getElementById('login-screen').hidden=false;
   document.getElementById('app-main').hidden=true;
@@ -1830,6 +1366,7 @@ function showLogin(){
   updateLoginFileWarn();
 }
 
+
 function showApp(){
   document.getElementById('login-screen').hidden=true;
   document.getElementById('app-main').hidden=false;
@@ -1838,10 +1375,12 @@ function showApp(){
 }
 
 
+
 /* ===== Account approval =====
    RLS is the real gate (see aclab-approval-setup.sql); these screens exist so an
    unapproved user gets a clear explanation instead of an empty, broken app. */
 let myApproval={approved:false,isAdmin:false,known:false};
+
 
 async function loadMyApproval(){
   myApproval={approved:false,isAdmin:false,known:false};
@@ -1861,12 +1400,14 @@ async function loadMyApproval(){
   return myApproval;
 }
 
+
 // Record a pending request for a brand-new account (self-approval is blocked by RLS)
 async function requestApproval(email){
   if(!sb) return;
   try{ await sb.from('allowed_users').insert({email:(email||'').trim().toLowerCase()}); }
   catch(e){ /* already requested, or table not deployed — nothing to do */ }
 }
+
 
 function showPendingScreen(email){
   document.getElementById('app-main').hidden=true;
@@ -1877,6 +1418,7 @@ function showPendingScreen(email){
   const pc=document.getElementById('pending-card'); if(pc) pc.style.display='';
   const el=document.getElementById('pending-email'); if(el) el.textContent=email||getCurrentEmail()||'—';
 }
+
 
 async function recheckApproval(){
   const btn=document.getElementById('pending-refresh');
@@ -1889,6 +1431,7 @@ async function recheckApproval(){
   if(btn){btn.disabled=false;btn.innerHTML='<i class="ti ti-refresh" aria-hidden="true"></i> Check again';}
 }
 
+
 // Returns true when the app may be entered
 async function enterAppIfApproved(email){
   await loadMyApproval();
@@ -1898,6 +1441,7 @@ async function enterAppIfApproved(email){
 }
 
 
+
 /* ---- Admin: approve / revoke accounts ---- */
 async function fetchAllowedUsers(){
   const {data,error}=await sb.from('allowed_users')
@@ -1905,6 +1449,7 @@ async function fetchAllowedUsers(){
   if(error) throw error;
   return data||[];
 }
+
 
 /* One field, two shapes. Everyone else is pinned to the account they signed in
    with, so the name on a record is a fact rather than something typed. The admin
@@ -1918,6 +1463,7 @@ async function fetchAllowedUsers(){
    up counting this. The stored value is the mail local-part, which is what
    getCurrentUser has always written, so nothing existing has to be rewritten. */
 let allowedUsersCache=null;
+
 
 /* Filing a note in Platform Tracking when it belonged in Project Log is a mistake
    the person who made it should be able to clear up themselves. So deletion is not
@@ -1933,6 +1479,7 @@ let allowedUsersCache=null;
    standing between fourteen people and a permanently deleted record. */
 const OWN_DELETE_DAYS=7;
 
+
 function ownedRecently(item){
   const me=getCurrentEmail();
   if(!me||!item||!item.createdBy||!item.created) return false;
@@ -1940,7 +1487,9 @@ function ownedRecently(item){
   return daysSince(item.created)<=OWN_DELETE_DAYS;
 }
 
+
 function canDelete(item){ return myApproval.isAdmin||ownedRecently(item); }
+
 
 function requireDelete(item,what){
   if(canDelete(item)) return true;
@@ -1952,11 +1501,13 @@ function requireDelete(item,what){
   return false;
 }
 
+
 function requireAdmin(why){
   if(myApproval.isAdmin) return true;
   toast(why||'Admins only.','warn',4000);
   return false;
 }
+
 
 function allowedUserNames(){
   return (allowedUsersCache||[])
@@ -1965,6 +1516,7 @@ function allowedUserNames(){
     .filter(Boolean);
 }
 
+
 function identityOptions(val){
   // A legacy free-text value is kept as its own option: dropping it would silently
   // reassign the record to whoever happens to sort first
@@ -1972,6 +1524,7 @@ function identityOptions(val){
   names.sort((a,b)=>fmtUser(a).localeCompare(fmtUser(b)));
   return names.map(n=>`<option value="${esc(n)}" ${n===val?'selected':''}>${esc(fmtUser(n))}</option>`).join('');
 }
+
 
 function identityFieldHtml(id,label,current){
   const val=String(current||getCurrentUser()||'').trim();
@@ -1983,12 +1536,14 @@ function identityFieldHtml(id,label,current){
     <select id="${id}" data-identity="1">${identityOptions(val)}</select>`;
 }
 
+
 function readIdentity(id,fallback){
   const el=document.getElementById(id);
   if(!el) return fallback;
   const v=String(el.tagName==='SELECT'?el.value:(el.dataset.val||'')).trim();
   return v||fallback;
 }
+
 
 /* The list normally arrives with updateAdminBtn at startup. If a form opens before
    that lands, the select still holds the right value and simply has fewer names in
@@ -2000,6 +1555,7 @@ async function ensureAllowedUsers(){
     sel.innerHTML=identityOptions(sel.value);
   });
 }
+
 
 async function updateAdminBtn(){
   const btn=document.getElementById('admin-users-btn');
@@ -2015,6 +1571,7 @@ async function updateAdminBtn(){
     btn.title=pending?(pending+' account(s) waiting for approval'):'Approve accounts';
   }catch(e){}
 }
+
 
 function manageUsers(){
   if(!myApproval.isAdmin) return;
@@ -2086,6 +1643,7 @@ function manageUsers(){
   draw();
 }
 
+
 async function doLogin(){
   if(loginBusy) return;
   if(!sb){setLoginMsg('System not ready. Please refresh the page.','');return;}
@@ -2127,6 +1685,7 @@ async function doLogin(){
   }
 }
 
+
 async function doLogout(){
   localStorage.removeItem('aclab_login_at');
   sessionStorage.removeItem('aclab_login_at');
@@ -2136,10 +1695,13 @@ async function doLogout(){
 }
 
 
+
 // ========== 註冊流程 ==========
 const ALLOWED_EMAIL_DOMAIN='@pal-labs.com';
 
+
 let regEmail='';
+
 
 function setRegMsg(text,kind){
   const el=document.getElementById('reg-err');
@@ -2147,6 +1709,7 @@ function setRegMsg(text,kind){
   el.textContent=text||'';
   el.className=text?('login-err'+(kind==='ok'?' ok':kind==='busy'?' busy':' err')):'login-err';
 }
+
 
 function showRegister(){
   document.querySelector('#login-screen .login-card').style.display='none';
@@ -2158,11 +1721,13 @@ function showRegister(){
   setRegMsg('','');
 }
 
+
 function showLoginPanel(){
   document.getElementById('register-card').style.display='none';
   const pc=document.getElementById('pending-card'); if(pc) pc.style.display='none';
   document.querySelector('#login-screen .login-card').style.display='';
 }
+
 
 async function sendRegisterOTP(){
   if(!sb){setRegMsg('System not ready. Please refresh.','');return;}
@@ -2192,6 +1757,7 @@ async function sendRegisterOTP(){
   }
 }
 
+
 async function verifyRegisterOTP(){
   if(!sb){setRegMsg('System not ready. Please refresh.','');return;}
   const code=(document.getElementById('reg-otp')||{}).value.trim();
@@ -2216,6 +1782,7 @@ async function verifyRegisterOTP(){
     if(btn){btn.disabled=false;btn.textContent='Verify Code';}
   }
 }
+
 
 async function completeRegister(){
   if(!sb){setRegMsg('System not ready. Please refresh.','');return;}
@@ -2248,6 +1815,7 @@ async function completeRegister(){
     if(btn){btn.disabled=false;btn.textContent='Complete Registration';}
   }
 }
+
 
 async function initApp(){
   purgeStoredPassword();   // before anything else, so a failure later still clears it
@@ -2284,11 +1852,15 @@ async function initApp(){
   initHistoryGuard();
 }
 
+
 const SESSION_MAX_MIN=8*60;        // 關閉分頁後多久內免重新登入
+
 
 const IDLE_TIMEOUT_MS=20*60*1000;  // 20 分鐘閒置登出
 
+
 let idleTimer=null;
+
 
 function resetIdleTimer(){
   clearTimeout(idleTimer);
@@ -2303,12 +1875,14 @@ function resetIdleTimer(){
   },IDLE_TIMEOUT_MS);
 }
 
+
 function startIdleTimer(){
   ['mousemove','keydown','click','scroll','touchstart'].forEach(e=>{
     document.addEventListener(e,resetIdleTimer,{passive:true});
   });
   resetIdleTimer();
 }
+
 
 
 
@@ -2356,18 +1930,12 @@ function initSwipeBack(){
   },{passive:true});
 }
 
+
 function onRememberToggle(checked){
   try{
     localStorage.setItem(REMEMBER_CREDS_KEY,checked?'1':'0');
     if(!checked) localStorage.removeItem(LOGIN_EMAIL_KEY);
   }catch(e){}
-}
-
-/* Runs on every start, whatever the checkbox says: the point is to remove what
-   earlier versions saved, and those users have no reason to know it is there. */
-function purgeStoredPassword(){
-  try{ localStorage.removeItem(LOGIN_PASS_KEY); }catch(e){}
-  try{ sessionStorage.removeItem(LOGIN_PASS_KEY); }catch(e){}
 }
 
 
@@ -2385,18 +1953,24 @@ function switchMode(m){
 }
 
 
+
 /* ===== Lab Instruments view ===== */
 let _labEdit=null, _labParsed=null;   // _labEdit = {index, isNew} — the single row currently being edited
 
+
 let _labReorder=false, _labOrderDraft=null, _labGroupsDraft=null, _labDragFrom=null;   // reorder mode works on a draft until Done
 
+
 let _labCatEdit=null;   // {mode:'new'} | {mode:'rename', name} — inline category editor
+
 
 /* Categories are per lab and free-form. The lab's `groups` array is the authoritative
    list, so a category can exist while still empty; an item's `group` just names one. */
 const DEFAULT_LAB_GROUPS=['Teams','Chrome Audio'];
 
+
 function labItemGroup(it){ return ((it&&it.group)||'').trim(); }
+
 
 // Authoritative category list for a lab (defaults apply only when none was ever stored)
 function labGroupList(d){
@@ -2405,13 +1979,16 @@ function labGroupList(d){
   return out;
 }
 
+
 function labGroupsOf(items,order){
   const out=(order||[]).slice();
   (items||[]).forEach(it=>{ const g=labItemGroup(it); if(g&&!out.includes(g)) out.push(g); });
   return out;
 }
 
+
 function labIndexesIn(items,g){ return (items||[]).map((_,i)=>i).filter(i=>labItemGroup(items[i])===g); }
+
 
 // Flat items array rebuilt so it is stored grouped, in the display order
 function labNormalizeOrder(items,order){
@@ -2421,10 +1998,13 @@ function labNormalizeOrder(items,order){
   return out;
 }
 
+
 function labData(id){ return labInstruments[id]||{items:[],verifiedAt:null}; }
+
 
 // Last time any instrument version actually changed (max of item changedAt) — informational, never drives the light
 function labLastChanged(d){ const ds=(d.items||[]).map(i=>i.changedAt).filter(Boolean).sort(); return ds.length?ds[ds.length-1]:null; }
+
 
 function renderLabView(){
   const host=document.getElementById('view-lab');
@@ -2433,9 +2013,12 @@ function renderLabView(){
   else { curLab=null; renderLabList(host); }
 }
 
+
 function openLab(id){ curLab=id; _labEdit=null; _labCatEdit=null; _labParsed=null; _labReorder=false; _labOrderDraft=null; renderLabView(); }
 
+
 function labBack(){ curLab=null; _labEdit=null; _labCatEdit=null; _labParsed=null; _labReorder=false; _labOrderDraft=null; renderLabView(); }
+
 
 function renderLabList(host){
   const cards=LABS.map(l=>{
@@ -2456,6 +2039,7 @@ function renderLabList(host){
     </div>
     <div class="lab-grid">${cards}</div>`;
 }
+
 
 function renderLabDetail(host){
   const meta=LABS.find(l=>l.id===curLab)||{id:curLab,note:''};
@@ -2499,6 +2083,7 @@ function renderLabDetail(host){
   if(focusEl){ focusEl.focus(); if(focusEl.setSelectionRange) focusEl.setSelectionRange(focusEl.value.length,focusEl.value.length); }
 }
 
+
 // Renders the table body: one section per category, uncategorised items last.
 // Headers are hidden entirely when a lab uses no categories at all.
 function labSectionsHtml(items,order){
@@ -2524,6 +2109,7 @@ function labSectionsHtml(items,order){
   return html;
 }
 
+
 function labGroupHeadHtml(label,gi,total){
   const q=String(label).replace(/\\/g,'\\\\').replace(/'/g,"\\'");
   const busy=!!(_labEdit||_labCatEdit);
@@ -2546,6 +2132,7 @@ function labGroupHeadHtml(label,gi,total){
   </div>`;
 }
 
+
 // Inline editor used both for creating and for renaming a category
 function labCatEditHtml(current){
   return `<div class="lab-group-head editing">
@@ -2557,6 +2144,7 @@ function labCatEditHtml(current){
     </span>
   </div>`;
 }
+
 
 function labRowHtml(it,i){
   if(_labEdit && !_labEdit.isNew && _labEdit.index===i) return labEditRowHtml(it);
@@ -2572,6 +2160,7 @@ function labRowHtml(it,i){
     </span>
   </div>`;
 }
+
 
 function labEditRowHtml(it){
   const d=labData(curLab);
@@ -2589,6 +2178,7 @@ function labEditRowHtml(it){
   </div>`;
 }
 
+
 /* ---- Reorder mode: explicit, so nothing can be dragged by accident ---- */
 function labReorderRowHtml(it,i,isFirst,isLast){
   return `<div class="lab-tr lab-tr-reorder" id="labrow-${i}"
@@ -2605,6 +2195,7 @@ function labReorderRowHtml(it,i,isFirst,isLast){
   </div>`;
 }
 
+
 function labStartReorder(){
   if(_labEdit) return;
   const d=labData(curLab);
@@ -2613,7 +2204,9 @@ function labStartReorder(){
   _labReorder=true; renderLabView();
 }
 
+
 function labCancelReorder(){ _labReorder=false; _labOrderDraft=null; _labGroupsDraft=null; _labDragFrom=null; renderLabView(); }
+
 
 // Items only move within their own category — changing category is done by editing the row
 function labMoveRow(i,dir){
@@ -2625,6 +2218,7 @@ function labMoveRow(i,dir){
   renderLabView();
 }
 
+
 function labMoveGroup(name,dir){
   if(!_labGroupsDraft) return;
   const i=_labGroupsDraft.indexOf(name), j=i+dir;
@@ -2633,12 +2227,16 @@ function labMoveGroup(name,dir){
   renderLabView();
 }
 
+
 // Only the grip arms the row for dragging, so grabbing text never starts a drag
 function labGripDown(i){ const el=document.getElementById('labrow-'+i); if(el) el.draggable=true; }
 
+
 function labGripUp(i){ const el=document.getElementById('labrow-'+i); if(el) el.draggable=false; }
 
+
 function labDragStart(e,i){ _labDragFrom=i; try{ e.dataTransfer.effectAllowed='move'; e.dataTransfer.setData('text/plain',String(i)); }catch(err){} }
+
 
 function labDragOver(e,i){
   if(_labDragFrom===null||_labDragFrom===undefined) return;
@@ -2648,6 +2246,7 @@ function labDragOver(e,i){
   const el=document.getElementById('labrow-'+i);
   if(el&&i!==_labDragFrom) el.classList.add(i<_labDragFrom?'drop-above':'drop-below');
 }
+
 
 function labDrop(e,i){
   e.preventDefault();
@@ -2660,6 +2259,7 @@ function labDrop(e,i){
   _labDragFrom=null;
   renderLabView();
 }
+
 
 // Dropping onto a section header files the item at the end of that category (works for empty ones)
 function labDropOnGroup(e,g){
@@ -2674,8 +2274,10 @@ function labDropOnGroup(e,g){
   renderLabView();
 }
 
+
 function labDragEnd(e,i){ const el=document.getElementById('labrow-'+i); if(el) el.draggable=false; _labDragFrom=null;
   document.querySelectorAll('.lab-tr-reorder.drop-above,.lab-tr-reorder.drop-below').forEach(el2=>el2.classList.remove('drop-above','drop-below')); }
+
 
 async function labSaveReorder(){
   const d=labData(curLab);
@@ -2691,15 +2293,20 @@ async function labSaveReorder(){
 }
 
 
+
 function labEditRow(i){ if(_labEdit||_labCatEdit||_labReorder) return; _labEdit={index:i,isNew:false}; renderLabView(); }
 
+
 function labAddInstrument(group){ if(_labEdit||_labCatEdit) return; _labEdit={index:(labData(curLab).items||[]).length,isNew:true,group:group||''}; renderLabView(); }
+
 
 function labRowCancel(){ _labEdit=null; renderLabView(); }
 
 
+
 /* ---- Move an existing instrument straight into another category ---- */
 function closeLabMenu(){ const m=document.getElementById('lab-move-menu'); if(m) m.remove(); }
+
 
 function labMoveMenu(btn,i){
   closeLabMenu();
@@ -2719,6 +2326,7 @@ function labMoveMenu(btn,i){
   setTimeout(()=>document.addEventListener('click',closeLabMenu,{once:true}),0);
 }
 
+
 async function labMoveToCategory(i,group){
   const d=labData(curLab);
   const items=(d.items||[]).map((it,idx)=>idx===i?{...it,group:group||''}:{...it});
@@ -2733,12 +2341,16 @@ async function labMoveToCategory(i,group){
 }
 
 
+
 /* ---- Categories: created up front, so instruments can be filed into them ---- */
 function labAddCategory(){ if(_labEdit||_labCatEdit) return; _labCatEdit={mode:'new'}; renderLabView(); }
 
+
 function labRenameCategory(g){ if(_labEdit||_labCatEdit) return; _labCatEdit={mode:'rename',name:g}; renderLabView(); }
 
+
 function labCatCancel(){ _labCatEdit=null; renderLabView(); }
+
 
 async function labCatSave(){
   const inp=document.getElementById('lab-cat-input'); if(!inp||!_labCatEdit) return;
@@ -2761,6 +2373,7 @@ async function labCatSave(){
   toast(mode==='new'?'Category added':'Category renamed','success');
 }
 
+
 async function labDeleteCategory(g){
   const d=labData(curLab);
   const n=labIndexesIn(d.items||[],g).length;
@@ -2775,6 +2388,7 @@ async function labDeleteCategory(g){
   await afterMutation(()=>saveLabRow(curLab,obj),{k:'saveLab',labId:curLab,data:obj});
   toast('Category deleted','success');
 }
+
 
 async function labRowSave(){
   const nameEl=document.getElementById('lab-edit-name'), valEl=document.getElementById('lab-edit-value');
@@ -2802,6 +2416,7 @@ async function labRowSave(){
   toast(isNew?'Instrument added':'Instrument updated','success');
 }
 
+
 async function labDeleteRow(i){
   const it=(labData(curLab).items||[])[i]; if(!it) return;
   const ok=await confirmModal('Delete "'+(it.name||'this item')+'" from '+curLab+'?',{danger:true,okText:'Delete',title:'Delete instrument'});
@@ -2814,6 +2429,7 @@ async function labDeleteRow(i){
   toast('Instrument deleted','success');
 }
 
+
 async function labVerify(){
   const ok=await confirmModal('Confirm '+curLab+' is still correct with no changes? This records today as the last-checked date.',{title:'Mark as checked',okText:'Yes, still current'});
   if(!ok) return;
@@ -2824,6 +2440,7 @@ async function labVerify(){
   await afterMutation(()=>saveLabRow(curLab,obj),{k:'saveLab',labId:curLab,data:obj});
   toast('Marked as checked today','success');
 }
+
 
 function labPasteHtml(){
   return `<div class="lab-paste">
@@ -2836,6 +2453,7 @@ function labPasteHtml(){
     <div id="lab-parse-out">${_labParsed?labParsedHtml():''}</div>
   </div>`;
 }
+
 
 function labParsePreview(){
   const txt=(document.getElementById('lab-paste-txt')||{}).value||'';
@@ -2859,11 +2477,13 @@ function labParsePreview(){
   if(out) out.innerHTML=labParsedHtml();
 }
 
+
 function labMatchItem(items,name){
   const norm=s=>String(s||'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
   const k=norm(name), kw=k.split(' ')[0];
   return items.find(it=>{ const n=norm(it.name); return n===k||n.startsWith(k)||k.startsWith(n)||(kw.length>=3&&n.split(' ')[0]===kw); })||null;
 }
+
 
 function labParsedHtml(){
   if(!_labParsed) return '';
@@ -2880,6 +2500,7 @@ function labParsedHtml(){
     <button class="btn primary" onclick="labApplyParsed()" style="margin-top:10px"><i class="ti ti-arrow-down-to-arc" aria-hidden="true"></i> Apply to list &amp; save</button>
   </div>`;
 }
+
 
 async function labApplyParsed(){
   if(!_labParsed||!_labParsed.length) return;
@@ -2905,6 +2526,7 @@ async function labApplyParsed(){
 }
 
 
+
 function switchP(el){
   document.querySelectorAll('.ptab').forEach(t=>{t.className='ptab';});
   const p=el.dataset.p;
@@ -2916,11 +2538,13 @@ function switchP(el){
 }
 
 
+
 function genId(plat){
   const pfx=PLAT_PFX[plat]||'XX';
   const n=records.filter(r=>r.platform===plat).length+1;
   return pfx+'-'+String(n).padStart(3,'0');
 }
+
 
 
 function filtered(){
@@ -2937,14 +2561,18 @@ function filtered(){
   return d;
 }
 
+
 function closedPool(){
   const base=curP==='all'?records:records.filter(r=>r.platform===curP);
   return applyRecordFilters(base.filter(r=>recordStatus(r)==='closed'));
 }
 
+
 function filteredClosed(){ return closedPool().filter(r=>!isRecordArchived(r)); }
 
+
 function filteredArchived(){ return closedPool().filter(isRecordArchived); }
+
 
 
 function onStatCardClick(status){
@@ -2956,6 +2584,7 @@ function onStatCardClick(status){
   renderDashboard();
   renderList();
 }
+
 
 function renderList(){
   const d=filtered();
@@ -2970,6 +2599,7 @@ function renderList(){
   markClampedDescriptions();
 }
 
+
 // Only promise "there is more" when the text is genuinely cut off
 function markClampedDescriptions(){
   document.querySelectorAll('.desc-clamp').forEach(d=>{
@@ -2977,6 +2607,7 @@ function markClampedDescriptions(){
     if(hint&&hint.classList.contains('desc-more')) hint.hidden=(d.scrollHeight<=d.clientHeight+1);
   });
 }
+
 
 function renderClosedArchive(){
   const wrap=document.getElementById('closed-archive');
@@ -2995,6 +2626,7 @@ function renderClosedArchive(){
   el.innerHTML=d.map(r=>recordCardHtml(r,{archive:true})).join('');
 }
 
+
 /* Hiding, not access control: the rows stay readable through the API, and this is
    internal notice material rather than anything customer-facing. What it buys is
    that fourteen other people are not scrolling past work that finished months ago. */
@@ -3009,6 +2641,7 @@ function renderArchivedSection(){
   if(hintEl) hintEl.textContent=`${d.length} record(s) closed over ${ARCHIVE_AFTER_DAYS} days ago · admin only · nothing here is deleted automatically`;
   el.innerHTML=d.map(r=>recordCardHtml(r,{archive:true})).join('');
 }
+
 
 /* Deliberately not chained to the export. openPrintReport only opens a print
    dialog - if the PDF is cancelled at the save step the app never finds out, so a
@@ -3033,6 +2666,7 @@ async function clearArchivedRecords(){
   toast(`${ids.size} archived record(s) deleted`,'success');
 }
 
+
 async function clearArchivedProjects(){
   if(!requireAdmin()) return;
   const d=archivedProjects();
@@ -3053,6 +2687,7 @@ async function clearArchivedProjects(){
   toast(`${ids.size} archived project(s) deleted`,'success');
 }
 
+
 function exportArchived(){
   const d=filteredArchived();
   if(!d.length){ toast('Nothing archived to export.','warn'); return; }
@@ -3061,10 +2696,12 @@ function exportArchived(){
 }
 
 
+
 function render(){
   if(viewMode==='platform'){renderDashboard();renderList();}
   else renderProjectView();
 }
+
 
 
 // A single slim strip rather than a panel: the counts double as the status filter,
@@ -3097,12 +2734,16 @@ function renderDashboard(){
 }
 
 
+
 /* ===== Debounced search ===== */
 let _searchTimer=null, _projSearchTimer=null;
 
+
 function onSearchInput(){ clearTimeout(_searchTimer); _searchTimer=setTimeout(renderList,250); }
 
+
 function onProjSearchInput(){ clearTimeout(_projSearchTimer); _projSearchTimer=setTimeout(renderProjectListContent,250); }
+
 
 
 /* ===== Duplicate a record as a new one ===== */
@@ -3122,8 +2763,10 @@ function duplicateRecord(id){
 }
 
 
+
 /* ===== Batch selection & actions ===== */
 let selectedIds=new Set(), selectionMode=false;
+
 
 function toggleSelectionMode(){
   selectionMode=!selectionMode;
@@ -3132,11 +2775,15 @@ function toggleSelectionMode(){
   render();
 }
 
+
 function exitSelectionMode(){ selectionMode=false; selectedIds.clear(); const btn=document.getElementById('select-toggle'); if(btn) btn.classList.remove('active'); render(); }
+
 
 function toggleSelect(id,on){ if(on) selectedIds.add(id); else selectedIds.delete(id); const c=document.querySelector(`.record .rec-select[onclick*="'${id}'"]`); if(c) c.closest('.record').classList.toggle('selected',on); renderBatchBar(); }
 
+
 function clearSelection(){ selectedIds.clear(); render(); }
+
 
 function renderBatchBar(){
   const bar=document.getElementById('batch-bar'); if(!bar) return;
@@ -3149,6 +2796,7 @@ function renderBatchBar(){
     <button class="btn" onclick="exitSelectionMode()"><i class="ti ti-x" aria-hidden="true"></i> Done</button>`;
 }
 
+
 async function batchClose(){
   const ids=[...selectedIds];
   const targets=records.filter(r=>ids.includes(r.id)&&recordStatus(r)!=='closed');
@@ -3157,6 +2805,7 @@ async function batchClose(){
   await afterMutation(async()=>{ for(const r of targets) await saveRecordRow(r,false); });
   selectedIds.clear(); render(); toast(targets.length+' record(s) closed','success');
 }
+
 
 async function batchDelete(){
   if(!requireAdmin('Only an admin can delete in bulk. A record you filed yourself can be deleted from its own card.')) return;
@@ -3170,25 +2819,6 @@ async function batchDelete(){
 }
 
 
-/* ===== Client-side image compression (keeps images legible) ===== */
-function loadImageEl(file){ return new Promise((res,rej)=>{ const img=new Image(); img.onload=()=>{URL.revokeObjectURL(img.src);res(img);}; img.onerror=rej; img.src=URL.createObjectURL(file); }); }
-
-async function compressImage(file){
-  if(!/^image\/(jpeg|png|webp)$/.test(file.type)) return file;   // skip gif/svg/unknown
-  if(file.size < 400*1024) return file;                          // already small
-  try{
-    const img=await loadImageEl(file);
-    const maxDim=1600, scale=Math.min(1, maxDim/Math.max(img.width,img.height));
-    if(scale===1 && file.size < 1.2*1024*1024) return file;      // fine as-is
-    const w=Math.round(img.width*scale), h=Math.round(img.height*scale);
-    const cv=document.createElement('canvas'); cv.width=w; cv.height=h;
-    cv.getContext('2d').drawImage(img,0,0,w,h);
-    const blob=await new Promise(r=>cv.toBlob(r,'image/jpeg',0.82));
-    if(!blob||blob.size>=file.size) return file;                 // no real gain
-    return new File([blob], file.name.replace(/\.(png|webp|jpeg)$/i,'.jpg'), {type:'image/jpeg'});
-  }catch(e){ return file; }
-}
-
 
 /* ===== Skeleton loading placeholders ===== */
 function skeletonCards(n){
@@ -3198,12 +2828,16 @@ function skeletonCards(n){
 }
 
 
+
 /* ===== Keyboard shortcuts ===== */
 function isTyping(el){ return el && (el.tagName==='INPUT'||el.tagName==='TEXTAREA'||el.tagName==='SELECT'||el.isContentEditable); }
 
+
 function focusSearch(){ const el=viewMode==='project'?document.getElementById('pq-s'):document.getElementById('q-s'); if(el&&el.offsetParent!==null){ el.focus(); if(el.select) el.select(); } }
 
+
 function newForContext(){ if(viewMode==='project'){ if(curProjectId) showLogForm(); else showProjectForm(); } else showForm(); }
+
 
 function showShortcuts(){
   if(document.getElementById('shortcuts-modal')) return;
@@ -3243,10 +2877,12 @@ document.addEventListener('keydown',e=>{
 });
 
 
+
 function showForm(){
   editId=null;
   renderForm({});
 }
+
 
 function editRecord(id){
   editId=id;
@@ -3254,6 +2890,7 @@ function editRecord(id){
   renderForm(r||{});
   document.getElementById('form-area').scrollIntoView({behavior:'smooth',block:'nearest'});
 }
+
 
 /* Record detail — opened by clicking a card. Keeps the list itself uncluttered:
    version history and the full details live here rather than on every card. */
@@ -3312,6 +2949,7 @@ function openRecordDetail(id){
   requestAnimationFrame(()=>ov.classList.add('show'));
 }
 
+
 // Show the "what changed" note only when saving as a new version
 function onSaveModeChange(){
   const mode=(document.querySelector('input[name="save-mode"]:checked')||{}).value||'update';
@@ -3323,6 +2961,7 @@ function onSaveModeChange(){
 }
 
 
+
 function catOptsHtml(plat,selCat,selSub){
   const cfg=PLATFORMS[plat];
   if(!cfg||!cfg.categories.length) return '<option value="">— No subcategory —</option>';
@@ -3332,11 +2971,13 @@ function catOptsHtml(plat,selCat,selSub){
   }).join('');
 }
 
+
 function subcatOptsHtml(plat,cat,selSub){
   const c=PLATFORMS[plat]?.categories?.find(x=>x.v===cat);
   if(!c?.children) return '';
   return c.children.map(ch=>`<option value="${ch.v}" ${(selSub||'')===ch.v?'selected':''}>${ch.l}</option>`).join('');
 }
+
 
 
 // userChanged=true 代表是使用者自己動了平台/分類（而非 renderForm 初始化），
@@ -3353,6 +2994,7 @@ function onPlatChange(userChanged){
   }
   onCatChange(userChanged);
 }
+
 
 // 依目前表單的 平台 / 分類 / 記錄類型 重建 Sample Type 區塊
 function refreshSampleChecks(dropStale){
@@ -3372,6 +3014,7 @@ function refreshSampleChecks(dropStale){
   // 該平台/分類沒有樣品類型時（如 Lenovo、Talk Analysis Suite）整段隱藏
   wrap.style.display=(type==='note'&&list.length)?'block':'none';
 }
+
 
 function onCatChange(userChanged){
   const plat=document.getElementById('f-plat')?.value||'Teams';
@@ -3394,6 +3037,7 @@ function onCatChange(userChanged){
   }
   refreshSampleChecks(userChanged);
 }
+
 
 
 function renderForm(r){
@@ -3535,6 +3179,7 @@ function renderForm(r){
 }
 
 
+
 function onTypeChange(){
   const t=(document.getElementById('f-type')||{}).value;
   const fw=document.getElementById('fw-wrap');
@@ -3544,6 +3189,7 @@ function onTypeChange(){
   refreshSampleChecks();
   onSubtypeChange();
 }
+
 
 function onSubtypeChange(){
   const t=(document.getElementById('f-type')||{}).value;
@@ -3555,11 +3201,13 @@ function onSubtypeChange(){
   else onSoftwareChange();
 }
 
+
 function onSoftwareChange(){
   const v=(document.getElementById('f-software')||{}).value;
   const ow=document.getElementById('f-software-other-wrap');
   if(ow) ow.style.display=(v==='__other__')?'block':'none';
 }
+
 
 
 async function submitForm(){
@@ -3640,7 +3288,9 @@ async function submitForm(){
 }
 
 
+
 function cancelForm(){document.getElementById('form-area').innerHTML='';editId=null;}
+
 
 
 async function cycleStatus(id){
@@ -3650,6 +3300,7 @@ async function cycleStatus(id){
   applyStatusOnRecord(r, STATUS_NEXT[st]||'in-progress');
   await afterMutation(()=>saveRecordRow(r,false),{k:'saveRecord',data:r}); render();
 }
+
 
 async function delRecord(id){
   if(!requireDelete(records.find(r=>r.id===id),'record')) return;
@@ -3663,23 +3314,28 @@ async function delRecord(id){
 }
 
 
+
 function genProjectId(){
   const n=projects.length+1;
   return 'PRJ-'+String(n).padStart(3,'0');
 }
+
 
 function genLogId(proj){
   const n=(proj.logs||[]).length+1;
   return 'LOG-'+String(n).padStart(3,'0');
 }
 
+
 function getProject(id){return projects.find(p=>p.id===id);}
+
 
 function renderProjectView(){
   if(curProjectId) renderProjectDetail();
   else renderProjectList();
   checkProjectDeleteReminders();
 }
+
 
 
 function setProjToolbar(mode){
@@ -3689,13 +3345,16 @@ function setProjToolbar(mode){
   if(detail) detail.hidden=(mode!=='detail');
 }
 
+
 function onProjSearch(){renderProjectListContent();}
+
 
 function closeProjectFromCard(id){
   const p=getProject(id);
   if(!p) return;
   showProjectCloseModal(p);
 }
+
 
 async function reopenProject(id){
   const p=getProject(id);
@@ -3706,6 +3365,7 @@ async function reopenProject(id){
   await afterMutation(()=>saveProjectRow(p,false),{k:'saveProject',data:stripLogs(p)});
   if(curProjectId===id) renderProjectDetail(); else renderProjectListContent();
 }
+
 
 function showProjectCloseModal(p){
   const modal=document.createElement('div');
@@ -3738,6 +3398,7 @@ function showProjectCloseModal(p){
   });
 }
 
+
 function checkProjectDeleteReminders(){
   // Only the admin can act on this, and the dialog offers Delete All - putting it
   // in front of fourteen other people is how history gets lost by accident
@@ -3765,6 +3426,7 @@ function checkProjectDeleteReminders(){
   modal.querySelector('#pdr-delete').onclick=async()=>{const ids=new Set(due.map(p=>p.id));const imgs=due.flatMap(p=>(p.logs||[]).flatMap(l=>recordAssets(l)));setProjects(projects.filter(p=>!ids.has(p.id)));document.body.removeChild(modal);await afterMutation(async()=>{for(const id of ids) await removeProjectRow(id); await deleteStoredImages(imgs);});renderProjectView();};
 }
 
+
 function backToProjectList(){
   setCurProjectId(null);
   document.getElementById('proj-form-area').innerHTML='';
@@ -3782,6 +3444,7 @@ window.addEventListener('popstate',function(e){
   }
 });
 
+
 // 確保頁面一載入時就有一個基底歷史紀錄（防止第一次右滑關閉頁面）
 function initHistoryGuard(){
   if(!history.state||!history.state.aclab){
@@ -3790,11 +3453,13 @@ function initHistoryGuard(){
   }
 }
 
+
 // Ramp the filled ticks from deep to bright so the leading edge reads as "now"
 function gaugeMix(k){
   const a=[13,120,90], b=[74,222,128];
   return '#'+a.map((v,i)=>Math.round(v+(b[i]-v)*k).toString(16).padStart(2,'0')).join('');
 }
+
 
 function certGaugeHtml(p,size,pulse){
   const pr=hasProgressBar(p)?certProgress(p):null;
@@ -3821,6 +3486,7 @@ function certGaugeHtml(p,size,pulse){
   </div>`;
 }
 
+
 /* The number counts up once per render. data-done stops a re-render of the same
    list (a filter change, say) from replaying it on cards already on screen. */
 function animateCertGauges(root){
@@ -3840,6 +3506,7 @@ function animateCertGauges(root){
   });
 }
 
+
 function certListHtml(p){
   const pr=hasProgressBar(p)?certProgress(p):null;
   if(!pr) return '';
@@ -3858,6 +3525,7 @@ function certListHtml(p){
   ${pr.closed?'<div style="font-size:12px;color:var(--text-secondary);margin-top:8px"><i class="ti ti-lock" aria-hidden="true"></i> Closed — counted as complete</div>':''}`;
 }
 
+
 function renderProjectList(){
   setCurProjectId(null);
   setProjToolbar('list');
@@ -3865,10 +3533,12 @@ function renderProjectList(){
   renderProjectListContent();
 }
 
+
 /* Coloured toggles rather than a dropdown: there are only four platforms, each
    already has a colour elsewhere in the app, and a filter you can see the state
    of beats one you have to open. */
 let projPlatFilter='';
+
 
 function setProjPlatFilter(k){
   // Not a toggle: "All" is already the way to clear, so clicking the active pill
@@ -3877,6 +3547,7 @@ function setProjPlatFilter(k){
   renderProjPlatRow();
   renderProjectListContent();
 }
+
 
 function renderProjPlatRow(){
   const row=document.getElementById('pq-plat-row');
@@ -3888,6 +3559,7 @@ function renderProjPlatRow(){
     +CERT_PLATFORMS.map(k=>`<button type="button" class="plat-pill b-${PLAT_COLOR[k]||'cat'}${projPlatFilter===k?' on':''}"
         onclick="setProjPlatFilter('${k}')">${esc(certPlatLabel(k))} <span class="pill-n">${counts[k]||0}</span></button>`).join('');
 }
+
 
 /* The list, the two export buttons and the clear button all read this, so what a
    button acts on is always what is on screen above it. */
@@ -3902,7 +3574,9 @@ function projectPool(){
   return list;
 }
 
+
 function archivedProjects(){ return projectPool().filter(isProjectArchived); }
+
 
 function renderProjectListContent(){
   const q=(document.getElementById('pq-s')||{}).value||'';
@@ -3974,6 +3648,7 @@ function renderProjectListContent(){
   animateCertGauges(el);
 }
 
+
 /* Logs travel with the project here. A project without its logs answers no
    question worth asking later, and logs are where the per-engineer detail lives. */
 function exportArchivedProjects(){
@@ -3984,6 +3659,7 @@ function exportArchivedProjects(){
 }
 
 
+
 function openProject(id){
   setCurProjectId(id);
   document.getElementById('proj-form-area').innerHTML='';
@@ -3991,6 +3667,7 @@ function openProject(id){
   history.pushState({aclab:'project',id:id},'',' ');
   renderProjectDetail();
 }
+
 
 
 function renderProjectDetail(){
@@ -4078,6 +3755,7 @@ function renderProjectDetail(){
 }
 
 
+
 function showProjectForm(id){
   editProjId=id||null;
   const p=id?getProject(id):{};
@@ -4120,6 +3798,7 @@ function showProjectForm(id){
   document.getElementById('proj-form-area').scrollIntoView({behavior:'smooth',block:'nearest'});
 }
 
+
 // Only Teams splits its checklist by OS, so the field is hidden for the others
 // rather than sitting there collecting a value nothing reads.
 function onCertPlatformChange(){
@@ -4138,8 +3817,10 @@ function onCertPlatformChange(){
   if(sel.value!==cur) onProductTypeChange();
 }
 
+
 // Fields that belong to the platform itself, not to a product type
 let chromeDraft=null;
+
 
 function renderPlatformExtra(){
   const box=document.getElementById('pf-plat-extra');
@@ -4151,6 +3832,7 @@ function renderPlatformExtra(){
   box.innerHTML=platformExtraHtml(platform,chromeDraft||{});
   box.style.display=box.innerHTML?'':'none';
 }
+
 
 
 async function submitProject(){
@@ -4185,6 +3867,7 @@ async function submitProject(){
   renderProjectView();
   toast(isNew?'Project created':'Project updated','success');
 }
+
 
 
 function showLogForm(logId){
@@ -4258,6 +3941,7 @@ function showLogForm(logId){
   document.getElementById('proj-form-area').scrollIntoView({behavior:'smooth',block:'nearest'});
 }
 
+
 /* Several items often get covered in one sitting — USB and Dongle Function on the
    same day, for instance — so this is a multi-select grouped the way the checklist
    reads, not a single dropdown. */
@@ -4284,9 +3968,11 @@ function certItemChecksHtml(p,selected){
       </div>`;}).join('')}</div>`;
 }
 
+
 function readCertItemsFromForm(){
   return Array.from(document.querySelectorAll('.lf-item-cb:checked')).map(c=>c.value);
 }
+
 
 // A reference item only records that it was tested, so pass/fail is only asked for
 // when something in the selection actually depends on it.
@@ -4303,6 +3989,7 @@ function onCertItemChange(cb){
   const picked=readCertItemsFromForm();
   wrap.style.display=certItemsFor(p).some(i=>picked.includes(i.v)&&!i.ref)?'':'none';
 }
+
 
 
 async function submitLog(){
@@ -4364,10 +4051,12 @@ async function submitLog(){
 }
 
 
+
 function cancelProjForm(){
   document.getElementById('proj-form-area').innerHTML='';
   editProjId=null; editLogId=null;
 }
+
 
 
 /* A waiver is the customer accepting a failure, so it is recorded on the failing
@@ -4391,6 +4080,7 @@ async function toggleWaive(logId){
 }
 
 
+
 async function delLog(logId){
   if(!(await confirmModal('This log entry and its screenshots will be permanently deleted.',{title:'Delete log?',okText:'Delete',danger:true}))) return;
   const p=getProject(curProjectId);
@@ -4401,6 +4091,7 @@ async function delLog(logId){
   renderProjectDetail();
   toast('Log deleted','success');
 }
+
 
 
 async function delProject(id){
@@ -4417,6 +4108,7 @@ async function delProject(id){
   renderProjectList();
   toast('Project deleted','success');
 }
+
 
 
 /* ===== Self-check =====
@@ -4622,6 +4314,17 @@ function runSelfCheck(){
   return {pass,fail};
 }
 
+/* Wiring, kept next to the entry point rather than inside any one view. */
+setRedraw(()=>{
+  if(viewMode==='project') renderProjectView();
+  else if(viewMode==='lab') renderLabView();
+  else { fillCatFilter(); fillTypeFilter(); fillSampleFilter(); render(); }
+});
+setLoadingPlaceholder(()=>{
+  const la=document.getElementById('list-area');
+  if(la&&!records.length) la.innerHTML=skeletonCards(4);
+});
+
 /* Inline on* attributes resolve against window, and a module has its own scope.
    Everything declared here is published, rather than a hand-picked list: before
    the split this was a classic script, where every top-level function is already
@@ -4684,14 +4387,15 @@ Object.assign(window, {
   requestApproval, requireAdmin, requireDelete, resetIdleTimer, runSelfCheck, sampleOptsFor,
   sampleTypesFor, sanitizeImgName, saveLabRow, saveLogRow, saveProjectRow, savePushSubscription,
   saveRecordRow, saveSettings, segHtml, segValue, sendRegisterOTP, setCurrentLoginEmail,
-  setImgDisp, setLoginMsg, setProjPlatFilter, setProjToolbar, setRegMsg, setSort, setSyncStatus,
-  showApp, showForm, showLogForm, showLogin, showLoginPanel, showPendingScreen,
-  showProjectCloseModal, showProjectForm, showRegister, showShortcuts, skeletonCards,
-  softwareOpts, sortRecords, sortedLogs, startIdleTimer, startRealtime, stopRealtime, stripLogs,
-  subcatOptsHtml, submitForm, submitLog, submitProject, switchMode, switchP, testSoftwareList,
-  testSupabaseConnection, toast, todayISO, toggleDropdown, toggleSelect, toggleSelectionMode,
-  toggleTheme, toggleWaive, updateAdminBtn, updateLoginFileWarn, updateNotifyBtn,
-  urlB64ToUint8Array, usesProductType, verifyRegisterOTP, versionTimelineHtml
+  setImgDisp, setLoadingPlaceholder, setLoginMsg, setProjPlatFilter, setProjToolbar, setRedraw,
+  setRegMsg, setSort, setSyncStatus, showApp, showForm, showLogForm, showLogin, showLoginPanel,
+  showPendingScreen, showProjectCloseModal, showProjectForm, showRegister, showShortcuts,
+  skeletonCards, softwareOpts, sortRecords, sortedLogs, startIdleTimer, startRealtime,
+  stopRealtime, stripLogs, subcatOptsHtml, submitForm, submitLog, submitProject, switchMode,
+  switchP, testSoftwareList, testSupabaseConnection, toast, todayISO, toggleDropdown,
+  toggleSelect, toggleSelectionMode, toggleTheme, toggleWaive, updateAdminBtn,
+  updateLoginFileWarn, updateNotifyBtn, urlB64ToUint8Array, usesProductType, verifyRegisterOTP,
+  versionTimelineHtml
 });
 
 initApp();
