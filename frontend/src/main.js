@@ -4,7 +4,7 @@ import { purgeStoredPassword } from './services/auth.js';
 import { load } from './services/db.js';
 import { setLoadingPlaceholder, setRedraw } from './services/hooks.js';
 import { SUPABASE_ANON_KEY, SUPABASE_URL, authStorage } from './services/supabase.js';
-import { curProjectId, currentLoginEmail, records, sb, setCurrentLoginEmailValue, setSb, setViewMode, viewMode } from './state.js';
+import { curProjectId, currentLoginEmail, labInstruments, records, sb, setCurrentLoginEmailValue, setSb, setViewMode, viewMode } from './state.js';
 import { renderLabView } from './views/labInstruments.js';
 import { SESSION_MAX_MIN, enterAppIfApproved, initSwipeBack, loginBusy, showApp, showLogin, startIdleTimer, updateLoginFileWarn } from './views/login.js';
 import { cancelForm, render, showForm, skeletonCards } from './views/platformTracking.js';
